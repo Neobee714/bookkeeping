@@ -116,7 +116,7 @@ function LoginScreen({ onLogin }) {
             justifyContent:"center", fontSize:30, margin:"0 auto 16px",
             boxShadow:`0 8px 32px ${theme.fabShadow}40`, transition:"all 0.4s" }}>💰</div>
           <div style={{ fontSize:26, fontWeight:800, color:"#fff", marginBottom:4 }}>
-            <span style={{background:theme.gradText,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",display:"inline-block"}}>账本</span>
+            <span key={userId} style={{background:theme.gradText,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",display:"inline-block"}}>账本</span>
           </div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.22)", letterSpacing:3, textTransform:"uppercase" }}>couple ledger</div>
         </div>
@@ -285,7 +285,7 @@ export default function App() {
               <div style={{fontSize:10,fontWeight:600,color:theme.accent,letterSpacing:2,textTransform:"uppercase"}}>{monthLabel} ▾</div>
             </button>
             <div style={{fontSize:22,fontWeight:800,color:"#fff",marginTop:3,letterSpacing:-0.5}}>
-              {theme.name}的<span style={{background:theme.gradText,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",display:"inline-block"}}>账单</span>
+              {theme.name}的<span key={userId} style={{background:theme.gradText,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",display:"inline-block"}}>账单</span>
             </div>
           </div>
           <div style={{display:"flex",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:22,padding:3,gap:2}}>
