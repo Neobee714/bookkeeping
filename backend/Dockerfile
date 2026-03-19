@@ -1,8 +1,6 @@
-FROM node:20-slim
+FROM python:3.11-slim
 WORKDIR /app
-COPY package.json .
-RUN npm install
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 COPY . .
-RUN npm run build
-RUN npm install -g serve
-CMD serve -s dist -l $PORT
+CMD uvicorn main:app --host 0.0.0.0 --port $PORT
