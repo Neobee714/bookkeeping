@@ -149,6 +149,31 @@ function LoginScreen({ onLogin }) {
     </div>
   );
 }
+function RecordCard({r, deletable, onDelete}) {
+  const cat = ALL_CATS.find(c=>c.id===r.category);
+  const isInc = r.type==="income";
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",
+      background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.055)",
+      borderRadius:16,marginBottom:6}}>
+      <div style={{width:38,height:38,borderRadius:12,fontSize:16,flexShrink:0,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        background:isInc?"rgba(20,184,166,0.12)":"rgba(239,68,68,0.12)"}}>{cat?.icon||"📦"}</div>
+      <div style={{flex:1}}>
+        <div style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.85)"}}>{r.note}</div>
+        <div style={{fontSize:10,color:"rgba(255,255,255,0.25)",marginTop:2}}>{r.date} · {cat?.label}</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{fontSize:14,fontWeight:700,color:isInc?"#2dd4bf":"#f87171"}}>
+          {isInc?"+":"-"}¥{fmt(r.amount)}
+        </div>
+        {deletable&&<button onClick={()=>onDelete(r.id)}
+          style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:15,cursor:"pointer",padding:"0 2px"}}>✕</button>}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [token,   setToken]   = useState(() => localStorage.getItem("ledger_token")||null);
   const [ownerId, setOwnerId] = useState(() => localStorage.getItem("ledger_user_id")||"me");
@@ -231,31 +256,6 @@ export default function App() {
   const monthLabel = `${yy}年${parseInt(mm)}月`;
 
   if (!token) return <LoginScreen onLogin={(tok,uid)=>{setToken(tok);setOwnerId(uid);setUserId(uid);}} />;
-
-  function RecordCard({r, deletable}) {
-    const cat = ALL_CATS.find(c=>c.id===r.category);
-    const isInc = r.type==="income";
-    return (
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",
-        background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.055)",
-        borderRadius:16,marginBottom:6}}>
-        <div style={{width:38,height:38,borderRadius:12,fontSize:16,flexShrink:0,
-          display:"flex",alignItems:"center",justifyContent:"center",
-          background:isInc?"rgba(20,184,166,0.12)":"rgba(239,68,68,0.12)"}}>{cat?.icon||"📦"}</div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:13,fontWeight:500,color:"rgba(255,255,255,0.85)"}}>{r.note}</div>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.25)",marginTop:2}}>{r.date} · {cat?.label}</div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{fontSize:14,fontWeight:700,color:isInc?"#2dd4bf":"#f87171"}}>
-            {isInc?"+":"-"}¥{fmt(r.amount)}
-          </div>
-          {deletable&&<button onClick={()=>handleDelete(r.id)}
-            style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:15,cursor:"pointer",padding:"0 2px"}}>✕</button>}
-        </div>
-      </div>
-    );
-  }
 
   const ttStyle = {background:"#111126",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,color:"#ccc",fontSize:12};
   return (
@@ -369,7 +369,7 @@ export default function App() {
                   <span style={{fontSize:11,fontWeight:600,color:theme.accent,cursor:"pointer"}} onClick={()=>setTab("records")}>查看全部</span>
                 </div>
                 {records.length===0&&<div style={{color:"rgba(255,255,255,0.15)",fontSize:13,textAlign:"center",padding:"30px 0"}}>本月还没有记录<br/>点 + 开始记账</div>}
-                {records.slice(0,5).map(r=><RecordCard key={r.id} r={r} deletable={false}/>)}
+                {records.slice(0,5).map(r=><RecordCard key={r.id} r={r} deletable={false} onDelete={handleDelete}/>)}
               </div>
             </>)}
 
@@ -378,7 +378,7 @@ export default function App() {
               <div style={{padding:"8px 16px"}}>
                 <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.3)",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>全部记录 ({records.length})</div>
                 {records.length===0&&<div style={{color:"rgba(255,255,255,0.15)",fontSize:13,textAlign:"center",padding:"40px 0"}}>本月暂无记录</div>}
-                {records.map(r=><RecordCard key={r.id} r={r} deletable={userId===ownerId}/>)}
+                {records.map(r=><RecordCard key={r.id} r={r} deletable={userId===ownerId} onDelete={handleDelete}/>)}
               </div>
             )}
             {/* 图表 */}

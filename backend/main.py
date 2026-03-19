@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from jose import JWTError, jwt
@@ -30,13 +30,17 @@ class Record(Base):
     __tablename__ = "records"
     id         = Column(Integer, primary_key=True, index=True)
     user_id    = Column(String, index=True)
-    type       = Column(String)       # expense / income
+    type       = Column(String)
     category   = Column(String)
     amount     = Column(Float)
     note       = Column(String)
-    date       = Column(String)       # YYYY-MM-DD
-    month      = Column(String)       # YYYY-MM
+    date       = Column(String)
+    month      = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_records_user_month", "user_id", "month"),
+    )
 
 Base.metadata.create_all(bind=engine)
 
