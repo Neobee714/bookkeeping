@@ -6,5 +6,6 @@ COPY . .
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
+RUN ls -la dist/
 RUN npm install -g serve
-CMD sh -c "serve -s dist -l $PORT"
+CMD sh -c "serve -s dist -p $PORT"
