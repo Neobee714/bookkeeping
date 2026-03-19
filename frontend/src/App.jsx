@@ -79,7 +79,7 @@ async function apiFetch(path, token, opts={}) {
 }
 
 function GradText({ grad, children, style={} }) {
-  return <span style={{ background:grad, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text", ...style }}>{children}</span>;
+  return <span style={{ background:grad, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text", color:"#fff", ...style }}>{children}</span>;
 }
 function LoginScreen({ onLogin }) {
   const [userId, setUserId]     = useState("me");
@@ -285,7 +285,14 @@ export default function App() {
           </div>
           <div style={{display:"flex",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:22,padding:3,gap:2}}>
             {Object.entries(THEMES).map(([key,t])=>(
-              <button key={key} onClick={()=>{setUserId(key);localStorage.setItem("ledger_user_id",key);}} style={{
+              <button key={key} onClick={()=>{
+                if(key!==userId){
+                  localStorage.removeItem("ledger_token");
+                  localStorage.setItem("ledger_user_id",key);
+                  setToken(null);
+                  setUserId(key);
+                }
+              }} style={{
                 padding:"5px 12px",borderRadius:18,border:"none",
                 background:userId===key?t.grad:"transparent",
                 color:userId===key?"#fff":"rgba(255,255,255,0.28)",
