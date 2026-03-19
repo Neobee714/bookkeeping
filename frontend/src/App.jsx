@@ -172,10 +172,10 @@ export default function App() {
   const loadRecords = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    try { const data = await apiFetch(`/records?month=${month}`,token); setRecords(data); }
+    try { const data = await apiFetch(`/records?month=${month}`, token); setRecords(data); }
     catch(e) { if(e.message.includes("401")) logout(); showToast("加载失败"); }
     finally { setLoading(false); }
-  }, [token, month]);
+  }, [token, month, userId]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -313,7 +313,7 @@ export default function App() {
                   background:`radial-gradient(circle,${theme.glow2} 0%,transparent 65%)`}} />
                 <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.32)",letterSpacing:2.5,textTransform:"uppercase"}}>本月结余</div>
                 <div style={{fontSize:44,fontWeight:800,letterSpacing:-2,margin:"6px 0 2px",lineHeight:1,
-                  background:balance>=0?theme.numGrad:"linear-gradient(135deg,#fca5a5,#f87171)",
+                  background: balance >= 0 ? theme.numGrad : "linear-gradient(135deg,#fca5a5,#f87171)",
                   WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>¥ {fmt(balance)}</div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",marginBottom:14}}>{balance>=0?"收支平衡":"本月超支"}</div>
                 <div style={{display:"flex",background:"rgba(0,0,0,0.22)",borderRadius:14,overflow:"hidden",border:"1px solid rgba(255,255,255,0.05)"}}>
