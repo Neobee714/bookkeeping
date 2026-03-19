@@ -264,8 +264,8 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0D0D0D,#1A1410)", display:"flex", justifyContent:"center", alignItems:"center", fontFamily:"'Georgia','Noto Serif SC',serif" }}>
-      <div style={{ width:390, height:844, background:"#111008", borderRadius:44, boxShadow:"0 40px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,168,76,0.12)", overflow:"hidden", position:"relative", display:"flex", flexDirection:"column" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0D0D0D,#1A1410)", display:"flex", justifyContent:"center", alignItems:"flex-start", fontFamily:"'Georgia','Noto Serif SC',serif" }}>
+      <div style={{ width:"100%", maxWidth:430, height:"100dvh", background:"#111008", borderRadius:0, boxShadow:"0 40px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,168,76,0.12)", overflow:"hidden", position:"relative", display:"flex", flexDirection:"column" }}>
 
         {/* Status */}
         <div style={{ height:44, background:"#0A0A08", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 28px" }}>
@@ -451,7 +451,7 @@ export default function App() {
         {/* Add modal */}
         {showAdd && (
           <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.88)", display:"flex", alignItems:"flex-end", zIndex:100 }} onClick={() => setShowAdd(false)}>
-            <div onClick={e=>e.stopPropagation()} style={{ width:"100%", background:"#161410", borderRadius:"26px 26px 0 0", border:"1px solid #2A2520", padding:"20px 22px 40px" }}>
+            <div onClick={e=>e.stopPropagation()} style={{ width:"100%", background:"#161410", borderRadius:"26px 26px 0 0", border:"1px solid #2A2520", padding:"20px 22px 40px", maxHeight:"90vh", overflowY:"auto" }}>
               <div style={{ width:32, height:4, background:"#2A2520", borderRadius:2, margin:"0 auto 16px" }} />
               <div style={{ color:user.color, fontSize:17, fontWeight:700, marginBottom:16, fontFamily:"monospace" }}>+ 快速记账</div>
               <div style={{ display:"flex", background:"#0D0D0A", borderRadius:14, padding:3, marginBottom:14, gap:3 }}>
