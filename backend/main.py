@@ -97,12 +97,15 @@ class RecordIn(BaseModel):
 @app.get("/records")
 def get_records(
     month: str,
+    view_as: str = None,
     user: str    = Depends(get_current_user),
     db: Session  = Depends(get_db),
 ):
+    # 允许查看对方数据（只读），但不能伪装成自己以外的人写数据
+    target = view_as if (view_as and view_as in USERS) else user
     rows = (
         db.query(Record)
-        .filter(Record.user_id == user, Record.month == month)
+        .filter(Record.user_id == target, Record.month == month)
         .order_by(Record.created_at.desc())
         .all()
     )

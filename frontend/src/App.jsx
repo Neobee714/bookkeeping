@@ -151,6 +151,7 @@ function LoginScreen({ onLogin }) {
 }
 export default function App() {
   const [token,   setToken]   = useState(() => localStorage.getItem("ledger_token")||null);
+  const [ownerId, setOwnerId] = useState(() => localStorage.getItem("ledger_user_id")||"me");
   const [userId,  setUserId]  = useState(() => localStorage.getItem("ledger_user_id")||"me");
   const [month,   setMonth]   = useState(THIS_MONTH);
   const [records, setRecords] = useState([]);
@@ -166,16 +167,20 @@ export default function App() {
   const theme = THEMES[userId];
   const PIE_COLORS = userId==="me" ? PIE_COLORS_ME : PIE_COLORS_GF;
 
-  function logout() { localStorage.removeItem("ledger_token"); localStorage.removeItem("ledger_user_id"); setToken(null); }
+  function logout() { localStorage.removeItem("ledger_token"); localStorage.removeItem("ledger_user_id"); setToken(null); setOwnerId("me"); setUserId("me"); }
   function showToast(msg) { setToast(msg); setTimeout(()=>setToast(null),2200); }
 
   const loadRecords = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    try { const data = await apiFetch(`/records?month=${month}`, token); setRecords(data); }
+    try {
+      const viewAs = userId !== ownerId ? `&view_as=${userId}` : "";
+      const data = await apiFetch(`/records?month=${month}${viewAs}`, token);
+      setRecords(data);
+    }
     catch(e) { if(e.message.includes("401")) logout(); showToast("加载失败"); }
     finally { setLoading(false); }
-  }, [token, month, userId]);
+  }, [token, month, userId, ownerId]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -225,7 +230,7 @@ export default function App() {
   const [yy,mm] = month.split("-");
   const monthLabel = `${yy}年${parseInt(mm)}月`;
 
-  if (!token) return <LoginScreen onLogin={(tok,uid)=>{setToken(tok);setUserId(uid);}} />;
+  if (!token) return <LoginScreen onLogin={(tok,uid)=>{setToken(tok);setOwnerId(uid);setUserId(uid);}} />;
 
   function RecordCard({r, deletable}) {
     const cat = ALL_CATS.find(c=>c.id===r.category);
@@ -285,14 +290,7 @@ export default function App() {
           </div>
           <div style={{display:"flex",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:22,padding:3,gap:2}}>
             {Object.entries(THEMES).map(([key,t])=>(
-              <button key={key} onClick={()=>{
-                if(key!==userId){
-                  localStorage.removeItem("ledger_token");
-                  localStorage.setItem("ledger_user_id",key);
-                  setToken(null);
-                  setUserId(key);
-                }
-              }} style={{
+              <button key={key} onClick={()=>setUserId(key)} style={{
                 padding:"5px 12px",borderRadius:18,border:"none",
                 background:userId===key?t.grad:"transparent",
                 color:userId===key?"#fff":"rgba(255,255,255,0.28)",
@@ -380,7 +378,7 @@ export default function App() {
               <div style={{padding:"8px 16px"}}>
                 <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.3)",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>全部记录 ({records.length})</div>
                 {records.length===0&&<div style={{color:"rgba(255,255,255,0.15)",fontSize:13,textAlign:"center",padding:"40px 0"}}>本月暂无记录</div>}
-                {records.map(r=><RecordCard key={r.id} r={r} deletable={true}/>)}
+                {records.map(r=><RecordCard key={r.id} r={r} deletable={userId===ownerId}/>)}
               </div>
             )}
             {/* 图表 */}
@@ -464,15 +462,17 @@ export default function App() {
           {[
             {id:"home",   icon:"⊞", label:"总览"},
             {id:"records",icon:"☰", label:"明细"},
-            {id:"add",    icon:"+", label:"记账", fab:true},
+            {id:"add",    icon:"+", label:"记账", fab:true, ownerOnly:true},
             {id:"chart",  icon:"◉", label:"图表"},
           ].map(item=>item.fab ? (
+            userId!==ownerId ? <div key="add" style={{width:54}} /> : (
             <button key="add" onClick={()=>setShowAdd(true)} style={{
               width:54,height:54,borderRadius:19,background:theme.grad,border:"none",
               display:"flex",alignItems:"center",justifyContent:"center",
               marginTop:-20,cursor:"pointer",flexShrink:0,
               boxShadow:`0 8px 28px ${theme.fabShadow}`,
               fontSize:26,color:"#fff",fontWeight:300,lineHeight:1}}>+</button>
+            )
           ) : (
             <button key={item.id} onClick={()=>setTab(item.id)} style={{
               background:"none",border:"none",cursor:"pointer",
