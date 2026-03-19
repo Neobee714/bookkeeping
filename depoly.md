@@ -42,7 +42,7 @@ git push -u origin main
 2. 选择 **Empty Project**，命名为 `ledger`
 3. 在项目里点 **+ Add Service** → **Database** → **PostgreSQL**
 4. 数据库建好后，点进去 → **Variables** 标签 → 复制 `DATABASE_URL` 的值备用
-
+postgresql://postgres:wnCZqjYojLNKkXzpyXjhqRNSchCvEIRD@postgres.railway.internal:5432/railway
 ---
 
 ## 第三步：部署后端（FastAPI）
@@ -61,7 +61,7 @@ git push -u origin main
 4. 点 **Deploy**，等待部署完成（约 1-2 分钟）
 5. 进入 **Settings** → **Networking** → **Generate Domain**，记下这个地址，格式类似：
    `https://backend-xxxx.up.railway.app`
-
+https://backend-8a41.up.railway.app
 ---
 
 ## 第四步：部署前端（React）
