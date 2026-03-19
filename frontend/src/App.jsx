@@ -423,8 +423,8 @@ export default function App() {
             item.special
               ? <button key="add" onClick={() => setShowAdd(true)} style={{ width:52, height:52, borderRadius:26, background:`linear-gradient(135deg,${user.color},${user.color}AA)`, border:"none", color:"#000", fontSize:26, fontWeight:700, cursor:"pointer", marginTop:-14, boxShadow:`0 8px 24px ${user.color}55`, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
               : <button key={item.id} onClick={() => setTab(item.id)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, padding:"0 14px" }}>
-                  <span style={{ fontSize:19, opacity:tab===item.id?1:0.6 }}>{item.icon}</span>
-                  <span style={{ fontSize:10, color:tab===item.id?user.color:"#888", fontFamily:"monospace" }}>{item.label}</span>
+                  <span style={{ fontSize:19, opacity:tab===item.id?1:0.85 }}>{item.icon}</span>
+                  <span style={{ fontSize:10, color:tab===item.id?user.color:"#AAA", fontFamily:"monospace" }}>{item.label}</span>
                 </button>
           )}
         </div>
