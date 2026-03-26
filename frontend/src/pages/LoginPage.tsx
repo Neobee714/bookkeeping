@@ -53,7 +53,13 @@ function LoginPage() {
       navigate('/app/home', { replace: true });
     } catch (error) {
       if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
-        setErrorMessage(error.response?.data?.message ?? '登录失败，请重试');
+        if (error.code === 'ECONNABORTED') {
+          setErrorMessage('请求超时，后端可能正在冷启动，请稍后重试');
+        } else if (!error.response) {
+          setErrorMessage('无法连接后端服务，请稍后重试');
+        } else {
+          setErrorMessage(error.response.data?.message ?? '登录失败，请重试');
+        }
       } else if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {

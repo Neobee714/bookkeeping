@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 from fastapi import FastAPI, HTTPException, Request
@@ -11,6 +12,7 @@ from app.core.response import success_response
 from app.routers import auth_router, budget_router, savings_router, stats_router, transactions_router
 
 app = FastAPI(title="Bookkeeping API", version="0.1.0")
+logger = logging.getLogger("bookkeeping.api")
 
 allowed_origins = {
     "https://bookkeeping.neobee.top",
@@ -58,6 +60,7 @@ async def validation_exception_handler(
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
         content={"success": False, "data": None, "message": "服务器内部错误"},

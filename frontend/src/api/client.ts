@@ -8,10 +8,12 @@ import { useAuthStore, getStoredAccessToken, getStoredRefreshToken } from '@/sto
 import type { ApiResponse, RefreshTokenData } from '@/types';
 
 const baseURL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000';
+const rawTimeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? '30000');
+const requestTimeoutMs = Number.isFinite(rawTimeoutMs) && rawTimeoutMs > 0 ? rawTimeoutMs : 30000;
 
 const client = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: requestTimeoutMs,
 });
 
 let refreshPromise: Promise<string | null> | null = null;

@@ -21,11 +21,13 @@ Copy-Item .env.example .env
 ```
 
 Edit `backend/.env` with your own values:
-- `DATABASE_URL` (format: `postgresql://user:pass@host:port/db`)
+- `DATABASE_PRIVATE_URL` (Railway recommended) or `DATABASE_URL`
+- If you only have `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`, backend can build URL automatically
 - `SECRET_KEY`
 - `ALGORITHM`
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `REFRESH_TOKEN_EXPIRE_DAYS`
+- Optional: `DB_CONNECT_TIMEOUT_SECONDS` (default `10`)
 
 Run migrations and start API:
 ```powershell
@@ -52,11 +54,12 @@ Check:
 1. Create a Railway service pointing to the `backend/` directory.
 2. Railway reads `backend/Dockerfile` and `backend/railway.toml` automatically.
 3. Set environment variables in Railway:
-   - `DATABASE_URL`
+   - `DATABASE_PRIVATE_URL` (recommended) or `DATABASE_URL`
    - `SECRET_KEY`
    - `ALGORITHM`
    - `ACCESS_TOKEN_EXPIRE_MINUTES`
    - `REFRESH_TOKEN_EXPIRE_DAYS`
+   - Optional: `DB_CONNECT_TIMEOUT_SECONDS`
    - Optional: `CORS_EXTRA_ORIGINS` (comma-separated origins)
 4. After deployment, run migration once in Railway shell:
 ```bash
@@ -71,6 +74,7 @@ python -m alembic upgrade head
    - Output directory: `frontend/dist`
 3. Add environment variable in Vercel:
    - `VITE_API_URL=https://<your-railway-domain>`
+   - Optional: `VITE_API_TIMEOUT_MS=30000` (increase if backend cold starts slowly)
 4. Deploy and verify the app can call backend APIs.
 
 ## Android APK Build (Capacitor)
@@ -104,6 +108,7 @@ npm run build:apk
 
 ## Notes
 - Production API URL is injected at build time by `VITE_API_URL`.
+- Frontend request timeout defaults to 30s and can be overridden by `VITE_API_TIMEOUT_MS`.
 - For mobile live reload during local debugging, set `CAP_SERVER_URL` before `npx cap sync android`.
 - CORS already allows:
   - `https://bookkeeping.neobee.top`
