@@ -9,3 +9,4 @@ frontend/.env.production
 frontend/android/.gradle/
 frontend/android/app/build/
 "@ | Set-Content -Encoding utf8 .gitignore
+plan.md
