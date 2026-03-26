@@ -53,6 +53,7 @@ Check:
 ## Railway Deployment (Backend)
 1. Create a Railway service pointing to the `backend/` directory.
 2. Railway reads `backend/Dockerfile` and `backend/railway.toml` automatically.
+   - Backend listens on `${PORT}` (fallback `8080`) to match Railway networking.
 3. Set environment variables in Railway:
    - `DATABASE_PRIVATE_URL` (recommended) or `DATABASE_URL`
    - `SECRET_KEY`
