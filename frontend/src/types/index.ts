@@ -37,6 +37,7 @@ export interface AuthTokenData {
   access_token: string;
   refresh_token: string;
   token_type: 'bearer';
+  user: User;
 }
 
 export interface RefreshTokenData {
@@ -69,6 +70,17 @@ export interface TransactionUpdatePayload {
   category?: Category;
   note?: string | null;
   date?: string;
+}
+
+export interface TransactionImportSkippedRow {
+  row: number;
+  reason: string;
+}
+
+export interface TransactionImportResult {
+  imported: number;
+  skipped: number;
+  skipped_rows: TransactionImportSkippedRow[];
 }
 
 export interface Budget {

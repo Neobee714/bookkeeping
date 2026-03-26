@@ -116,11 +116,13 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> dict:
             detail="用户名或密码错误",
         )
 
+    partner = db.get(User, user.partner_id) if user.partner_id else None
     return success_response(
         data={
             "access_token": create_access_token(user.id),
             "refresh_token": create_refresh_token(user.id),
             "token_type": "bearer",
+            "user": _serialize_user(user, partner),
         },
         message="登录成功",
     )

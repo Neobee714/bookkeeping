@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   Transaction,
   TransactionCreatePayload,
+  TransactionImportResult,
   TransactionUpdatePayload,
 } from '@/types';
 
@@ -44,5 +45,22 @@ export const removeTransaction = async (
   const response = await client.delete<ApiResponse<{ id: number }>>(
     `/transactions/${transactionId}`,
   );
+  return assertSuccess(response.data);
+};
+
+export const importTransactions = async (
+  file: File,
+): Promise<TransactionImportResult> => {
+  const form = new FormData();
+  form.append('file', file);
+
+  const response = await client.post<ApiResponse<TransactionImportResult>>(
+    '/transactions/import',
+    form,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    },
+  );
+
   return assertSuccess(response.data);
 };

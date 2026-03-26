@@ -4,12 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import client from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
-import type { ApiResponse, AuthTokenData, User } from '@/types';
+import type { ApiResponse, AuthTokenData } from '@/types';
 
 function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const updateUser = useAuthStore((state) => state.updateUser);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -35,20 +34,16 @@ function LoginPage() {
         throw new Error(loginResponse.data.message || '登录失败');
       }
 
-      const { access_token, refresh_token } = loginResponse.data.data;
-      if (!access_token || !refresh_token) {
+      const { access_token, refresh_token, user } = loginResponse.data.data;
+      if (!access_token || !refresh_token || !user) {
         throw new Error('登录返回的令牌信息不完整');
       }
 
       login({
         accessToken: access_token,
         refreshToken: refresh_token,
+        user,
       });
-
-      const profileResponse = await client.get<ApiResponse<User>>('/auth/me');
-      if (profileResponse.data.success && profileResponse.data.data) {
-        updateUser(profileResponse.data.data);
-      }
 
       navigate('/app/home', { replace: true });
     } catch (error) {

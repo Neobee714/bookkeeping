@@ -4,6 +4,7 @@ import type { User } from '@/types';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+const USER_KEY = 'auth_user';
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -28,6 +29,32 @@ const removeStorage = (key: string): void => {
   window.localStorage.removeItem(key);
 };
 
+const readStoredUser = (): User | null => {
+  const rawUser = readStorage(USER_KEY);
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser) as User;
+  } catch {
+    removeStorage(USER_KEY);
+    return null;
+  }
+};
+
+const writeStoredUser = (user: User | null): void => {
+  if (!isBrowser) {
+    return;
+  }
+
+  if (user) {
+    window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } else {
+    removeStorage(USER_KEY);
+  }
+};
+
 export const getStoredAccessToken = (): string | null => readStorage(ACCESS_TOKEN_KEY);
 export const getStoredRefreshToken = (): string | null => readStorage(REFRESH_TOKEN_KEY);
 
@@ -47,19 +74,22 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  user: readStoredUser(),
   accessToken: getStoredAccessToken(),
   login: ({ accessToken, refreshToken, user = null }) => {
     writeStorage(ACCESS_TOKEN_KEY, accessToken);
     writeStorage(REFRESH_TOKEN_KEY, refreshToken);
+    writeStoredUser(user);
     set({ accessToken, user });
   },
   logout: () => {
     removeStorage(ACCESS_TOKEN_KEY);
     removeStorage(REFRESH_TOKEN_KEY);
+    removeStorage(USER_KEY);
     set({ accessToken: null, user: null });
   },
   updateUser: (user) => {
+    writeStoredUser(user);
     set({ user });
   },
   setAccessToken: (token) => {

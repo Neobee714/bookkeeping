@@ -10,6 +10,7 @@ import {
 import AddTransactionSheet from '@/components/AddTransactionSheet';
 import TransactionItem from '@/components/TransactionItem';
 import { useAuthStore } from '@/store/authStore';
+import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { Transaction, TransactionCreatePayload } from '@/types';
 
 const getMonthKey = (value: Date): string => {
@@ -60,6 +61,7 @@ function SkeletonList() {
 
 function HomePage() {
   const user = useAuthStore((state) => state.user);
+  const refreshVersion = useTransactionSyncStore((state) => state.refreshVersion);
 
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -96,7 +98,7 @@ function HomePage() {
 
   useEffect(() => {
     void loadTransactions();
-  }, [monthKey]);
+  }, [monthKey, refreshVersion]);
 
   const summary = useMemo(() => {
     const income = transactions
