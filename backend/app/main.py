@@ -17,10 +17,15 @@ logger = logging.getLogger("bookkeeping.api")
 allowed_origins = {
     "https://bookkeeping.neobee.top",
     "capacitor://localhost",
+    "ionic://localhost",
     "http://localhost",
+    "https://localhost",
     "http://127.0.0.1",
+    "https://127.0.0.1",
     "http://localhost:5173",
+    "https://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://127.0.0.1:5173",
 }
 
 extra_origins = os.getenv("CORS_EXTRA_ORIGINS", "")
@@ -32,6 +37,7 @@ for origin in extra_origins.split(","):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=sorted(allowed_origins),
+    allow_origin_regex=r"^(https?|capacitor|ionic)://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

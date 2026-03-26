@@ -1,14 +1,62 @@
+import java.util.Properties
+
 apply plugin: 'com.android.application'
+
+def releaseSigningProperties = new Properties()
+def releaseSigningFile = file('../keystore/release-signing.properties')
+if (releaseSigningFile.exists()) {
+    releaseSigningFile.withInputStream { stream ->
+        releaseSigningProperties.load(stream)
+    }
+}
+
+def readReleaseSigningValue = { String name ->
+    def envValue = System.getenv(name)
+    if (envValue != null && !envValue.trim().isEmpty()) {
+        return envValue.trim()
+    }
+
+    if (project.hasProperty(name)) {
+        def projectValue = project.property(name)?.toString()?.trim()
+        if (projectValue) {
+            return projectValue
+        }
+    }
+
+    def localValue = releaseSigningProperties.getProperty(name)?.trim()
+    return localValue ?: null
+}
+
+def releaseStoreFilePath = readReleaseSigningValue('BOOKKEEPING_UPLOAD_STORE_FILE')
+def releaseStorePassword = readReleaseSigningValue('BOOKKEEPING_UPLOAD_STORE_PASSWORD')
+def releaseKeyAlias = readReleaseSigningValue('BOOKKEEPING_UPLOAD_KEY_ALIAS')
+def releaseKeyPassword = readReleaseSigningValue('BOOKKEEPING_UPLOAD_KEY_PASSWORD')
+def hasReleaseSigning = [
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+].every { it }
 
 android {
     namespace = "com.neobee.bookkeeping"
     compileSdk = rootProject.ext.compileSdkVersion
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFilePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.neobee.bookkeeping"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -18,6 +66,9 @@ android {
     }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
