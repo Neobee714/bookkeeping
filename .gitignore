@@ -1,23 +1,11 @@
-# Dependencies
+@"
+.venv/
+backend/.venv/
+backend/.env
 frontend/node_modules/
-
-# Build output
 frontend/dist/
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Editor
-.vscode/
-*.swp
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
+frontend/.env
+frontend/.env.production
+frontend/android/.gradle/
+frontend/android/app/build/
+"@ | Set-Content -Encoding utf8 .gitignore
