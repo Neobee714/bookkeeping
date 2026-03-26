@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { bindPartnerInvite, fetchMe, updateAvatar, updateProfile } from '@/api/auth';
+import { bindPartner, fetchMe, updateAvatar, updateProfile } from '@/api/auth';
 import { importTransactions } from '@/api/transactions';
 import ImportModal from '@/components/ImportModal';
 import UserAvatar from '@/components/UserAvatar';
@@ -54,7 +54,7 @@ function ProfilePage() {
   const bumpRefreshVersion = useTransactionSyncStore((state) => state.bumpRefreshVersion);
 
   const [loading, setLoading] = useState(true);
-  const [inviteInput, setInviteInput] = useState('');
+  const [partnerCodeInput, setPartnerCodeInput] = useState('');
   const [submittingBind, setSubmittingBind] = useState(false);
   const [message, setMessage] = useState('');
   const [currency, setCurrency] = useState<Currency>(() => readCurrency());
@@ -104,14 +104,14 @@ function ProfilePage() {
     navigate('/login', { replace: true });
   };
 
-  const handleCopyInvite = async () => {
-    if (!user?.invite_code) {
+  const handleCopyCode = async (value: string | undefined, successText: string) => {
+    if (!value) {
       return;
     }
 
     try {
-      await copyText(user.invite_code);
-      setMessage('邀请码已复制');
+      await copyText(value);
+      setMessage(successText);
     } catch {
       setMessage('复制失败，请手动复制');
     }
@@ -122,9 +122,9 @@ function ProfilePage() {
       return;
     }
 
-    const inviteCode = inviteInput.trim();
-    if (!inviteCode) {
-      setMessage('请输入邀请码');
+    const partnerCode = partnerCodeInput.trim();
+    if (!partnerCode) {
+      setMessage('请输入伴侣绑定码');
       return;
     }
 
@@ -132,9 +132,9 @@ function ProfilePage() {
     setMessage('');
 
     try {
-      const updatedUser = await bindPartnerInvite(inviteCode);
+      const updatedUser = await bindPartner(partnerCode);
       updateUser(updatedUser);
-      setInviteInput('');
+      setPartnerCodeInput('');
       setMessage('绑定成功');
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -408,50 +408,76 @@ function ProfilePage() {
 
       <article className="rounded-2xl border border-[#EEEDFE] bg-white p-4">
         <h2 className="text-sm font-semibold text-[#2D2940]">我的伴侣</h2>
-        {user?.partner ? (
-          <div className="mt-3 flex items-center gap-3 rounded-[10px] bg-[#F8F7FE] p-3">
-            <UserAvatar avatar={user.partner.avatar} name={user.partner.nickname} />
-            <div>
-              <p className="text-sm font-semibold text-[#2D2940]">{user.partner.nickname}</p>
-              <p className="text-xs text-[#8A8799]">@{user.partner.username}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-3 space-y-3">
-            <div className="rounded-[10px] border border-[#E8E6F2] bg-[#F8F7FE] p-3">
-              <p className="text-xs text-[#8A8799]">我的邀请码</p>
-              <p className="mt-1 text-sm font-semibold text-[#534AB7]">
-                {user?.invite_code ?? '加载中...'}
-              </p>
+        <div className="mt-3 space-y-3">
+          <div className="rounded-[10px] border border-[#E8E6F2] bg-[#F8F7FE] p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-[#8A8799]">注册邀请码</p>
+                <p className="mt-1 text-sm font-semibold text-[#534AB7]">
+                  {user?.reg_invite_code ?? '加载中...'}
+                </p>
+                <p className="mt-1 text-xs text-[#A29DB4]">分享给想加入记账本的朋友</p>
+              </div>
               <button
                 type="button"
-                onClick={handleCopyInvite}
-                className="mt-2 h-8 rounded-[10px] border border-[#E2DFFF] bg-white px-3 text-xs text-[#534AB7]"
+                onClick={() => void handleCopyCode(user?.reg_invite_code, '注册邀请码已复制')}
+                className="h-8 rounded-[10px] border border-[#E2DFFF] bg-white px-3 text-xs text-[#534AB7]"
               >
-                复制邀请码
+                复制
               </button>
             </div>
-
-            <label className="block">
-              <span className="mb-1 block text-xs text-[#8A8799]">输入对方邀请码</span>
-              <input
-                type="text"
-                value={inviteInput}
-                onChange={(event) => setInviteInput(event.target.value)}
-                placeholder="例如：ABC123-XXXXXX"
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={submittingBind}
-              onClick={handleBindPartner}
-              className="h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {submittingBind ? '绑定中...' : '绑定伴侣'}
-            </button>
           </div>
-        )}
+
+          {user?.partner ? (
+            <div className="flex items-center gap-3 rounded-[10px] bg-[#F8F7FE] p-3">
+              <UserAvatar avatar={user.partner.avatar} name={user.partner.nickname} />
+              <div>
+                <p className="text-sm font-semibold text-[#2D2940]">{user.partner.nickname}</p>
+                <p className="text-xs text-[#8A8799]">@{user.partner.username}</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-[10px] border border-[#E8E6F2] bg-[#F8F7FE] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-[#8A8799]">伴侣绑定码</p>
+                    <p className="mt-1 text-sm font-semibold text-[#534AB7]">
+                      {user?.partner_code ?? '加载中...'}
+                    </p>
+                    <p className="mt-1 text-xs text-[#A29DB4]">用于和伴侣互绑关系</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyCode(user?.partner_code, '伴侣绑定码已复制')}
+                    className="h-8 rounded-[10px] border border-[#E2DFFF] bg-white px-3 text-xs text-[#534AB7]"
+                  >
+                    复制
+                  </button>
+                </div>
+              </div>
+
+              <label className="block">
+                <span className="mb-1 block text-xs text-[#8A8799]">输入对方伴侣绑定码</span>
+                <input
+                  type="text"
+                  value={partnerCodeInput}
+                  onChange={(event) => setPartnerCodeInput(event.target.value)}
+                  placeholder="例如：ABC123-XXXXXX"
+                  className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm uppercase outline-none focus:border-[#534AB7]"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={submittingBind}
+                onClick={handleBindPartner}
+                className="h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {submittingBind ? '绑定中...' : '绑定伴侣'}
+              </button>
+            </>
+          )}
+        </div>
       </article>
 
       <article className="rounded-2xl border border-[#EEEDFE] bg-white p-4">

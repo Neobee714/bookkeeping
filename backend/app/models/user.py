@@ -21,8 +21,12 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     nickname: Mapped[str] = mapped_column(String(50), nullable=False)
     avatar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reg_invite_code: Mapped[str] = mapped_column(String(8), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     partner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    invited_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(

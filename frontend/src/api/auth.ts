@@ -13,9 +13,9 @@ export const fetchMe = async (): Promise<User> => {
   return assertSuccess(response.data);
 };
 
-export const bindPartnerInvite = async (inviteCode: string): Promise<User> => {
-  const response = await client.post<ApiResponse<User>>('/auth/bind-invite', {
-    invite_code: inviteCode,
+export const bindPartner = async (partnerCode: string): Promise<User> => {
+  const response = await client.post<ApiResponse<User>>('/auth/bind-partner', {
+    partner_code: partnerCode,
   });
   return assertSuccess(response.data);
 };

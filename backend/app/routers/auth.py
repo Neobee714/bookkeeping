@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import FOUNDER_INVITE_CODE
 from app.core.database import get_db
-from app.core.invite import generate_invite_code, parse_invite_code
+from app.core.invite import generate_invite_code, generate_registration_code, parse_invite_code
 from app.core.response import success_response
 from app.core.security import (
     create_access_token,
@@ -18,7 +19,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.schemas.auth import (
-    BindInviteRequest,
+    BindPartnerRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -27,6 +28,59 @@ from app.schemas.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _normalize_code(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def _resolve_partner_code(*values: str | None) -> str | None:
+    for value in values:
+        normalized = _normalize_code(value)
+        if normalized:
+            return normalized
+    return None
+
+
+def _generate_unique_reg_invite_code(db: Session) -> str:
+    for _ in range(20):
+        code = generate_registration_code()
+        existing = db.scalar(select(User.id).where(User.reg_invite_code == code))
+        if existing is None:
+            return code
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="邀请码生成失败，请稍后重试",
+    )
+
+
+def _resolve_registration_inviter(payload: RegisterRequest, db: Session) -> User | None:
+    registration_code = _normalize_code(payload.reg_invite_code)
+    if not registration_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邀请码无效",
+        )
+
+    if registration_code == FOUNDER_INVITE_CODE:
+        user_count = db.scalar(select(func.count()).select_from(User)) or 0
+        if user_count == 0:
+            return None
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邀请码无效",
+        )
+
+    inviter = db.scalar(select(User).where(User.reg_invite_code == registration_code))
+    if not inviter:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邀请码无效",
+        )
+    return inviter
 
 
 def _serialize_user(user: User, partner: User | None) -> dict:
@@ -46,7 +100,9 @@ def _serialize_user(user: User, partner: User | None) -> dict:
         "avatar": user.avatar,
         "partner_id": user.partner_id,
         "partner": partner_data,
+        "partner_code": generate_invite_code(user.id),
         "invite_code": generate_invite_code(user.id),
+        "reg_invite_code": user.reg_invite_code,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -60,17 +116,21 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
             detail="用户名已存在",
         )
 
+    inviter = _resolve_registration_inviter(payload, db)
     user = User(
         username=payload.username,
         nickname=payload.nickname,
+        reg_invite_code=_generate_unique_reg_invite_code(db),
+        invited_by=inviter.id if inviter else None,
         password_hash=get_password_hash(payload.password),
     )
     db.add(user)
     db.flush()
 
-    if payload.invite_code:
+    partner_code = _resolve_partner_code(payload.partner_code, payload.invite_code)
+    if partner_code:
         try:
-            partner_id = parse_invite_code(payload.invite_code)
+            partner_id = parse_invite_code(partner_code)
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -238,9 +298,10 @@ def update_avatar(
     )
 
 
+@router.post("/bind-partner")
 @router.post("/bind-invite")
-def bind_invite(
-    payload: BindInviteRequest,
+def bind_partner(
+    payload: BindPartnerRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -250,19 +311,26 @@ def bind_invite(
             detail="你已绑定伴侣",
         )
 
+    partner_code = _resolve_partner_code(payload.partner_code, payload.invite_code)
+    if not partner_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="绑定码无效",
+        )
+
     try:
-        partner_id = parse_invite_code(payload.invite_code)
+        partner_id = parse_invite_code(partner_code)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邀请码无效",
+            detail="绑定码无效",
         ) from exc
 
     partner = db.get(User, partner_id)
     if not partner:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邀请码无效",
+            detail="绑定码无效",
         )
     if partner.id == current_user.id:
         raise HTTPException(

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import secrets
 
 from app.core.config import SECRET_KEY
 
 ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 BASE = len(ALPHABET)
+REGISTRATION_CODE_LENGTH = 8
 
 
 def _secret_mask() -> int:
@@ -72,3 +74,7 @@ def parse_invite_code(code: str) -> int:
         raise ValueError("invalid invite code payload")
 
     return user_id
+
+
+def generate_registration_code() -> str:
+    return "".join(secrets.choice(ALPHABET) for _ in range(REGISTRATION_CODE_LENGTH))

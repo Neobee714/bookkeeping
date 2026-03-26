@@ -31,7 +31,8 @@ export interface User {
   avatar?: string | null;
   partner_id: number | null;
   partner: Partner | null;
-  invite_code: string;
+  partner_code: string;
+  reg_invite_code: string;
   created_at: string;
 }
 

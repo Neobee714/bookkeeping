@@ -17,7 +17,8 @@ function RegisterPage() {
   const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
+  const [registrationInviteCode, setRegistrationInviteCode] = useState('');
+  const [partnerCode, setPartnerCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -39,7 +40,8 @@ function RegisterPage() {
           username,
           nickname,
           password,
-          invite_code: inviteCode.trim() || undefined,
+          reg_invite_code: registrationInviteCode.trim(),
+          partner_code: partnerCode.trim() || undefined,
         },
       );
 
@@ -108,13 +110,30 @@ function RegisterPage() {
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5A5668]">伴侣邀请码（可选）</span>
+            <span className="mb-1 block text-sm text-[#5A5668]">注册邀请码</span>
             <input
               type="text"
-              value={inviteCode}
-              onChange={(event) => setInviteCode(event.target.value)}
-              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm outline-none focus:border-[#534AB7]"
-              placeholder="输入后自动互绑"
+              value={registrationInviteCode}
+              onChange={(event) => setRegistrationInviteCode(event.target.value)}
+              required
+              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm uppercase outline-none focus:border-[#534AB7]"
+              placeholder="请输入邀请码"
+            />
+          </label>
+
+          <div className="border-t border-dashed border-[#E5E2F2] pt-4">
+            <p className="text-xs font-medium text-[#8A8799]">伴侣绑定</p>
+            <p className="mt-1 text-xs text-[#A29DB4]">可选，注册后也可以在「我的」页面再绑定</p>
+          </div>
+
+          <label className="block">
+            <span className="mb-1 block text-sm text-[#5A5668]">伴侣绑定码（可选）</span>
+            <input
+              type="text"
+              value={partnerCode}
+              onChange={(event) => setPartnerCode(event.target.value)}
+              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm uppercase outline-none focus:border-[#534AB7]"
+              placeholder="可选，稍后绑定"
             />
           </label>
 
