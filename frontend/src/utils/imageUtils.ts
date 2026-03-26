@@ -20,14 +20,29 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
     image.src = src;
   });
 
-export async function compressImage(file: File): Promise<string> {
+interface CompressImageOptions {
+  maxSide?: number;
+  quality?: number;
+}
+
+export async function compressImage(
+  file: File,
+  options: CompressImageOptions = {},
+): Promise<string> {
   if (!file.type.startsWith('image/')) {
     throw new Error('请选择图片文件');
   }
 
   const source = await readFileAsDataUrl(file);
   const image = await loadImage(source);
-  const maxSide = 300;
+  const maxSide =
+    Number.isFinite(options.maxSide) && (options.maxSide ?? 0) > 0
+      ? Math.round(options.maxSide ?? 300)
+      : 300;
+  const quality =
+    Number.isFinite(options.quality) && (options.quality ?? 0) > 0
+      ? Math.min(Math.max(options.quality ?? 0.8, 0.1), 1)
+      : 0.8;
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
   const width = Math.max(1, Math.round(image.width * scale));
   const height = Math.max(1, Math.round(image.height * scale));
@@ -42,5 +57,5 @@ export async function compressImage(file: File): Promise<string> {
   }
 
   context.drawImage(image, 0, 0, width, height);
-  return canvas.toDataURL('image/jpeg', 0.8);
+  return canvas.toDataURL('image/jpeg', quality);
 }

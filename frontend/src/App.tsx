@@ -9,6 +9,7 @@ import {
 
 import client from '@/api/client';
 import Layout from '@/components/Layout';
+import CirclePage from '@/pages/CirclePage';
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import PlanPage from '@/pages/PlanPage';
@@ -135,6 +136,7 @@ function App() {
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<HomePage />} />
           <Route path="stats" element={<StatsPage />} />
+          <Route path="circle" element={<CirclePage />} />
           <Route path="plan" element={<PlanPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>

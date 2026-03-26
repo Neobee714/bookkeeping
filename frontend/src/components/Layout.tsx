@@ -39,6 +39,26 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: '/app/circle',
+    label: '圈子',
+    icon: (active) => (
+      <svg viewBox="0 0 24 24" className={iconClass} fill="none">
+        <path
+          d="M7 7.5h10a3.5 3.5 0 0 1 0 7H13l-3.8 3v-3H7a3.5 3.5 0 0 1 0-7Z"
+          stroke={active ? '#534AB7' : '#9A97A8'}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.5 10.75h5M9.5 13h3"
+          stroke={active ? '#534AB7' : '#9A97A8'}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/app/plan',
     label: '规划',
     icon: (active) => (
@@ -77,7 +97,7 @@ function Layout() {
       </main>
 
       <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-[#ECEAF8] bg-white px-3 pb-4 pt-2">
-        <ul className="grid grid-cols-4 gap-2">
+        <ul className="grid grid-cols-5 gap-2">
           {navItems.map((item) => (
             <li key={item.to}>
               <NavLink

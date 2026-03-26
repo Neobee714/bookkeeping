@@ -24,6 +24,13 @@ export interface Partner {
   avatar?: string | null;
 }
 
+export interface UserSummary {
+  id: number;
+  username: string;
+  nickname: string;
+  avatar?: string | null;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -154,4 +161,67 @@ export interface TrendPoint {
   income: number;
   expense: number;
   balance: number;
+}
+
+export interface CircleMember {
+  id: number;
+  joined_at: string;
+  user: UserSummary;
+}
+
+export interface Circle {
+  id: number;
+  name: string;
+  description: string | null;
+  creator: UserSummary;
+  creator_id: number;
+  is_creator: boolean;
+  member_count: number;
+  members: CircleMember[];
+  created_at: string;
+}
+
+export interface CircleInviteCode {
+  id: number;
+  circle_id: number;
+  code: string;
+  created_at: string;
+}
+
+export interface CircleComment {
+  id: number;
+  post_id: number;
+  content: string;
+  created_at: string;
+  user: UserSummary;
+}
+
+export interface CircleRating {
+  id: number;
+  post_id: number;
+  score: number;
+  created_at: string;
+  user: UserSummary;
+}
+
+export interface CirclePost {
+  id: number;
+  circle_id: number;
+  content: string | null;
+  image: string | null;
+  created_at: string;
+  user: UserSummary;
+  average_score: number;
+  rating_count: number;
+  comment_count: number;
+  my_score: number | null;
+  comments_preview: CircleComment[];
+}
+
+export interface CirclePostPage {
+  items: CirclePost[];
+  page: number;
+  page_size: number;
+  total: number;
+  has_more: boolean;
 }
