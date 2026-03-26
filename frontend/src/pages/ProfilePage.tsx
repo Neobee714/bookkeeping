@@ -1,4 +1,6 @@
-﻿import axios from 'axios';
+﻿declare const __APP_VERSION__: string;
+
+import axios from 'axios';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,7 +13,6 @@ import type { TransactionImportResult } from '@/types';
 import { isNativeImportPicker, pickImportCsvFile } from '@/utils/importFilePicker';
 
 type Currency = 'CNY' | 'USD';
-
 type ImportStatus = 'ready' | 'uploading' | 'success' | 'error';
 
 const CURRENCY_STORAGE_KEY = 'preferred_currency';
@@ -60,6 +61,7 @@ function ProfilePage() {
   const [importStatus, setImportStatus] = useState<ImportStatus>('ready');
   const [importResult, setImportResult] = useState<TransactionImportResult | null>(null);
   const [importError, setImportError] = useState('');
+  const [showAbout, setShowAbout] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -154,6 +156,14 @@ function ProfilePage() {
     setImportError('');
   };
 
+  const openImportSheetWithFile = (file: File) => {
+    setSelectedFile(file);
+    setImportResult(null);
+    setImportError('');
+    setImportStatus('ready');
+    setImportOpen(true);
+  };
+
   const handleOpenImportPicker = async () => {
     if (!isNativeImportPicker()) {
       fileInputRef.current?.click();
@@ -165,12 +175,7 @@ function ProfilePage() {
       if (!file) {
         return;
       }
-
-      setSelectedFile(file);
-      setImportResult(null);
-      setImportError('');
-      setImportStatus('ready');
-      setImportOpen(true);
+      openImportSheetWithFile(file);
     } catch (error) {
       if (error instanceof Error) {
         if (error.message === 'permission_denied') {
@@ -189,16 +194,10 @@ function ProfilePage() {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     event.target.value = '';
-
     if (!file) {
       return;
     }
-
-    setSelectedFile(file);
-    setImportResult(null);
-    setImportError('');
-    setImportStatus('ready');
-    setImportOpen(true);
+    openImportSheetWithFile(file);
   };
 
   const submitImport = async () => {
@@ -316,38 +315,75 @@ function ProfilePage() {
 
       <article className="rounded-2xl border border-[#EEEDFE] bg-white p-4">
         <h2 className="text-sm font-semibold text-[#2D2940]">设置</h2>
-        <button
-          type="button"
-          onClick={() => void handleOpenImportPicker()}
-          className="mt-3 flex w-full items-center justify-between rounded-[12px] border border-[#E7E5F2] bg-[#F8F7FE] px-4 py-4 text-left"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7]">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <path
-                  d="M12 16V6m0 0-4 4m4-4 4 4M5 18h14"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+
+        <div className="mt-3 space-y-3">
+          <button
+            type="button"
+            onClick={() => void handleOpenImportPicker()}
+            className="flex w-full items-center justify-between rounded-[16px] border border-[#E7E5F2] bg-[#F8F7FE] px-4 py-4 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#EEEDFE] text-[#534AB7]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                  <path
+                    d="M12 16V6m0 0-4 4m4-4 4 4M5 18h14"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#2D2940]">导入账单（鲨鱼记账）</p>
+                <p className="mt-1 text-xs text-[#8A8799]">支持导入鲨鱼记账导出的 CSV 文件</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-[#2D2940]">导入账单（鲨鱼记账）</p>
-              <p className="mt-1 text-xs text-[#8A8799]">支持导入鲨鱼记账导出的 CSV 文件</p>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9A97A8]" fill="none">
+              <path
+                d="m9 6 6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowAbout(true)}
+            className="flex w-full items-center justify-between rounded-[16px] border border-[#E7E5F2] bg-white px-4 py-4 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#EEEDFE] text-[#534AB7]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                  <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+                  <path
+                    d="M12 10v5m0-8h.01"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#2D2940]">关于记账本</p>
+                <p className="mt-1 text-xs text-[#8A8799]">查看版本号、开发者和技术信息</p>
+              </div>
             </div>
-          </div>
-          <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9A97A8]" fill="none">
-            <path
-              d="m9 6 6 6-6 6"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9A97A8]" fill="none">
+              <path
+                d="m9 6 6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </article>
 
       {message && (
@@ -382,6 +418,60 @@ function ProfilePage() {
         onConfirm={submitImport}
         onRetry={submitImport}
       />
+
+      {showAbout && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/30">
+          <button
+            type="button"
+            aria-label="关闭关于弹窗"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowAbout(false)}
+          />
+
+          <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-4 pb-6 pt-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+            <div className="mx-auto h-1 w-9 rounded-full bg-[#D8D5E7]" />
+
+            <div className="mt-6 flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#534AB7] text-white">
+                <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
+                  <path
+                    d="M6 17V9m6 8V5m6 12v-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <h2 className="mt-4 text-[18px] font-semibold text-[#2D2940]">记账本</h2>
+              <p className="mt-2 text-[13px] text-[#8A8799]">两个人的记账小工具</p>
+            </div>
+
+            <div className="mt-6 rounded-[12px] bg-[#F8F7FE] p-3">
+              <div className="flex items-center justify-between rounded-[10px] px-2 py-2 text-sm">
+                <span className="text-[#8A8799]">当前版本</span>
+                <span className="font-semibold text-[#2D2940]">v{__APP_VERSION__}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[10px] px-2 py-2 text-sm">
+                <span className="text-[#8A8799]">开发者</span>
+                <span className="text-[#2D2940]">Langda</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[10px] px-2 py-2 text-sm">
+                <span className="text-[#8A8799]">技术栈</span>
+                <span className="text-[#2D2940]">React + FastAPI</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAbout(false)}
+              className="mt-6 h-12 w-full rounded-[12px] bg-[#534AB7] px-4 text-sm font-semibold text-white"
+            >
+              关闭
+            </button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

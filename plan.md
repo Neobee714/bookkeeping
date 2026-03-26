@@ -366,3 +366,176 @@ Tab 2「储蓄」：
 ---
 
 **总计 7 个阶段，建议顺序执行，每个阶段完成测试再进入下一个。** 有任何阶段卡住随时来问我，特别是阶段 7 的 APK 打包环节坑比较多，我帮你排查。
+
+### 阶段 8：添加鲨鱼导入
+
+在现有的双人记账 App 中，为「我的」页面添加「导入历史账单」功能，
+支持导入「鲨鱼记账」导出的 CSV 格式。
+
+一、CSV 格式说明
+文件编码：GBK（必须用 GBK 解码，否则中文乱码）
+列顺序：日期, 收支类型, 类别, 金额, 备注
+日期格式：YYYY年MM月DD日（例：2026年01月21日）
+收支类型值：支出 / 收入
+金额：字符串数字（如 "21" 或 "455.67"）
+
+二、后端：新增导入接口
+
+在 backend/app/routers/transactions.py 中添加：
+
+POST /transactions/import
+- 接受 multipart/form-data，字段名为 file
+- 用 Python 内置 csv 模块 + encoding='gbk' 解析文件
+- 日期解析：用 datetime.strptime(date_str, "%Y年%m月%d日")
+- 类别映射规则（鲨鱼分类 → app分类）：
+    餐饮 → 餐饮
+    零食 → 餐饮
+    交通 → 交通
+    水 → 日用
+    洗衣澡 → 日用
+    理发 → 日用
+    娱乐 → 娱乐
+    游戏 → 娱乐
+    医疗 → 医疗
+    学习 → 教育
+    购物 → 购物
+    礼物 → 购物
+    旅游 → 其他
+    工资 → 收入
+    其他 → 其他
+    其它 → 其他
+    （所有未匹配分类 → 其他）
+- 收支类型映射：支出 → expense，收入 → income
+- 批量插入到 transactions 表，user_id 为当前登录用户
+- 跳过金额无法解析的行（try/except）
+- 返回格式：
+  {
+    "success": true,
+    "data": {
+      "imported": 182,
+      "skipped": 4,
+      "skipped_rows": [{"row": 5, "reason": "金额格式错误"}]
+    },
+    "message": "导入完成"
+  }
+
+注意：不做重复检测，直接全量导入；若需防重复可由用户手动删除。
+
+三、前端：导入按钮和交互
+
+在 src/pages/ProfilePage.tsx 的「设置」区块中添加「导入历史数据」入口。
+
+1. 在页面中添加一个列表项：
+   - 左侧图标（上传箭头 SVG）+ 文字「导入账单（鲨鱼记账）」
+   - 右侧「>」箭头
+   - 点击触发隐藏的 <input type="file" accept=".csv" />
+
+2. 在 src/components/ImportModal.tsx 中实现导入流程 UI：
+   状态一：选择文件后，显示底部弹窗（bottom sheet），内容：
+     - 文件名
+     - 「开始导入」按钮（紫色）
+     - 「取消」按钮
+   状态二：导入中，显示加载动画 + 「正在导入...」文字
+   状态三：导入完成，显示结果：
+     - 绿色勾 +「成功导入 X 条记录」
+     - 若有跳过：灰色文字「跳过 X 条（格式错误）」
+     - 「完成」按钮（关闭弹窗并刷新首页账单列表）
+   状态四：导入失败，显示红色错误信息 + 「重试」按钮
+
+3. 在 src/api/transactions.ts 中添加：
+   export async function importTransactions(file: File) {
+     const form = new FormData()
+     form.append('file', file)
+     return apiClient.post('/transactions/import', form, {
+       headers: { 'Content-Type': 'multipart/form-data' }
+     })
+   }
+
+四、注意事项
+- input[type=file] 使用 ref 触发，不直接渲染在页面上（隐藏）
+- 文件编码由后端处理，前端只负责传输二进制文件
+- 导入完成后调用全局状态更新，触发首页重新拉取账单
+- bottom sheet 动画与现有的 AddTransactionSheet 保持一致
+- 不要修改已有的任何路由和组件，只添加新代码
+
+### 阶段 9：首页加伴侣 Tab 切换
+在现有的双人记账 App 中，修改 frontend/src/pages/HomePage.tsx，
+为首页添加「我 / 伴侣」切换 Tab，让用户可以在首页查看伴侣的账单明细。
+
+当前情况：
+- StatsPage（图表页）已有「我 / 伴侣」Tab 切换功能，逻辑可参考
+- HomePage 目前只展示自己的账单，没有切换入口
+- src/api/transactions.ts 中已有 getPartnerTransactions() 函数
+
+需要修改 HomePage.tsx，完成以下内容：
+
+1. 在组件顶部添加 state：
+   const [viewMode, setViewMode] = useState<'mine' | 'partner'>('mine')
+
+2. 在月份切换器下方、月度汇总卡片上方，添加「我 / 伴侣」Tab 切换组件：
+   - 样式：胶囊形切换，激活项白色背景 + 紫色文字 #534AB7，非激活灰色
+   - 背景色用 var(--color-background-tertiary)，圆角 10px
+   - 只在 user?.partner_nickname 存在时显示（已绑定伴侣才显示）
+   - 伴侣 Tab 的文字显示 user.partner_nickname
+
+3. 修改账单拉取逻辑：
+   - 在 useEffect 中，依赖 [viewMode, currentMonth]
+   - viewMode === 'mine' 时调用 getTransactions(currentMonth)
+   - viewMode === 'partner' 时调用 getPartnerTransactions(currentMonth)
+
+4. 切换 Tab 时，重置账单列表为空并显示加载中状态
+
+5. 月度汇总卡片（总收入/总支出/结余）也要跟着 viewMode 切换对应数据：
+   - viewMode === 'mine' 调用 getMonthlySummary(currentMonth)
+   - viewMode === 'partner' 调用 getPartnerMonthlySummary(currentMonth)
+
+注意：
+- 参考 StatsPage 中已有的 Tab 切换实现，保持 UI 风格完全一致
+- 不要修改 StatsPage 或其他任何文件，只改 HomePage.tsx
+- viewMode 切换回「我」时，恢复拉取自己的数据
+- 伴侣视图下，右下角新增账单的浮动按钮应隐藏（不能替伴侣记账）
+完成后确认点： 首页顶部出现「我 / 伴侣」Tab，切换后账单列表和月度汇总均更新为伴侣数据，浮动按钮在伴侣视图下消失
+
+## 阶段 10：「关于记账本」页面
+目标： 在「我的」页面添加关于入口，展示版本号、开发者等信息，版本号自动从 package.json 读取
+在现有的双人记账 App 中，修改以下文件，添加「关于记账本」功能：
+
+一、修改 frontend/vite.config.ts
+在配置中添加自动读取版本号：
+  import { readFileSync } from 'fs'
+  const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
+在 define 中加入：
+  __APP_VERSION__: JSON.stringify(pkg.version)
+作用：之后每次只需改 package.json 的 version 字段，版本号自动同步到 App 内。
+
+二、修改 frontend/src/pages/ProfilePage.tsx
+
+1. 在文件顶部添加类型声明：
+   declare const __APP_VERSION__: string
+
+2. 添加 state：
+   const [showAbout, setShowAbout] = useState(false)
+
+3. 在「退出登录」区块上方，新增「关于记账本」列表项：
+   - 样式与页面现有其他列表项完全一致（白色卡片 + 0.5px 边框 + 16px 圆角）
+   - 左侧：紫色圆角方块图标（背景 #EEEDFE，内含 info SVG 图标，颜色 #534AB7）+ 文字「关于记账本」
+   - 右侧：向右箭头「>」
+   - 点击触发 setShowAbout(true)
+
+4. 在 JSX 末尾添加「关于记账本」bottom sheet 弹窗，弹窗内容从上到下：
+   - 顶部拖动条（36px 宽，4px 高，居中，灰色）
+   - App 图标区域（64×64，圆角 18px，紫色背景 #534AB7，内含白色柱状图 SVG）
+   - App 名称「记账本」（18px，500 weight，居中）
+   - 副标题「两个人的记账小工具」（13px，灰色，居中）
+   - 信息列表卡片（灰色背景，12px 圆角，每行左右布局）：
+       当前版本 → `v${__APP_VERSION__}`
+       开发者   → Langda
+       技术栈   → React + FastAPI
+   - 关闭按钮（紫色 #534AB7，白色文字，全宽，圆角 12px，padding 14px）
+   - 点击遮罩层或点击关闭按钮均可关闭弹窗
+
+注意：
+- bottom sheet 的遮罩层、动画、样式与现有弹窗（AddTransactionSheet / ImportModal）保持完全一致
+- 不要修改任何其他文件，只改 ProfilePage.tsx 和 vite.config.ts
+- 信息列表中「当前版本」一行要加粗显示版本号值，其余值正常字重
+完成后确认点： 「我的」页面出现「关于记账本」入口，点击后 bottom sheet 弹出，版本号显示与 frontend/package.json 中的 version 字段一致，修改 package.json 版本号后重新 build 验证自动同步
