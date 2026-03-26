@@ -34,7 +34,11 @@ class User(Base):
     )
 
     partner: Mapped["User | None"] = relationship(
-        "User", remote_side=[id], uselist=False, post_update=True
+        "User",
+        remote_side=[id],
+        foreign_keys=[partner_id],
+        uselist=False,
+        post_update=True,
     )
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
     budgets: Mapped[list["Budget"]] = relationship(back_populates="user")
