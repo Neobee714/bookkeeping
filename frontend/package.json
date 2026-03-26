@@ -16,6 +16,7 @@
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
+    "@capawesome/capacitor-file-picker": "^8.0.2",
     "@fontsource-variable/geist": "^5.2.8",
     "axios": "^1.13.6",
     "class-variance-authority": "^0.7.1",

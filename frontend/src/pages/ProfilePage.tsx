@@ -8,6 +8,7 @@ import ImportModal from '@/components/ImportModal';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { TransactionImportResult } from '@/types';
+import { isNativeImportPicker, pickImportCsvFile } from '@/utils/importFilePicker';
 
 type Currency = 'CNY' | 'USD';
 
@@ -153,8 +154,36 @@ function ProfilePage() {
     setImportError('');
   };
 
-  const handleOpenImportPicker = () => {
-    fileInputRef.current?.click();
+  const handleOpenImportPicker = async () => {
+    if (!isNativeImportPicker()) {
+      fileInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const file = await pickImportCsvFile();
+      if (!file) {
+        return;
+      }
+
+      setSelectedFile(file);
+      setImportResult(null);
+      setImportError('');
+      setImportStatus('ready');
+      setImportOpen(true);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'permission_denied') {
+          setMessage('请先允许读取文件权限，再重新选择 CSV');
+        } else if (error.message === 'file_read_failed') {
+          setMessage('读取文件失败，请重新选择 CSV');
+        } else {
+          setMessage(error.message);
+        }
+      } else {
+        setMessage('读取文件权限失败，请重试');
+      }
+    }
   };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -289,7 +318,7 @@ function ProfilePage() {
         <h2 className="text-sm font-semibold text-[#2D2940]">设置</h2>
         <button
           type="button"
-          onClick={handleOpenImportPicker}
+          onClick={() => void handleOpenImportPicker()}
           className="mt-3 flex w-full items-center justify-between rounded-[12px] border border-[#E7E5F2] bg-[#F8F7FE] px-4 py-4 text-left"
         >
           <div className="flex items-center gap-3">
