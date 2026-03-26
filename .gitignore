@@ -1,4 +1,3 @@
-@"
 .venv/
 backend/.venv/
 backend/.env
@@ -8,5 +7,6 @@ frontend/.env
 frontend/.env.production
 frontend/android/.gradle/
 frontend/android/app/build/
-"@ | Set-Content -Encoding utf8 .gitignore
 plan.md
+frontend/scripts/build-apk.ps1
+frontend/build-apk.bat
