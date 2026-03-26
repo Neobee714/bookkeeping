@@ -1,0 +1,584 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
+
+from app.core.config import CIRCLE_CREATOR_USERNAME
+from app.core.database import get_db
+from app.core.invite import generate_registration_code
+from app.core.response import success_response
+from app.core.security import get_current_user
+from app.models.circle import Circle, CircleInviteCode, CircleMember, Post, PostComment, PostRating
+from app.models.user import User
+from app.schemas.circle import (
+    CircleCommentCreateRequest,
+    CircleCreateRequest,
+    CircleJoinRequest,
+    CirclePostCreateRequest,
+    CircleRateRequest,
+)
+
+router = APIRouter()
+
+POST_IMAGE_LIMIT = 600000
+
+
+def _serialize_user(user: User) -> dict:
+    return {
+        "id": user.id,
+        "username": user.username,
+        "nickname": user.nickname,
+        "avatar": user.avatar,
+    }
+
+
+def _ensure_circle_member(db: Session, circle_id: int, user_id: int) -> CircleMember:
+    membership = db.scalar(
+        select(CircleMember).where(
+            CircleMember.circle_id == circle_id,
+            CircleMember.user_id == user_id,
+        )
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="你还不是圈子成员",
+        )
+    return membership
+
+
+def _get_circle_or_404(db: Session, circle_id: int) -> Circle:
+    circle = db.scalar(
+        select(Circle)
+        .where(Circle.id == circle_id)
+        .options(
+            selectinload(Circle.creator),
+            selectinload(Circle.members).selectinload(CircleMember.user),
+        )
+    )
+    if not circle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="圈子不存在",
+        )
+    return circle
+
+
+def _get_post_or_404(db: Session, post_id: int) -> Post:
+    post = db.scalar(select(Post).where(Post.id == post_id).options(selectinload(Post.user)))
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="帖子不存在",
+        )
+    return post
+
+
+def _generate_unique_circle_code(db: Session) -> str:
+    for _ in range(20):
+        code = generate_registration_code()
+        existing = db.scalar(select(CircleInviteCode.id).where(CircleInviteCode.code == code))
+        if existing is None:
+            return code
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="邀请码生成失败，请稍后重试",
+    )
+
+
+def _serialize_circle(circle: Circle, current_user_id: int) -> dict:
+    members = sorted(circle.members, key=lambda item: item.joined_at or datetime.min)
+    return {
+        "id": circle.id,
+        "name": circle.name,
+        "description": circle.description,
+        "creator": _serialize_user(circle.creator),
+        "creator_id": circle.creator_id,
+        "is_creator": circle.creator_id == current_user_id,
+        "member_count": len(members),
+        "members": [
+            {
+                "id": item.id,
+                "joined_at": item.joined_at.isoformat() if item.joined_at else None,
+                "user": _serialize_user(item.user),
+            }
+            for item in members
+        ],
+        "created_at": circle.created_at.isoformat() if circle.created_at else None,
+    }
+
+
+def _serialize_comment(comment: PostComment) -> dict:
+    return {
+        "id": comment.id,
+        "post_id": comment.post_id,
+        "content": comment.content,
+        "created_at": comment.created_at.isoformat() if comment.created_at else None,
+        "user": _serialize_user(comment.user),
+    }
+
+
+def _serialize_rating(rating: PostRating) -> dict:
+    return {
+        "id": rating.id,
+        "post_id": rating.post_id,
+        "score": rating.score,
+        "created_at": rating.created_at.isoformat() if rating.created_at else None,
+        "user": _serialize_user(rating.user),
+    }
+
+
+def _serialize_post(
+    post: Post,
+    stats_by_post_id: dict[int, dict[str, float | int | None]],
+    my_scores: dict[int, float],
+    comments_preview: dict[int, list[dict]],
+) -> dict:
+    post_stats = stats_by_post_id.get(post.id, {})
+    average_score = post_stats.get("average_score")
+    return {
+        "id": post.id,
+        "circle_id": post.circle_id,
+        "content": post.content,
+        "image": post.image,
+        "created_at": post.created_at.isoformat() if post.created_at else None,
+        "user": _serialize_user(post.user),
+        "average_score": round(float(average_score), 2) if average_score is not None else 0.0,
+        "rating_count": int(post_stats.get("rating_count", 0) or 0),
+        "comment_count": int(post_stats.get("comment_count", 0) or 0),
+        "my_score": my_scores.get(post.id),
+        "comments_preview": comments_preview.get(post.id, []),
+    }
+
+
+def _build_post_payloads(
+    db: Session,
+    posts: list[Post],
+    current_user_id: int,
+) -> list[dict]:
+    if not posts:
+        return []
+
+    post_ids = [item.id for item in posts]
+
+    rating_rows = db.execute(
+        select(
+            PostRating.post_id,
+            func.avg(PostRating.score),
+            func.count(PostRating.id),
+        )
+        .where(PostRating.post_id.in_(post_ids))
+        .group_by(PostRating.post_id)
+    ).all()
+    stats_by_post_id: dict[int, dict[str, float | int | None]] = {
+        row[0]: {
+            "average_score": row[1],
+            "rating_count": row[2],
+        }
+        for row in rating_rows
+    }
+
+    my_rating_rows = db.execute(
+        select(PostRating.post_id, PostRating.score).where(
+            PostRating.post_id.in_(post_ids),
+            PostRating.user_id == current_user_id,
+        )
+    ).all()
+    my_scores = {row[0]: float(row[1]) for row in my_rating_rows}
+
+    comment_count_rows = db.execute(
+        select(PostComment.post_id, func.count(PostComment.id))
+        .where(PostComment.post_id.in_(post_ids))
+        .group_by(PostComment.post_id)
+    ).all()
+    for post_id, comment_count in comment_count_rows:
+        stats_by_post_id.setdefault(post_id, {})["comment_count"] = comment_count
+
+    preview_comments = db.scalars(
+        select(PostComment)
+        .where(PostComment.post_id.in_(post_ids))
+        .options(selectinload(PostComment.user))
+        .order_by(PostComment.post_id.asc(), PostComment.created_at.desc(), PostComment.id.desc())
+    ).all()
+
+    preview_by_post_id: dict[int, list[dict]] = defaultdict(list)
+    for comment in preview_comments:
+        items = preview_by_post_id[comment.post_id]
+        if len(items) < 3:
+            items.append(_serialize_comment(comment))
+
+    return [
+        _serialize_post(
+            post=item,
+            stats_by_post_id=stats_by_post_id,
+            my_scores=my_scores,
+            comments_preview=preview_by_post_id,
+        )
+        for item in posts
+    ]
+
+
+@router.post("/circles")
+def create_circle(
+    payload: CircleCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if not CIRCLE_CREATOR_USERNAME or current_user.username != CIRCLE_CREATOR_USERNAME:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="你没有创建圈子的权限",
+        )
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="圈子名称不能为空",
+        )
+
+    circle = Circle(
+        name=name,
+        description=payload.description.strip() if payload.description else None,
+        creator_id=current_user.id,
+    )
+    db.add(circle)
+    db.flush()
+
+    db.add(CircleMember(circle_id=circle.id, user_id=current_user.id))
+    db.commit()
+
+    created_circle = _get_circle_or_404(db, circle.id)
+    return success_response(
+        data=_serialize_circle(created_circle, current_user.id),
+        message="创建成功",
+    )
+
+
+@router.get("/circles")
+def list_circles(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    circles = db.scalars(
+        select(Circle)
+        .join(CircleMember, CircleMember.circle_id == Circle.id)
+        .where(CircleMember.user_id == current_user.id)
+        .options(
+            selectinload(Circle.creator),
+            selectinload(Circle.members).selectinload(CircleMember.user),
+        )
+        .order_by(Circle.created_at.desc(), Circle.id.desc())
+    ).all()
+
+    return success_response(
+        data=[_serialize_circle(circle, current_user.id) for circle in circles]
+    )
+
+
+@router.get("/circles/{circle_id}")
+def get_circle_detail(
+    circle_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    circle = _get_circle_or_404(db, circle_id)
+    _ensure_circle_member(db, circle_id, current_user.id)
+    return success_response(data=_serialize_circle(circle, current_user.id))
+
+
+@router.post("/circles/{circle_id}/invite")
+def create_circle_invite(
+    circle_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    circle = _get_circle_or_404(db, circle_id)
+    if circle.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有圈主可以生成邀请码",
+        )
+
+    code = _generate_unique_circle_code(db)
+    invite = CircleInviteCode(circle_id=circle.id, code=code, created_by=current_user.id)
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+    return success_response(
+        data={
+            "id": invite.id,
+            "circle_id": invite.circle_id,
+            "code": invite.code,
+            "created_at": invite.created_at.isoformat() if invite.created_at else None,
+        },
+        message="邀请码生成成功",
+    )
+
+
+@router.post("/circles/join")
+def join_circle(
+    payload: CircleJoinRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    code = payload.code.strip().upper()
+    invite = db.scalar(
+        select(CircleInviteCode)
+        .where(CircleInviteCode.code == code)
+        .options(selectinload(CircleInviteCode.circle).selectinload(Circle.creator))
+    )
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="圈子邀请码无效",
+        )
+    if invite.used_by is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="圈子邀请码已使用",
+        )
+
+    existing_member = db.scalar(
+        select(CircleMember).where(
+            CircleMember.circle_id == invite.circle_id,
+            CircleMember.user_id == current_user.id,
+        )
+    )
+    if existing_member:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="你已加入该圈子",
+        )
+
+    member = CircleMember(circle_id=invite.circle_id, user_id=current_user.id)
+    invite.used_by = current_user.id
+    db.add(member)
+    db.commit()
+
+    circle = _get_circle_or_404(db, invite.circle_id)
+    return success_response(
+        data=_serialize_circle(circle, current_user.id),
+        message="加入成功",
+    )
+
+
+@router.get("/circles/{circle_id}/posts")
+def list_circle_posts(
+    circle_id: int,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _get_circle_or_404(db, circle_id)
+    _ensure_circle_member(db, circle_id, current_user.id)
+
+    offset = (page - 1) * page_size
+    posts = db.scalars(
+        select(Post)
+        .where(Post.circle_id == circle_id)
+        .options(selectinload(Post.user))
+        .order_by(Post.created_at.desc(), Post.id.desc())
+        .offset(offset)
+        .limit(page_size)
+    ).all()
+
+    total = db.scalar(select(func.count(Post.id)).where(Post.circle_id == circle_id)) or 0
+    return success_response(
+        data={
+            "items": _build_post_payloads(db, posts, current_user.id),
+            "page": page,
+            "page_size": page_size,
+            "total": int(total),
+            "has_more": offset + len(posts) < int(total),
+        }
+    )
+
+
+@router.post("/circles/{circle_id}/posts")
+def create_post(
+    circle_id: int,
+    payload: CirclePostCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _get_circle_or_404(db, circle_id)
+    _ensure_circle_member(db, circle_id, current_user.id)
+
+    content = payload.content.strip() if payload.content else None
+    image = payload.image.strip() if payload.image else None
+    if image and len(image) > POST_IMAGE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="图片过大，请重新选择",
+        )
+
+    post = Post(
+        circle_id=circle_id,
+        user_id=current_user.id,
+        content=content or None,
+        image=image or None,
+    )
+    db.add(post)
+    db.commit()
+
+    created_post = db.scalar(
+        select(Post).where(Post.id == post.id).options(selectinload(Post.user))
+    )
+    return success_response(
+        data=_build_post_payloads(db, [created_post], current_user.id)[0],
+        message="发布成功",
+    )
+
+
+@router.delete("/circles/{circle_id}/posts/{post_id}")
+def delete_post(
+    circle_id: int,
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    circle = _get_circle_or_404(db, circle_id)
+    _ensure_circle_member(db, circle_id, current_user.id)
+    post = db.get(Post, post_id)
+    if not post or post.circle_id != circle_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="帖子不存在",
+        )
+    if post.user_id != current_user.id and circle.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有删除该帖子的权限",
+        )
+
+    db.delete(post)
+    db.commit()
+    return success_response(data={"id": post_id}, message="删除成功")
+
+
+@router.post("/posts/{post_id}/rate")
+def rate_post(
+    post_id: int,
+    payload: CircleRateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    post = _get_post_or_404(db, post_id)
+    _ensure_circle_member(db, post.circle_id, current_user.id)
+
+    rating = db.scalar(
+        select(PostRating).where(
+            PostRating.post_id == post_id,
+            PostRating.user_id == current_user.id,
+        )
+    )
+    if rating:
+        rating.score = payload.score
+    else:
+        rating = PostRating(post_id=post_id, user_id=current_user.id, score=payload.score)
+        db.add(rating)
+
+    db.commit()
+    db.refresh(rating)
+    db.refresh(post)
+
+    return success_response(data=_serialize_rating(rating), message="打分成功")
+
+
+@router.get("/posts/{post_id}/ratings")
+def list_post_ratings(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    post = _get_post_or_404(db, post_id)
+    _ensure_circle_member(db, post.circle_id, current_user.id)
+
+    ratings = db.scalars(
+        select(PostRating)
+        .where(PostRating.post_id == post_id)
+        .options(selectinload(PostRating.user))
+        .order_by(PostRating.created_at.asc(), PostRating.id.asc())
+    ).all()
+    return success_response(data=[_serialize_rating(item) for item in ratings])
+
+
+@router.get("/posts/{post_id}/comments")
+def list_post_comments(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    post = _get_post_or_404(db, post_id)
+    _ensure_circle_member(db, post.circle_id, current_user.id)
+
+    comments = db.scalars(
+        select(PostComment)
+        .where(PostComment.post_id == post_id)
+        .options(selectinload(PostComment.user))
+        .order_by(PostComment.created_at.asc(), PostComment.id.asc())
+    ).all()
+    return success_response(data=[_serialize_comment(item) for item in comments])
+
+
+@router.post("/posts/{post_id}/comments")
+def create_post_comment(
+    post_id: int,
+    payload: CircleCommentCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    post = _get_post_or_404(db, post_id)
+    _ensure_circle_member(db, post.circle_id, current_user.id)
+    content = payload.content.strip()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="评论内容不能为空",
+        )
+
+    comment = PostComment(
+        post_id=post_id,
+        user_id=current_user.id,
+        content=content,
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    db.refresh(current_user)
+    comment.user = current_user
+
+    return success_response(data=_serialize_comment(comment), message="评论成功")
+
+
+@router.delete("/comments/{comment_id}")
+def delete_comment(
+    comment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    comment = db.scalar(
+        select(PostComment)
+        .where(PostComment.id == comment_id)
+        .options(selectinload(PostComment.post))
+    )
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="评论不存在",
+        )
+    if comment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只能删除自己的评论",
+        )
+
+    db.delete(comment)
+    db.commit()
+    return success_response(data={"id": comment_id}, message="删除成功")
