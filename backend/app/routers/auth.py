@@ -17,7 +17,14 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
-from app.schemas.auth import BindInviteRequest, LoginRequest, RefreshRequest, RegisterRequest
+from app.schemas.auth import (
+    BindInviteRequest,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    UpdateAvatarRequest,
+    UpdateProfileRequest,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,12 +36,14 @@ def _serialize_user(user: User, partner: User | None) -> dict:
             "id": partner.id,
             "username": partner.username,
             "nickname": partner.nickname,
+            "avatar": partner.avatar,
         }
 
     return {
         "id": user.id,
         "username": user.username,
         "nickname": user.nickname,
+        "avatar": user.avatar,
         "partner_id": user.partner_id,
         "partner": partner_data,
         "invite_code": generate_invite_code(user.id),
@@ -165,6 +174,68 @@ def refresh_token(payload: RefreshRequest, db: Session = Depends(get_db)) -> dic
 def me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> dict:
     partner = db.get(User, current_user.partner_id) if current_user.partner_id else None
     return success_response(data=_serialize_user(current_user, partner))
+
+
+@router.put("/profile")
+def update_profile(
+    payload: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if payload.nickname is not None:
+        nickname = payload.nickname.strip()
+        if not nickname:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="昵称不能为空",
+            )
+        if len(nickname) > 16:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="昵称长度需在 1 到 16 个字符之间",
+            )
+        current_user.nickname = nickname
+
+    db.commit()
+    db.refresh(current_user)
+    partner = db.get(User, current_user.partner_id) if current_user.partner_id else None
+    return success_response(
+        data=_serialize_user(current_user, partner),
+        message="资料更新成功",
+    )
+
+
+@router.post("/avatar")
+def update_avatar(
+    payload: UpdateAvatarRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    avatar = payload.avatar.strip()
+    if not avatar:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="头像不能为空",
+        )
+    if len(avatar) > 200000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="头像文件过大，请重新选择",
+        )
+    if not avatar.startswith("data:image/") or ";base64," not in avatar:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="头像格式不支持",
+        )
+
+    current_user.avatar = avatar
+    db.commit()
+    db.refresh(current_user)
+    partner = db.get(User, current_user.partner_id) if current_user.partner_id else None
+    return success_response(
+        data=_serialize_user(current_user, partner),
+        message="头像更新成功",
+    )
 
 
 @router.post("/bind-invite")

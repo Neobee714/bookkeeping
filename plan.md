@@ -539,3 +539,326 @@ POST /transactions/import
 - 不要修改任何其他文件，只改 ProfilePage.tsx 和 vite.config.ts
 - 信息列表中「当前版本」一行要加粗显示版本号值，其余值正常字重
 完成后确认点： 「我的」页面出现「关于记账本」入口，点击后 bottom sheet 弹出，版本号显示与 frontend/package.json 中的 version 字段一致，修改 package.json 版本号后重新 build 验证自动同步
+
+## 阶段 11: 个人资料编辑功能
+目标： 让用户在「我的」页面能修改昵称，上传并展示头像，头像全局同步显示
+这是双人记账 App 的第 11 阶段：个人资料编辑功能。
+
+一、数据库改动
+在 backend/app/models/user.py 的 User 模型中新增字段：
+  avatar: TEXT（存储 base64 编码的头像图片，可为 null）
+
+用 Alembic 生成并执行 migration：
+  alembic revision --autogenerate -m "add avatar to users"
+  alembic upgrade head
+
+二、后端新增接口
+在 backend/app/routers/auth.py 中新增：
+
+PUT /auth/profile
+- 请求体：{ "nickname": "新昵称" }（nickname 可选，1~16字符）
+- 更新当前用户的 nickname 字段
+- 返回更新后的完整 user 对象
+
+POST /auth/avatar
+- 请求体：{ "avatar": "data:image/jpeg;base64,..." }
+- 验证 base64 字符串长度不超过 200KB（约 200000 字符）
+- 更新当前用户的 avatar 字段
+- 返回更新后的完整 user 对象
+
+修改 GET /auth/me 返回值，确保包含 avatar 字段。
+修改 partner 信息返回值，也包含 partner 的 avatar 字段。
+
+三、前端改动
+
+1. 修改 src/types/index.ts 中的 User 类型，添加 avatar?: string 字段
+
+2. 修改 src/api/auth.ts，新增：
+   export async function updateProfile(nickname: string)
+   export async function updateAvatar(base64: string)
+
+3. 修改 src/pages/ProfilePage.tsx：
+
+   头像区域改造（顶部头像圆形）：
+   - 已有头像：显示 <img> 标签渲染 base64
+   - 无头像：保持原来的首字母圆形
+   - 头像右下角加一个小相机图标按钮（紫色圆圈 + 相机SVG）
+   - 点击触发隐藏的 <input type="file" accept="image/*" ref={avatarInputRef} />
+
+   头像上传逻辑（在文件选择后触发）：
+   - 用 Canvas 将图片压缩到最长边 300px
+   - 转成 JPEG base64（quality 0.8）
+   - 调用 updateAvatar() 接口上传
+   - 上传中显示圆形加载动画覆盖在头像上
+   - 上传成功后更新 authStore 中的 user.avatar
+
+   昵称修改：
+   - 点击昵称文字旁边的铅笔图标（SVG）进入编辑状态
+   - 昵称文字变为 input 输入框（inline 样式，同款字号）
+   - 右侧出现「✓ 确认」和「✕ 取消」两个小按钮
+   - 确认后调用 updateProfile() 接口，成功后更新 authStore
+
+4. 修改所有使用头像的地方（HomePage 顶部栏、ProfilePage 顶部），
+   统一用如下逻辑渲染头像：
+   - user.avatar 存在 → <img src={user.avatar} style={{...圆形样式}} />
+   - 不存在 → 首字母圆形 div（保持原样）
+
+注意：
+- Canvas 压缩逻辑封装到 src/utils/imageUtils.ts 中，函数名 compressImage(file: File): Promise<string>
+- 不要修改其他页面的任何功能，只改头像和昵称相关部分
+- 更新成功后必须同步更新 zustand authStore 中的 user 对象，确保全局刷新.
+
+完成后确认点： 能上传头像并在首页顶部和「我的」页面显示，能修改昵称并即时生效
+
+## 阶段 12: 双码拆分（注册邀请码 vs 伴侣绑定码）
+目标： 将现有邀请码拆分为两个独立的码：控制谁能注册 App 的「注册邀请码」，以及绑定伴侣关系的「绑定码」；之后所有新用户必须凭注册邀请码才能注册
+这是双人记账 App 的第 12 阶段：双码系统改造。
+
+背景：
+- 现有系统中，「邀请码」用于两个用户互绑伴侣关系（partner_code）
+- 新需求：增加「注册邀请码」控制 App 的注册权限，只有被邀请的人才能注册
+- 两个码职责完全不同，命名和逻辑需要分开
+
+一、数据库改动
+在 User 模型中：
+- 将现有的 invite_code 字段重命名为 partner_code（用于绑定伴侣，逻辑不变）
+- 新增 reg_invite_code: VARCHAR(8)（该用户可分享给别人用于注册的邀请码，注册时自动生成，唯一）
+- 新增 invited_by: INTEGER FK→users.id（记录是谁邀请注册的，可为 null 代表创始人）
+
+用 Alembic 生成并执行 migration。
+
+二、后端改动
+
+1. 修改 backend/app/core/config.py（或 .env），新增环境变量：
+   FOUNDER_INVITE_CODE=NEOBEE2025
+   这是第一个用户注册时使用的特殊邀请码，硬编码到环境变量，绕过邀请校验。
+
+2. 修改 POST /auth/register：
+   请求体新增必填字段 reg_invite_code（注册邀请码）
+   注册逻辑：
+   a. 先校验 reg_invite_code：
+      - 如果等于环境变量中的 FOUNDER_INVITE_CODE → 允许注册（创始人通道）
+      - 否则在 users 表中查找 reg_invite_code 字段匹配的用户 → 找到则允许注册
+      - 找不到 → 返回 400，message: "邀请码无效"
+   b. 注册成功后，为新用户自动生成唯一的 reg_invite_code（8位大写字母+数字随机串）
+   c. 如果注册时同时填了 partner_code，则仍然处理伴侣绑定（逻辑不变）
+
+3. 修改 GET /auth/me 返回值，包含：
+   - partner_code（绑定伴侣用）
+   - reg_invite_code（邀请他人注册用）
+
+4. 新增 POST /auth/bind-partner：
+   - 请求体：{ "partner_code": "XXXXXX" }
+   - 用于已注册用户事后绑定伴侣（解耦注册和绑定）
+   - 逻辑与原注册时绑定相同
+
+三、前端改动
+
+1. 修改 src/pages/RegisterPage.tsx：
+   - 新增「注册邀请码」输入框（必填，placeholder: "请输入邀请码"）
+   - 将原来的「伴侣邀请码」输入框改为「伴侣绑定码」（可选，placeholder: "可选，稍后绑定"）
+   - 两个输入框用分割线或标题分开，注明用途区别
+
+2. 修改 src/pages/ProfilePage.tsx 中的「我的伴侣」区块：
+   - 显示两个码，分两行：
+     「注册邀请码：XXXXXXXX」（分享给想加入的朋友）
+     「伴侣绑定码：XXXXXX」（用于和伴侣互绑）
+   - 两个码都有「复制」按钮
+   - 已绑定伴侣时隐藏伴侣绑定码，只显示注册邀请码
+
+3. 修改 src/api/auth.ts，新增：
+   export async function bindPartner(partnerCode: string)
+
+注意：
+- partner_code 的生成和绑定逻辑保持原有实现不变，只是字段名从 invite_code 改为 partner_code
+- 前端 User 类型中同步更新字段名
+- FOUNDER_INVITE_CODE 必须写入 backend/.env.example 和 Railway 环境变量说明
+- 不改动任何其他功能
+完成后确认点： 用 NEOBEE2025 能注册第一个用户；已有用户的 reg_invite_code 能让新用户注册；ProfilePage 显示两个独立的码
+
+## 阶段 13：圈子后端 API
+目标： 建立圈子的完整数据模型和 API，包括建圈、邀请成员、发帖、打分、评论
+这是双人记账 App 的第 13 阶段：「圈子」功能后端 API。
+
+一、数据库新增表（使用 SQLAlchemy ORM）
+
+backend/app/models/circle.py，包含以下模型：
+
+1. Circle（圈子）
+   - id: INTEGER PK
+   - name: VARCHAR(30)
+   - description: VARCHAR(100) nullable
+   - creator_id: INTEGER FK→users.id
+   - created_at: DATETIME
+
+2. CircleMember（圈子成员）
+   - id: INTEGER PK
+   - circle_id: INTEGER FK→circles.id
+   - user_id: INTEGER FK→users.id
+   - joined_at: DATETIME
+   - 联合唯一约束：(circle_id, user_id)
+
+3. CircleInviteCode（圈子邀请码）
+   - id: INTEGER PK
+   - circle_id: INTEGER FK→circles.id
+   - code: VARCHAR(8) UNIQUE
+   - created_by: INTEGER FK→users.id
+   - used_by: INTEGER FK→users.id nullable（已使用则记录）
+   - created_at: DATETIME
+
+4. Post（帖子）
+   - id: INTEGER PK
+   - circle_id: INTEGER FK→circles.id
+   - user_id: INTEGER FK→users.id
+   - content: TEXT nullable（文字内容）
+   - image: TEXT nullable（base64 图片，限制应用层 < 500KB）
+   - created_at: DATETIME
+
+5. PostRating（打分）
+   - id: INTEGER PK
+   - post_id: INTEGER FK→posts.id
+   - user_id: INTEGER FK→users.id
+   - score: FLOAT（0.0 ~ 10.0）
+   - created_at: DATETIME
+   - 联合唯一约束：(post_id, user_id)（每人每帖只能打一次）
+
+6. PostComment（评论）
+   - id: INTEGER PK
+   - post_id: INTEGER FK→posts.id
+   - user_id: INTEGER FK→users.id
+   - content: TEXT
+   - created_at: DATETIME
+
+生成并执行 Alembic migration。
+
+二、后端新增路由 backend/app/routers/circles.py
+
+所有接口需要 JWT 认证。
+
+圈子管理：
+- POST /circles — 创建圈子（仅限 creator，通过环境变量 CIRCLE_CREATOR_USERNAME 指定唯一创建者用户名）
+- GET /circles — 获取当前用户加入的所有圈子（含自己创建的）
+- GET /circles/{id} — 获取圈子详情（需是成员）
+- POST /circles/{id}/invite — 生成圈子邀请码（仅圈主可操作），返回 code
+- POST /circles/join — 加入圈子，请求体 { "code": "XXXXXXXX" }
+
+帖子：
+- GET /circles/{circle_id}/posts — 获取圈子帖子列表（按时间倒序，分页：page/page_size）
+  返回每条帖子时包含：用户信息、平均评分、评分人数、最新3条评论预览
+- POST /circles/{circle_id}/posts — 发帖
+  请求体：{ "content": "...", "image": "base64..." }（content 和 image 至少有一个）
+  image base64 长度超过 600000 字符时拒绝，返回 400
+- DELETE /circles/{circle_id}/posts/{post_id} — 删除帖子（只能删自己的，或圈主可删任意）
+
+打分：
+- POST /posts/{post_id}/rate — 打分，请求体 { "score": 8.5 }
+  score 范围 0~10，超出返回 400
+  同一用户对同一帖子已打分则更新（upsert）
+- GET /posts/{post_id}/ratings — 获取该帖所有打分详情
+
+评论：
+- GET /posts/{post_id}/comments — 获取评论列表（按时间正序）
+- POST /posts/{post_id}/comments — 发评论，请求体 { "content": "..." }
+- DELETE /comments/{comment_id} — 删除评论（只能删自己的）
+
+在 backend/app/main.py 中注册新路由：
+  app.include_router(circles_router, prefix="/api/v1", tags=["circles"])
+
+新增环境变量 CIRCLE_CREATOR_USERNAME 到 .env.example，用于限制建圈权限。
+
+注意：
+- 所有返回用户信息的接口，同时返回 nickname 和 avatar 字段
+- 分页默认 page=1, page_size=20
+- 不对图片做服务端处理，只做大小校验
+完成后确认点： Swagger 中能创建圈子、生成邀请码、用邀请码加入、发帖、打分、评论，所有权限校验正确
+
+## 阶段 14：圈子前端页面
+目标： 实现完整的圈子 UI，包括帖子流、发帖弹窗、打分交互、评论列表
+这是双人记账 App 的第 14 阶段：「圈子」功能前端页面。
+
+一、底部导航改造
+修改 src/components/Layout.tsx，将底部导航从 4 个 Tab 改为 5 个：
+  首页 | 图表 | 圈子（新增，中间位置，图标用气泡/聊天SVG）| 规划 | 我的
+圈子 Tab 对应路由 /app/circle
+
+二、新增文件清单
+- src/pages/CirclePage.tsx — 圈子主页面
+- src/components/PostCard.tsx — 单条帖子卡片组件
+- src/components/PostDetailSheet.tsx — 帖子详情 bottom sheet（含完整评论列表）
+- src/components/NewPostSheet.tsx — 发帖 bottom sheet
+- src/api/circles.ts — 封装所有圈子相关 API 调用
+
+三、src/api/circles.ts 封装以下函数：
+  getMyCircles()
+  getCirclePosts(circleId, page)
+  createPost(circleId, content, image?)
+  deletePost(circleId, postId)
+  ratePost(postId, score)
+  getPostComments(postId)
+  addComment(postId, content)
+  deleteComment(commentId)
+  generateInviteCode(circleId)
+  joinCircle(code)
+
+四、CirclePage.tsx 页面结构
+
+状态 A：未加入任何圈子
+- 居中显示：圈子图标 + 「还没有加入圈子」文字
+- 「输入邀请码加入」输入框 + 按钮
+- 若当前用户是 CIRCLE_CREATOR_USERNAME 对应的用户，额外显示「创建圈子」按钮
+
+状态 B：已加入圈子，显示帖子流
+- 顶部栏：圈子名称 + 右上角「邀请」按钮（仅圈主显示）
+- 帖子列表（垂直滚动，上拉加载更多）
+- 右下角浮动发帖按钮（紫色圆角方块，+ 图标）
+
+五、PostCard.tsx 组件结构（每条帖子）
+
+卡片内容（从上到下）：
+1. 顶部：用户头像（圆形，有头像显示图片否则首字母）+ 昵称 + 发帖时间（相对时间：刚刚/X分钟前/X小时前/X天前）
+2. 图片（如有）：圆角 12px，宽度 100%，点击查看大图
+3. 文字内容（如有）：14px，行高 1.6
+4. 底部操作栏：
+   左侧：💬 评论数（点击打开 PostDetailSheet）
+   右侧：打分区域
+     - 已打分：显示「你给了 X 分」（紫色）+ 平均分「均分 X.X」（灰色）
+     - 未打分：显示「均分 X.X」+ 「打分」按钮
+     - 点击「打分」弹出 0~10 的半分滑块（Slider）
+
+打分滑块交互（inline，不用弹窗）：
+- 点击「打分」后，卡片底部展开一个滑块行
+- 滑块范围 0~10，step=0.5，默认值 8
+- 右侧显示当前分数（大字，紫色）
+- 「确认」按钮提交，提交后立即更新卡片显示
+
+六、NewPostSheet.tsx 发帖弹窗（bottom sheet）
+
+内容从上到下：
+- 拖动条
+- 标题「新帖子」
+- 图片选择区域：点击添加图片（最多1张），用 Canvas 压缩到最长边 800px，JPEG quality 0.75
+  已选图片显示缩略图 + 右上角 × 删除
+- 文字输入框（多行，placeholder: "分享今天的美食..."，最大 200 字）
+- 字数计数器（右下角，灰色，如 「42/200」）
+- 发布按钮（紫色，发布中显示加载状态）
+
+七、PostDetailSheet.tsx 帖子详情（bottom sheet）
+
+- 顶部：完整帖子内容（图片 + 文字）
+- 评分汇总：平均分（大字）+ 参与人数
+- 分割线 + 「评论」标题
+- 评论列表：头像 + 昵称 + 内容 + 时间，自己的评论长按可删除
+- 底部固定输入栏：输入框 + 发送按钮（发送后追加到列表末尾）
+
+八、时间格式化工具
+新增 src/utils/timeUtils.ts：
+  export function relativeTime(dateStr: string): string
+  逻辑：< 1分钟 → 「刚刚」，< 60分钟 → 「X分钟前」，< 24小时 → 「X小时前」，否则 → 「X天前」
+
+注意：
+- 整体风格与现有页面保持一致（紫色主色，白色卡片，0.5px 边框）
+- 图片上传用 compressImage() 函数（阶段11已封装在 src/utils/imageUtils.ts）
+- 所有 bottom sheet 动画与现有弹窗保持一致
+- 发帖后自动刷新帖子列表，评论后更新评论数
+- 不修改任何已有页面和组件，只新增文件 + 改 Layout.tsx
+完成后确认点： 底部导航出现「圈子」Tab；用邀请码能加入圈子；能发图文帖；能滑动打分；能评论；帖子流上拉加载更多

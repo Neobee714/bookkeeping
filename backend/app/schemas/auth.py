@@ -21,3 +21,11 @@ class RefreshRequest(BaseModel):
 
 class BindInviteRequest(BaseModel):
     invite_code: str = Field(min_length=1, max_length=64)
+
+
+class UpdateProfileRequest(BaseModel):
+    nickname: str | None = Field(default=None, min_length=1, max_length=16)
+
+
+class UpdateAvatarRequest(BaseModel):
+    avatar: str

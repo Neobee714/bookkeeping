@@ -21,12 +21,14 @@ export interface Partner {
   id: number;
   username: string;
   nickname: string;
+  avatar?: string | null;
 }
 
 export interface User {
   id: number;
   username: string;
   nickname: string;
+  avatar?: string | null;
   partner_id: number | null;
   partner: Partner | null;
   invite_code: string;

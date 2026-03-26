@@ -1,16 +1,18 @@
 ﻿declare const __APP_VERSION__: string;
 
 import axios from 'axios';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { bindPartnerInvite, fetchMe } from '@/api/auth';
+import { bindPartnerInvite, fetchMe, updateAvatar, updateProfile } from '@/api/auth';
 import { importTransactions } from '@/api/transactions';
 import ImportModal from '@/components/ImportModal';
+import UserAvatar from '@/components/UserAvatar';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { TransactionImportResult } from '@/types';
 import { isNativeImportPicker, pickImportCsvFile } from '@/utils/importFilePicker';
+import { compressImage } from '@/utils/imageUtils';
 
 type Currency = 'CNY' | 'USD';
 type ImportStatus = 'ready' | 'uploading' | 'success' | 'error';
@@ -56,6 +58,10 @@ function ProfilePage() {
   const [submittingBind, setSubmittingBind] = useState(false);
   const [message, setMessage] = useState('');
   const [currency, setCurrency] = useState<Currency>(() => readCurrency());
+  const [nicknameDraft, setNicknameDraft] = useState('');
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus>('ready');
@@ -63,9 +69,8 @@ function ProfilePage() {
   const [importError, setImportError] = useState('');
   const [showAbout, setShowAbout] = useState(false);
 
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const initial = useMemo(() => (user?.nickname?.[0] ?? '我').toUpperCase(), [user?.nickname]);
 
   useEffect(() => {
     const load = async () => {
@@ -89,6 +94,10 @@ function ProfilePage() {
 
     void load();
   }, [updateUser]);
+
+  useEffect(() => {
+    setNicknameDraft(user?.nickname ?? '');
+  }, [user?.nickname]);
 
   const handleLogout = () => {
     logout();
@@ -146,6 +155,84 @@ function ProfilePage() {
       window.localStorage.setItem(CURRENCY_STORAGE_KEY, next);
     }
     setMessage(`已切换为 ${currencyLabel[next]}`);
+  };
+
+  const handleStartEditNickname = () => {
+    setNicknameDraft(user?.nickname ?? '');
+    setEditingNickname(true);
+    setMessage('');
+  };
+
+  const handleCancelEditNickname = () => {
+    setNicknameDraft(user?.nickname ?? '');
+    setEditingNickname(false);
+  };
+
+  const handleSaveNickname = async () => {
+    if (savingProfile) {
+      return;
+    }
+
+    const nickname = nicknameDraft.trim();
+    if (!nickname) {
+      setMessage('昵称不能为空');
+      return;
+    }
+
+    setSavingProfile(true);
+    setMessage('');
+
+    try {
+      const updatedUser = await updateProfile(nickname);
+      updateUser(updatedUser);
+      setEditingNickname(false);
+      setMessage('昵称已更新');
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setMessage(error.response?.data?.message ?? '昵称更新失败');
+      } else if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage('昵称更新失败');
+      }
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleOpenAvatarPicker = () => {
+    if (uploadingAvatar) {
+      return;
+    }
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setMessage('');
+
+    try {
+      const avatar = await compressImage(file);
+      const updatedUser = await updateAvatar(avatar);
+      updateUser(updatedUser);
+      setMessage('头像已更新');
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setMessage(error.response?.data?.message ?? '头像上传失败');
+      } else if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage('头像上传失败');
+      }
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const resetImportState = () => {
@@ -232,13 +319,88 @@ function ProfilePage() {
     <section className="space-y-4 pb-2">
       <article className="rounded-2xl border border-[#EEEDFE] bg-white p-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EEEDFE] text-lg font-semibold text-[#534AB7]">
-            {initial}
+          <div className="relative">
+            <UserAvatar
+              avatar={user?.avatar}
+              name={user?.nickname}
+              sizeClassName="h-14 w-14"
+              textClassName="text-lg"
+            />
+            {uploadingAvatar && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-[#2D2940]/35">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label="更换头像"
+              onClick={handleOpenAvatarPicker}
+              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-[#534AB7] text-white shadow-sm"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
+                <path
+                  d="M4 7h3l1.5-2h7L17 7h3v10H4V7Zm8 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-[#2D2940]">
-              {loading ? '加载中...' : user?.nickname ?? '未命名用户'}
-            </p>
+            {editingNickname ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={nicknameDraft}
+                  onChange={(event) => setNicknameDraft(event.target.value)}
+                  maxLength={16}
+                  placeholder="请输入昵称"
+                  className="h-10 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={savingProfile}
+                    onClick={() => void handleSaveNickname()}
+                    className="rounded-[10px] bg-[#534AB7] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                  >
+                    {savingProfile ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingProfile}
+                    onClick={handleCancelEditNickname}
+                    className="rounded-[10px] border border-[#E7E5F2] bg-white px-3 py-1.5 text-xs text-[#6F6A7E] disabled:opacity-60"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <p className="truncate text-lg font-semibold text-[#2D2940]">
+                  {loading ? '加载中...' : user?.nickname ?? '未命名用户'}
+                </p>
+                <button
+                  type="button"
+                  aria-label="编辑昵称"
+                  onClick={handleStartEditNickname}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F4F2FD] text-[#534AB7]"
+                >
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
+                    <path
+                      d="M4 20h4l9.5-9.5a2.121 2.121 0 0 0-3-3L5 17v3Z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
             <p className="mt-1 truncate text-sm text-[#8A8799]">@{user?.username ?? 'guest'}</p>
           </div>
         </div>
@@ -248,9 +410,7 @@ function ProfilePage() {
         <h2 className="text-sm font-semibold text-[#2D2940]">我的伴侣</h2>
         {user?.partner ? (
           <div className="mt-3 flex items-center gap-3 rounded-[10px] bg-[#F8F7FE] p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EEEDFE] text-sm font-semibold text-[#534AB7]">
-              {(user.partner.nickname?.[0] ?? '伴').toUpperCase()}
-            </div>
+            <UserAvatar avatar={user.partner.avatar} name={user.partner.nickname} />
             <div>
               <p className="text-sm font-semibold text-[#2D2940]">{user.partner.nickname}</p>
               <p className="text-xs text-[#8A8799]">@{user.partner.username}</p>
@@ -399,6 +559,16 @@ function ProfilePage() {
       >
         退出登录
       </button>
+
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          void handleAvatarChange(event);
+        }}
+      />
 
       <input
         ref={fileInputRef}

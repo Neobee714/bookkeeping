@@ -11,6 +11,7 @@ import {
 import { fetchMonthlySummary, fetchPartnerMonthlySummary } from '@/api/stats';
 import AddTransactionSheet from '@/components/AddTransactionSheet';
 import TransactionItem from '@/components/TransactionItem';
+import UserAvatar from '@/components/UserAvatar';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type {
@@ -249,9 +250,7 @@ function HomePage() {
       <header className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EEEDFE] text-sm font-semibold text-[#534AB7]">
-              {(user?.nickname?.[0] ?? '我').toUpperCase()}
-            </div>
+            <UserAvatar avatar={user?.avatar} name={user?.nickname} />
             <div>
               <p className="text-sm text-[#8A8799]">你好</p>
               <p className="text-base font-semibold text-[#2D2940]">{user?.nickname ?? '我'}</p>
