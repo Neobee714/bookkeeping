@@ -52,6 +52,11 @@ class Circle(Base):
         back_populates="circle",
         cascade="all, delete-orphan",
     )
+    applications: Mapped[list["CircleApplication"]] = relationship(
+        "CircleApplication",
+        back_populates="circle",
+        cascade="all, delete-orphan",
+    )
 
 
 class CircleMember(Base):
@@ -103,6 +108,34 @@ class CircleInviteCode(Base):
     circle: Mapped["Circle"] = relationship("Circle", back_populates="invite_codes")
     creator: Mapped["User"] = relationship("User", foreign_keys=[created_by])
     used_by_user: Mapped["User | None"] = relationship("User", foreign_keys=[used_by])
+
+
+class CircleApplication(Base):
+    __tablename__ = "circle_applications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    circle_id: Mapped[int] = mapped_column(
+        ForeignKey("circles.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    circle: Mapped["Circle"] = relationship("Circle", back_populates="applications")
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
 
 class Post(Base):

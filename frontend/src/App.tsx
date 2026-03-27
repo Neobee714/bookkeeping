@@ -9,6 +9,7 @@ import {
 
 import client from '@/api/client';
 import Layout from '@/components/Layout';
+import AdminApplicationsPage from '@/pages/AdminApplicationsPage';
 import CirclePage from '@/pages/CirclePage';
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
@@ -137,6 +138,7 @@ function App() {
           <Route path="home" element={<HomePage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="circle" element={<CirclePage />} />
+          <Route path="circle/admin/:circleId/applications" element={<AdminApplicationsPage />} />
           <Route path="plan" element={<PlanPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>

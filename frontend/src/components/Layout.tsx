@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
+import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+
+import { getAdminPendingCount } from '@/api/circles';
+import { useAuthStore } from '@/store/authStore';
+import { useCircleStore } from '@/store/circleStore';
 
 interface NavItem {
   to: string;
@@ -8,6 +13,7 @@ interface NavItem {
 }
 
 const iconClass = 'h-[18px] w-[18px]';
+const creatorUsername = (import.meta.env.VITE_CIRCLE_CREATOR_USERNAME ?? '').trim();
 
 const navItems: NavItem[] = [
   {
@@ -90,6 +96,38 @@ const navItems: NavItem[] = [
 ];
 
 function Layout() {
+  const user = useAuthStore((state) => state.user);
+  const pendingCount = useCircleStore((state) => state.pendingCount);
+  const setPendingCount = useCircleStore((state) => state.setPendingCount);
+
+  useEffect(() => {
+    const canManageCircles = Boolean(
+      user?.username && (creatorUsername ? user.username === creatorUsername : true),
+    );
+
+    if (!canManageCircles) {
+      setPendingCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    void getAdminPendingCount()
+      .then((count) => {
+        if (!cancelled) {
+          setPendingCount(count);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPendingCount(0);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setPendingCount, user]);
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
       <main className="flex-1 px-4 py-4 pb-24">
@@ -111,10 +149,13 @@ function Layout() {
                 }
               >
                 {({ isActive }) => (
-                  <>
+                  <span className="relative flex flex-col items-center justify-center">
                     {item.icon(isActive)}
+                    {item.to === '/app/circle' && pendingCount > 0 && (
+                      <span className="absolute -right-2 top-0 h-2.5 w-2.5 rounded-full bg-[#E24B4A]" />
+                    )}
                     <span className="mt-1">{item.label}</span>
-                  </>
+                  </span>
                 )}
               </NavLink>
             </li>

@@ -2,6 +2,9 @@ import client from '@/api/client';
 import type {
   ApiResponse,
   Circle,
+  CircleApplication,
+  CircleApplicationList,
+  CircleApplicationStatus,
   CircleComment,
   CircleInviteCode,
   CirclePost,
@@ -123,9 +126,51 @@ export const generateInviteCode = async (
   return assertSuccess(response.data);
 };
 
-export const joinCircle = async (code: string): Promise<Circle> => {
-  const response = await client.post<ApiResponse<Circle>>('/api/v1/circles/join', {
-    code,
-  });
+export const joinCircle = async (code: string): Promise<{ circle_id: number }> => {
+  const response = await client.post<ApiResponse<{ circle_id: number }>>(
+    '/api/v1/circles/join',
+    { code },
+  );
   return assertSuccess(response.data);
+};
+
+export const leaveCircle = async (
+  circleId: number,
+): Promise<{ circle_id: number }> => {
+  const response = await client.delete<ApiResponse<{ circle_id: number }>>(
+    `/api/v1/circles/${circleId}/leave`,
+  );
+  return assertSuccess(response.data);
+};
+
+export const getApplications = async (
+  circleId: number,
+  status?: CircleApplicationStatus | 'all',
+): Promise<CircleApplicationList> => {
+  const response = await client.get<ApiResponse<CircleApplicationList>>(
+    `/api/v1/circles/${circleId}/applications`,
+    {
+      params: status ? { status } : undefined,
+    },
+  );
+  return assertSuccess(response.data);
+};
+
+export const reviewApplication = async (
+  circleId: number,
+  applicationId: number,
+  action: 'approve' | 'reject',
+): Promise<CircleApplication> => {
+  const response = await client.post<ApiResponse<CircleApplication>>(
+    `/api/v1/circles/${circleId}/applications/${applicationId}/review`,
+    { action },
+  );
+  return assertSuccess(response.data);
+};
+
+export const getAdminPendingCount = async (): Promise<number> => {
+  const response = await client.get<ApiResponse<{ pending_count: number }>>(
+    '/api/v1/admin/circle-applications/pending-count',
+  );
+  return assertSuccess(response.data).pending_count;
 };

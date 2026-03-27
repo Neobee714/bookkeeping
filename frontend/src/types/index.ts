@@ -29,6 +29,7 @@ export interface UserSummary {
   username: string;
   nickname: string;
   avatar?: string | null;
+  created_at?: string | null;
 }
 
 export interface User {
@@ -186,6 +187,26 @@ export interface CircleInviteCode {
   circle_id: number;
   code: string;
   created_at: string;
+}
+
+export type CircleApplicationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CircleApplication {
+  id: number;
+  circle_id: number;
+  message: string | null;
+  status: CircleApplicationStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  user: UserSummary;
+}
+
+export interface CircleApplicationList {
+  circle: {
+    id: number;
+    name: string;
+  };
+  items: CircleApplication[];
 }
 
 export interface CircleComment {

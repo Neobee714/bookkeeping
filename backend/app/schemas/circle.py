@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -10,6 +12,7 @@ class CircleCreateRequest(BaseModel):
 
 class CircleJoinRequest(BaseModel):
     code: str = Field(min_length=1, max_length=8)
+    message: str | None = Field(default=None, max_length=200)
 
 
 class CirclePostCreateRequest(BaseModel):
@@ -31,3 +34,7 @@ class CircleRateRequest(BaseModel):
 
 class CircleCommentCreateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=500)
+
+
+class CircleApplicationReviewRequest(BaseModel):
+    action: Literal["approve", "reject"]

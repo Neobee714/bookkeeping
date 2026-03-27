@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   addComment,
@@ -18,6 +19,7 @@ import {
   getMyCircles,
   getPostComments,
   joinCircle,
+  leaveCircle,
   ratePost,
 } from '@/api/circles';
 import NewPostSheet from '@/components/NewPostSheet';
@@ -146,14 +148,17 @@ function CreateCircleSheet({
 }
 
 function CirclePage() {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const pagingRef = useRef(false);
+  const actionMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [circles, setCircles] = useState<Circle[]>([]);
   const [loadingCircles, setLoadingCircles] = useState(true);
   const [circlesError, setCirclesError] = useState('');
   const [activeCircleId, setActiveCircleId] = useState<number | null>(null);
+  const [circleListMode, setCircleListMode] = useState(false);
 
   const [posts, setPosts] = useState<CirclePost[]>([]);
   const [page, setPage] = useState(1);
@@ -184,10 +189,12 @@ function CirclePage() {
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null);
 
   const [noticeMessage, setNoticeMessage] = useState('');
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
 
   const canCreateCircle = Boolean(
     user?.username && (creatorUsername ? user.username === creatorUsername : true),
   );
+  const showCircleListView = circles.length > 0 && (circleListMode || activeCircleId === null);
 
   const activeCircle = useMemo(
     () => circles.find((circle) => circle.id === activeCircleId) ?? null,
@@ -200,17 +207,26 @@ function CirclePage() {
   );
 
   const openCreateSheet = () => {
+    setActionMenuOpen(false);
     setCreateCircleError('');
     setCreateSheetOpen(true);
   };
 
-  const loadCircles = useCallback(async (nextActiveId?: number) => {
+  const loadCircles = useCallback(async (
+    nextActiveId?: number,
+    options?: { resetToList?: boolean },
+  ) => {
     setLoadingCircles(true);
     setCirclesError('');
     try {
       const data = await getMyCircles();
       setCircles(data);
+      const shouldResetToList = Boolean(options?.resetToList && data.length > 0);
+      setCircleListMode(shouldResetToList);
       setActiveCircleId((current) => {
+        if (shouldResetToList) {
+          return null;
+        }
         if (nextActiveId && data.some((circle) => circle.id === nextActiveId)) {
           return nextActiveId;
         }
@@ -285,6 +301,24 @@ function CirclePage() {
   }, [loadCircles]);
 
   useEffect(() => {
+    if (!actionMenuOpen) {
+      return;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(event.target as Node)
+      ) {
+        setActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [actionMenuOpen]);
+
+  useEffect(() => {
     if (!activeCircleId) {
       setPosts([]);
       setPage(1);
@@ -346,10 +380,9 @@ function CirclePage() {
 
     setJoiningCircle(true);
     try {
-      const circle = await joinCircle(code);
+      await joinCircle(code);
       setJoinCode('');
-      setNoticeMessage('加入圈子成功');
-      await loadCircles(circle.id);
+      setNoticeMessage('已提交申请，等待圈主审批');
     } catch (error) {
       setNoticeMessage(getErrorMessage(error, '加入圈子失败'));
     } finally {
@@ -370,6 +403,7 @@ function CirclePage() {
     try {
       const circle = await createCircle(name, description || undefined);
       setCreateSheetOpen(false);
+      setCircleListMode(false);
       setCircleName('');
       setCircleDescription('');
       setNoticeMessage('圈子已创建');
@@ -414,6 +448,42 @@ function CirclePage() {
     } finally {
       setSubmittingPost(false);
     }
+  };
+
+  const handleLeaveCircle = async () => {
+    if (!activeCircle) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `确定退出「${activeCircle.name}」吗？退出后需重新申请加入。`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setActionMenuOpen(false);
+    try {
+      await leaveCircle(activeCircle.id);
+      setDetailOpen(false);
+      setSelectedPostId(null);
+      setComments([]);
+      setPosts([]);
+      setPage(1);
+      setHasMore(false);
+      setNoticeMessage('已退出圈子');
+      await loadCircles(undefined, { resetToList: true });
+    } catch (error) {
+      setNoticeMessage(getErrorMessage(error, '退出圈子失败'));
+    }
+  };
+
+  const handleOpenApplications = () => {
+    setActionMenuOpen(false);
+    if (!activeCircle) {
+      return;
+    }
+    navigate(`/app/circle/admin/${activeCircle.id}/applications`);
   };
 
   const handleRatePost = async (postId: number, score: number) => {
@@ -538,22 +608,12 @@ function CirclePage() {
             <div>
               <p className="text-sm text-[#8A8799]">圈子</p>
               <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-[#2D2940]">
-                {activeCircle?.name ?? '一起聊聊'}
+                {showCircleListView ? '我的圈子' : (activeCircle?.name ?? '一起聊聊')}
               </h1>
             </div>
 
-            <div className="flex items-center gap-3">
-              {canCreateCircle && circles.length > 0 && (
-                <button
-                  type="button"
-                  onClick={openCreateSheet}
-                  className="text-[13px] font-medium text-[#534AB7]"
-                >
-                  + 新建
-                </button>
-              )}
-
-              {activeCircle?.is_creator && (
+            <div ref={actionMenuRef} className="relative flex items-center gap-3">
+              {!showCircleListView && activeCircle?.is_creator && (
                 <button
                   type="button"
                   onClick={() => {
@@ -563,6 +623,60 @@ function CirclePage() {
                 >
                   邀请
                 </button>
+              )}
+
+              {!showCircleListView && canCreateCircle && (
+                <button
+                  type="button"
+                  aria-label="更多操作"
+                  aria-expanded={actionMenuOpen}
+                  onClick={() => setActionMenuOpen((current) => !current)}
+                  className="flex h-10 w-10 items-center justify-center rounded-[14px] border border-[#E7E5F2] bg-white text-[#534AB7]"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <circle cx="5" cy="12" r="1.2" fill="currentColor" />
+                    <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+                    <circle cx="19" cy="12" r="1.2" fill="currentColor" />
+                  </svg>
+                </button>
+              )}
+
+              {!showCircleListView && !canCreateCircle && activeCircle && !activeCircle.is_creator && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleLeaveCircle();
+                  }}
+                  className="text-[13px] font-medium text-[#E24B4A]"
+                >
+                  退出
+                </button>
+              )}
+
+              {!showCircleListView && canCreateCircle && actionMenuOpen && (
+                <div className="absolute right-0 top-full z-10 mt-2 w-[156px] rounded-[10px] border border-[#E7E5F2] bg-white p-1.5 shadow-[0_12px_30px_rgba(45,41,64,0.12)]">
+                  <button
+                    type="button"
+                    onClick={openCreateSheet}
+                    className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
+                  >
+                    + 新建圈子
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenApplications}
+                    className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
+                  >
+                    管理申请
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -662,7 +776,11 @@ function CirclePage() {
                     <button
                       key={circle.id}
                       type="button"
-                      onClick={() => setActiveCircleId(circle.id)}
+                      onClick={() => {
+                        setActionMenuOpen(false);
+                        setCircleListMode(false);
+                        setActiveCircleId(circle.id);
+                      }}
                       className={`shrink-0 rounded-[14px] px-4 py-3 text-left ${
                         circle.id === activeCircleId
                           ? 'bg-[#534AB7] text-white'
@@ -683,7 +801,14 @@ function CirclePage() {
               </div>
             </div>
 
-            {postsError ? (
+            {showCircleListView ? (
+              <div className="rounded-[22px] border border-dashed border-[#DDD9F3] bg-white px-5 py-10 text-center">
+                <p className="text-lg font-semibold text-[#2D2940]">选择一个圈子</p>
+                <p className="mt-2 text-sm text-[#8A8799]">
+                  选择后即可查看帖子、评论和评分，也可以继续创建新圈子。
+                </p>
+              </div>
+            ) : postsError ? (
               <div className="rounded-[18px] border border-[#F3D6D6] bg-white px-4 py-5 text-center">
                 <p className="text-sm text-[#D75A5A]">{postsError}</p>
                 <button
@@ -739,10 +864,10 @@ function CirclePage() {
             )}
 
             <div ref={loadMoreRef} className="h-8">
-              {loadingMore && (
+              {!showCircleListView && loadingMore && (
                 <p className="pt-2 text-center text-xs text-[#8A8799]">正在加载更多帖子...</p>
               )}
-              {!loadingMore && hasMore && (
+              {!showCircleListView && !loadingMore && hasMore && (
                 <button
                   type="button"
                   onClick={() => {
@@ -760,7 +885,7 @@ function CirclePage() {
         )}
       </section>
 
-      {activeCircle && (
+      {activeCircle && !showCircleListView && (
         <div className="pointer-events-none fixed bottom-[92px] left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 px-4">
           <div className="flex justify-end">
             <button
