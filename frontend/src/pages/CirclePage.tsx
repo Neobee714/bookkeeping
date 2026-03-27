@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 import {
   useCallback,
   useEffect,
@@ -198,6 +198,11 @@ function CirclePage() {
     () => posts.find((post) => post.id === selectedPostId) ?? null,
     [posts, selectedPostId],
   );
+
+  const openCreateSheet = () => {
+    setCreateCircleError('');
+    setCreateSheetOpen(true);
+  };
 
   const loadCircles = useCallback(async (nextActiveId?: number) => {
     setLoadingCircles(true);
@@ -537,17 +542,29 @@ function CirclePage() {
               </h1>
             </div>
 
-            {activeCircle?.is_creator && (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleInvite();
-                }}
-                className="rounded-[14px] bg-[#EEEDFE] px-4 py-2 text-sm font-medium text-[#534AB7]"
-              >
-                邀请
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {canCreateCircle && circles.length > 0 && (
+                <button
+                  type="button"
+                  onClick={openCreateSheet}
+                  className="text-[13px] font-medium text-[#534AB7]"
+                >
+                  + 新建
+                </button>
+              )}
+
+              {activeCircle?.is_creator && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleInvite();
+                  }}
+                  className="rounded-[14px] bg-[#EEEDFE] px-4 py-2 text-sm font-medium text-[#534AB7]"
+                >
+                  邀请
+                </button>
+              )}
+            </div>
           </div>
 
           {noticeMessage && (
@@ -612,10 +629,7 @@ function CirclePage() {
             {canCreateCircle && (
               <button
                 type="button"
-                onClick={() => {
-                  setCreateCircleError('');
-                  setCreateSheetOpen(true);
-                }}
+                onClick={openCreateSheet}
                 className="inline-flex h-12 items-center justify-center rounded-[14px] border border-[#534AB7] px-5 text-sm font-medium text-[#534AB7]"
               >
                 创建圈子
@@ -627,6 +641,15 @@ function CirclePage() {
         ) : (
           <>
             <div className="space-y-3">
+              {canCreateCircle && (
+                <button
+                  type="button"
+                  onClick={openCreateSheet}
+                  className="h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white"
+                >
+                  + 新建圈子
+                </button>
+              )}
               {activeCircle?.description && (
                 <div className="rounded-[18px] border border-[#EEEDFE] bg-white px-4 py-4">
                   <p className="text-sm leading-6 text-[#6F6A7E]">{activeCircle.description}</p>
@@ -791,3 +814,4 @@ function CirclePage() {
 }
 
 export default CirclePage;
+

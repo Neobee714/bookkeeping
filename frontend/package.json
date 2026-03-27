@@ -1,11 +1,11 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --configLoader native",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "npx cap sync android",
@@ -50,3 +50,5 @@
     "vite": "^8.0.1"
   }
 }
+
+
