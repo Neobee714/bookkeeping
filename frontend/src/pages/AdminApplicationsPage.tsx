@@ -1,12 +1,8 @@
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-import {
-  getAdminPendingCount,
-  getApplications,
-  reviewApplication,
-} from '@/api/circles';
+import { getAdminPendingCount, getApplications, reviewApplication } from '@/api/circles';
 import UserAvatar from '@/components/UserAvatar';
 import { useCircleStore } from '@/store/circleStore';
 import type { CircleApplication, CircleApplicationStatus } from '@/types';
@@ -52,13 +48,9 @@ function EmptyInboxIllustration() {
 
 function AdminApplicationsPage() {
   const navigate = useNavigate();
-  const { circleId: circleIdParam } = useParams<{ circleId: string }>();
   const setPendingCount = useCircleStore((state) => state.setPendingCount);
 
-  const circleId = Number(circleIdParam);
-
   const [activeTab, setActiveTab] = useState<FilterTab>('pending');
-  const [circleName, setCircleName] = useState('');
   const [applications, setApplications] = useState<CircleApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -86,25 +78,18 @@ function AdminApplicationsPage() {
   }, [setPendingCount]);
 
   const loadApplications = useCallback(async () => {
-    if (!Number.isFinite(circleId) || circleId <= 0) {
-      setErrorMessage('圈子参数无效');
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setErrorMessage('');
     try {
-      const data = await getApplications(circleId, activeTab);
-      setCircleName(data.circle.name);
-      setApplications(data.items);
+      const data = await getApplications(activeTab);
+      setApplications(data);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '申请列表加载失败'));
       setApplications([]);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, circleId]);
+  }, [activeTab]);
 
   useEffect(() => {
     void loadApplications();
@@ -122,13 +107,10 @@ function AdminApplicationsPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const handleReview = async (
-    applicationId: number,
-    action: 'approve' | 'reject',
-  ) => {
+  const handleReview = async (applicationId: number, action: 'approve' | 'reject') => {
     setProcessingId(applicationId);
     try {
-      await reviewApplication(circleId, applicationId, action);
+      await reviewApplication(applicationId, action);
       setApplications((current) => current.filter((item) => item.id !== applicationId));
       await refreshPendingCount();
       showToast('success', action === 'approve' ? '已通过申请' : '已拒绝申请');
@@ -160,9 +142,7 @@ function AdminApplicationsPage() {
           </button>
 
           <div className="min-w-0 flex-1 text-center">
-            <h1 className="truncate text-lg font-semibold text-[#2D2940]">
-              {circleName ? `${circleName} · 申请管理` : '申请管理'}
-            </h1>
+            <h1 className="truncate text-lg font-semibold text-[#2D2940]">圈子创建申请</h1>
           </div>
 
           <span className="shrink-0 text-xs text-[#8A8799]">{titleCount}</span>
@@ -227,7 +207,7 @@ function AdminApplicationsPage() {
                 <EmptyInboxIllustration />
               </div>
               <p className="mt-4 text-lg font-semibold text-[#2D2940]">暂无待审批申请</p>
-              <p className="mt-2 text-sm text-[#8A8799]">新的入圈申请会在这里出现。</p>
+              <p className="mt-2 text-sm text-[#8A8799]">新的建圈申请会在这里出现。</p>
             </>
           ) : (
             <>
@@ -239,88 +219,94 @@ function AdminApplicationsPage() {
       ) : (
         <div className="space-y-3">
           {applications.map((application) => {
-            const joinedText = application.user.created_at
-              ? `${relativeTime(application.user.created_at)}加入`
-              : '';
-            const reviewText = application.reviewed_at
-              ? relativeTime(application.reviewed_at)
-              : '';
+            const reviewText = application.reviewed_at ? relativeTime(application.reviewed_at) : '';
 
             return (
               <article
                 key={application.id}
-                className="flex items-start gap-3 rounded-[16px] border border-[#ECEAF8] bg-white px-4 py-4"
+                className="rounded-[18px] border border-[#ECEAF8] bg-white px-4 py-4 shadow-[0_10px_24px_rgba(45,41,64,0.06)]"
               >
-                <UserAvatar
-                  avatar={application.user.avatar}
-                  name={application.user.nickname}
-                  sizeClassName="h-12 w-12"
-                  textClassName="text-base"
-                  className="shrink-0"
-                />
+                <div className="flex items-start gap-3">
+                  <UserAvatar
+                    avatar={application.user.avatar}
+                    name={application.user.nickname}
+                    sizeClassName="h-12 w-12"
+                    textClassName="text-base"
+                    className="shrink-0"
+                  />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-[#2D2940]">
-                      {application.user.nickname}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-[#2D2940]">
+                        {application.user.nickname}
+                      </p>
+                      <span className="text-[11px] text-[#9A97A8]">
+                        {relativeTime(application.created_at)}
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-lg font-semibold text-[#534AB7]">
+                      {application.circle_name}
                     </p>
-                    {joinedText && (
-                      <span className="text-[11px] text-[#9A97A8]">{joinedText}</span>
+
+                    {application.circle_description && (
+                      <p className="mt-1 text-sm leading-6 text-[#6F6A7E]">
+                        {application.circle_description}
+                      </p>
                     )}
-                  </div>
 
-                  <p
-                    className={`mt-1 text-[13px] leading-6 text-[#8A8799] ${
-                      application.message ? '' : 'italic'
-                    }`}
-                  >
-                    {application.message || '未填写申请理由'}
-                  </p>
-
-                  <p className="mt-1 text-[11px] text-[#9A97A8]">
-                    {relativeTime(application.created_at)}
-                  </p>
-                </div>
-
-                {activeTab === 'pending' ? (
-                  <div className="flex shrink-0 flex-col gap-1.5">
-                    <button
-                      type="button"
-                      disabled={processingId === application.id}
-                      onClick={() => {
-                        void handleReview(application.id, 'approve');
-                      }}
-                      className="flex h-8 min-w-[72px] items-center justify-center rounded-[8px] bg-[#1D9E75] px-3 text-[13px] text-white disabled:opacity-60"
-                    >
-                      {processingId === application.id ? '处理中...' : '通过'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={processingId === application.id}
-                      onClick={() => {
-                        void handleReview(application.id, 'reject');
-                      }}
-                      className="h-8 min-w-[72px] rounded-[8px] border border-[#E24B4A] bg-transparent px-3 text-[13px] text-[#E24B4A] disabled:opacity-60"
-                    >
-                      拒绝
-                    </button>
-                  </div>
-                ) : (
-                  <div className="shrink-0 text-right">
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-                        activeTab === 'approved'
-                          ? 'bg-[#E1F5EE] text-[#1D9E75]'
-                          : 'bg-[#FCEBEB] text-[#E24B4A]'
+                    <p
+                      className={`mt-3 text-[13px] leading-6 text-[#8A8799] ${
+                        application.message ? '' : 'italic'
                       }`}
                     >
-                      {activeTab === 'approved' ? '已通过' : '已拒绝'}
-                    </span>
-                    {reviewText && (
-                      <p className="mt-2 text-[11px] text-[#9A97A8]">{reviewText}</p>
-                    )}
+                      {application.message || '未填写申请理由'}
+                    </p>
                   </div>
-                )}
+
+                  {activeTab === 'pending' ? (
+                    <div className="flex shrink-0 flex-col gap-1.5">
+                      <button
+                        type="button"
+                        disabled={processingId === application.id}
+                        onClick={() => {
+                          void handleReview(application.id, 'approve');
+                        }}
+                        className="flex h-8 min-w-[72px] items-center justify-center rounded-[8px] bg-[#1D9E75] px-3 text-[13px] text-white disabled:opacity-60"
+                      >
+                        {processingId === application.id ? '处理中...' : '通过'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={processingId === application.id}
+                        onClick={() => {
+                          void handleReview(application.id, 'reject');
+                        }}
+                        className="h-8 min-w-[72px] rounded-[8px] border border-[#E24B4A] bg-transparent px-3 text-[13px] text-[#E24B4A] disabled:opacity-60"
+                      >
+                        拒绝
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="shrink-0 text-right">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                          activeTab === 'approved'
+                            ? 'bg-[#E1F5EE] text-[#1D9E75]'
+                            : 'bg-[#FCEBEB] text-[#E24B4A]'
+                        }`}
+                      >
+                        {activeTab === 'approved' ? '已通过' : '已拒绝'}
+                      </span>
+                      {activeTab === 'approved' && (
+                        <p className="mt-2 text-[11px] font-medium text-[#1D9E75]">
+                          已创建：{application.circle_name}
+                        </p>
+                      )}
+                      {reviewText && <p className="mt-1 text-[11px] text-[#9A97A8]">{reviewText}</p>}
+                    </div>
+                  )}
+                </div>
               </article>
             );
           })}

@@ -138,7 +138,7 @@ function App() {
           <Route path="home" element={<HomePage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="circle" element={<CirclePage />} />
-          <Route path="circle/admin/:circleId/applications" element={<AdminApplicationsPage />} />
+          <Route path="circle/admin/applications" element={<AdminApplicationsPage />} />
           <Route path="plan" element={<PlanPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>

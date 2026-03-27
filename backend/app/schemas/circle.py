@@ -10,9 +10,14 @@ class CircleCreateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=100)
 
 
+class CircleApplicationCreateRequest(BaseModel):
+    circle_name: str = Field(min_length=1, max_length=30)
+    circle_description: str | None = Field(default=None, max_length=100)
+    message: str | None = Field(default=None, max_length=100)
+
+
 class CircleJoinRequest(BaseModel):
     code: str = Field(min_length=1, max_length=8)
-    message: str | None = Field(default=None, max_length=200)
 
 
 class CirclePostCreateRequest(BaseModel):

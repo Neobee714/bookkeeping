@@ -3,10 +3,10 @@ import type {
   ApiResponse,
   Circle,
   CircleApplication,
-  CircleApplicationList,
   CircleApplicationStatus,
   CircleComment,
   CircleInviteCode,
+  CircleOverview,
   CirclePost,
   CirclePostPage,
   CircleRating,
@@ -21,6 +21,11 @@ const assertSuccess = <T>(response: ApiResponse<T>): T => {
 
 export const getMyCircles = async (): Promise<Circle[]> => {
   const response = await client.get<ApiResponse<Circle[]>>('/api/v1/circles');
+  return assertSuccess(response.data);
+};
+
+export const getAllCircles = async (): Promise<CircleOverview[]> => {
+  const response = await client.get<ApiResponse<CircleOverview[]>>('/api/v1/circles/all');
   return assertSuccess(response.data);
 };
 
@@ -126,11 +131,10 @@ export const generateInviteCode = async (
   return assertSuccess(response.data);
 };
 
-export const joinCircle = async (code: string): Promise<{ circle_id: number }> => {
-  const response = await client.post<ApiResponse<{ circle_id: number }>>(
-    '/api/v1/circles/join',
-    { code },
-  );
+export const joinCircle = async (code: string): Promise<Circle> => {
+  const response = await client.post<ApiResponse<Circle>>('/api/v1/circles/join', {
+    code,
+  });
   return assertSuccess(response.data);
 };
 
@@ -143,26 +147,54 @@ export const leaveCircle = async (
   return assertSuccess(response.data);
 };
 
-export const getApplications = async (
-  circleId: number,
-  status?: CircleApplicationStatus | 'all',
-): Promise<CircleApplicationList> => {
-  const response = await client.get<ApiResponse<CircleApplicationList>>(
-    `/api/v1/circles/${circleId}/applications`,
+export const applyCreateCircle = async (
+  circleName: string,
+  circleDescription?: string,
+  message?: string,
+): Promise<CircleApplication> => {
+  const response = await client.post<ApiResponse<CircleApplication>>(
+    '/api/v1/circles/apply-create',
     {
-      params: status ? { status } : undefined,
+      circle_name: circleName,
+      circle_description: circleDescription,
+      message,
     },
   );
   return assertSuccess(response.data);
 };
 
+export const getMyApplication = async (): Promise<CircleApplication | null> => {
+  const response = await client.get<ApiResponse<CircleApplication | null>>(
+    '/api/v1/circles/my-application',
+  );
+  return assertSuccess(response.data);
+};
+
+export const deleteMyApplication = async (): Promise<{ id: number }> => {
+  const response = await client.delete<ApiResponse<{ id: number }>>(
+    '/api/v1/circles/my-application',
+  );
+  return assertSuccess(response.data);
+};
+
+export const getApplications = async (
+  status?: CircleApplicationStatus | 'all',
+): Promise<CircleApplication[]> => {
+  const response = await client.get<ApiResponse<{ items: CircleApplication[] }>>(
+    '/api/v1/circles/applications',
+    {
+      params: status ? { status } : undefined,
+    },
+  );
+  return assertSuccess(response.data).items;
+};
+
 export const reviewApplication = async (
-  circleId: number,
   applicationId: number,
   action: 'approve' | 'reject',
 ): Promise<CircleApplication> => {
-  const response = await client.post<ApiResponse<CircleApplication>>(
-    `/api/v1/circles/${circleId}/applications/${applicationId}/review`,
+  const response = await client.put<ApiResponse<CircleApplication>>(
+    `/api/v1/circles/applications/${applicationId}/review`,
     { action },
   );
   return assertSuccess(response.data);
@@ -170,7 +202,7 @@ export const reviewApplication = async (
 
 export const getAdminPendingCount = async (): Promise<number> => {
   const response = await client.get<ApiResponse<{ pending_count: number }>>(
-    '/api/v1/admin/circle-applications/pending-count',
+    '/api/v1/circles/applications/pending-count',
   );
   return assertSuccess(response.data).pending_count;
 };

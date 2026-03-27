@@ -23,6 +23,7 @@ from app.models.circle import (
 )
 from app.models.user import User
 from app.schemas.circle import (
+    CircleApplicationCreateRequest,
     CircleCommentCreateRequest,
     CircleCreateRequest,
     CircleApplicationReviewRequest,
@@ -34,6 +35,18 @@ from app.schemas.circle import (
 router = APIRouter()
 
 POST_IMAGE_LIMIT = 600000
+
+
+def _is_admin(user: User) -> bool:
+    return bool(CIRCLE_CREATOR_USERNAME and user.username == CIRCLE_CREATOR_USERNAME)
+
+
+def _require_admin(user: User) -> None:
+    if not _is_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有管理员可以执行该操作",
+        )
 
 
 def _serialize_user(user: User) -> dict:
@@ -122,6 +135,19 @@ def _serialize_circle(circle: Circle, current_user_id: int) -> dict:
     }
 
 
+def _serialize_circle_overview(circle: Circle, member_user_ids: set[int], is_admin_view: bool) -> dict:
+    members = getattr(circle, "members", []) or []
+    return {
+        "id": circle.id,
+        "name": circle.name,
+        "description": circle.description,
+        "creator_id": circle.creator_id,
+        "member_count": len(members),
+        "my_status": "creator" if is_admin_view else ("member" if circle.id in member_user_ids else "not_member"),
+        "created_at": circle.created_at.isoformat() if circle.created_at else None,
+    }
+
+
 def _serialize_comment(comment: PostComment) -> dict:
     return {
         "id": comment.id,
@@ -145,9 +171,11 @@ def _serialize_rating(rating: PostRating) -> dict:
 def _serialize_application(application: CircleApplication) -> dict:
     return {
         "id": application.id,
-        "circle_id": application.circle_id,
+        "circle_name": application.circle_name,
+        "circle_description": application.circle_description,
         "message": application.message,
         "status": application.status,
+        "created_circle_id": application.created_circle_id,
         "created_at": application.created_at.isoformat() if application.created_at else None,
         "reviewed_at": application.reviewed_at.isoformat() if application.reviewed_at else None,
         "user": _serialize_user(application.user),
@@ -250,11 +278,7 @@ def create_circle(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not CIRCLE_CREATOR_USERNAME or current_user.username != CIRCLE_CREATOR_USERNAME:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="你没有创建圈子的权限",
-        )
+    _require_admin(current_user)
 
     name = payload.name.strip()
     if not name:
@@ -269,9 +293,6 @@ def create_circle(
         creator_id=current_user.id,
     )
     db.add(circle)
-    db.flush()
-
-    db.add(CircleMember(circle_id=circle.id, user_id=current_user.id))
     db.commit()
 
     created_circle = _get_circle_or_404(db, circle.id)
@@ -302,18 +323,45 @@ def list_circles(
     )
 
 
-@router.get("/admin/circle-applications/pending-count")
+@router.get("/circles/all")
+def list_all_circles(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    stmt = (
+        select(Circle)
+        .options(selectinload(Circle.members))
+        .order_by(Circle.created_at.desc(), Circle.id.desc())
+    )
+    admin_view = _is_admin(current_user)
+    if admin_view:
+        stmt = stmt.where(Circle.creator_id == current_user.id)
+
+    circles = db.scalars(stmt).all()
+    member_user_ids: set[int] = set()
+    if not admin_view:
+        member_circle_ids = db.scalars(
+            select(CircleMember.circle_id).where(CircleMember.user_id == current_user.id)
+        ).all()
+        member_user_ids = set(member_circle_ids)
+
+    return success_response(
+        data=[
+            _serialize_circle_overview(circle, member_user_ids, admin_view)
+            for circle in circles
+        ]
+    )
+
+
+@router.get("/circles/applications/pending-count")
 def get_admin_pending_count(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    _require_admin(current_user)
     pending_count = db.scalar(
         select(func.count(CircleApplication.id))
-        .join(Circle, Circle.id == CircleApplication.circle_id)
-        .where(
-            Circle.creator_id == current_user.id,
-            CircleApplication.status == "pending",
-        )
+        .where(CircleApplication.status == "pending")
     ) or 0
     return success_response(data={"pending_count": int(pending_count)})
 
@@ -335,11 +383,12 @@ def create_circle_invite(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    _require_admin(current_user)
     circle = _get_circle_or_404(db, circle_id)
     if circle.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有圈主可以生成邀请码",
+            detail="只能管理自己创建的圈子",
         )
 
     code = _generate_unique_circle_code(db)
@@ -393,32 +442,15 @@ def join_circle(
             detail="你已加入该圈子",
         )
 
-    pending_application = db.scalar(
-        select(CircleApplication).where(
-            CircleApplication.circle_id == invite.circle_id,
-            CircleApplication.user_id == current_user.id,
-            CircleApplication.status == "pending",
-        )
-    )
-    if pending_application:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="你已提交申请，请等待审批",
-        )
-
-    application = CircleApplication(
-        circle_id=invite.circle_id,
-        user_id=current_user.id,
-        message=payload.message.strip() if payload.message else None,
-        status="pending",
-    )
+    member = CircleMember(circle_id=invite.circle_id, user_id=current_user.id)
     invite.used_by = current_user.id
-    db.add(application)
+    db.add(member)
     db.commit()
 
+    circle = _get_circle_or_404(db, invite.circle_id)
     return success_response(
-        data={"circle_id": invite.circle_id},
-        message="已提交申请，等待圈主审批",
+        data=_serialize_circle(circle, current_user.id),
+        message="加入成功",
     )
 
 
@@ -454,24 +486,119 @@ def leave_circle(
     )
 
 
-@router.get("/circles/{circle_id}/applications")
-def list_circle_applications(
-    circle_id: int,
-    status_filter: str | None = Query(default=None, alias="status"),
+@router.post("/circles/apply-create")
+def apply_create_circle(
+    payload: CircleApplicationCreateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    circle = _get_circle_or_404(db, circle_id)
-    if circle.creator_id != current_user.id:
+    if _is_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有圈主可以查看申请列表",
+            detail="管理员无需申请",
         )
 
-    normalized_status = (status_filter or "all").strip().lower()
+    pending_application = db.scalar(
+        select(CircleApplication).where(
+            CircleApplication.user_id == current_user.id,
+            CircleApplication.status == "pending",
+        )
+    )
+    if pending_application:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="已有待审批申请，请等待",
+        )
+
+    latest_application = db.scalar(
+        select(CircleApplication)
+        .where(CircleApplication.user_id == current_user.id)
+        .order_by(CircleApplication.created_at.desc(), CircleApplication.id.desc())
+    )
+
+    if latest_application and latest_application.status == "rejected":
+        latest_application.circle_name = payload.circle_name.strip()
+        latest_application.circle_description = (
+            payload.circle_description.strip() if payload.circle_description else None
+        )
+        latest_application.message = payload.message.strip() if payload.message else None
+        latest_application.status = "pending"
+        latest_application.created_circle_id = None
+        latest_application.reviewed_by = None
+        latest_application.reviewed_at = None
+        latest_application.created_at = datetime.now(timezone.utc)
+        application = latest_application
+    else:
+        application = CircleApplication(
+            user_id=current_user.id,
+            circle_name=payload.circle_name.strip(),
+            circle_description=payload.circle_description.strip() if payload.circle_description else None,
+            message=payload.message.strip() if payload.message else None,
+            status="pending",
+        )
+        db.add(application)
+
+    db.commit()
+    db.refresh(application)
+    db.refresh(current_user)
+    application.user = current_user
+    return success_response(data=_serialize_application(application), message="申请已提交")
+
+
+@router.get("/circles/my-application")
+def get_my_application(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if _is_admin(current_user):
+        return success_response(data=None)
+
+    application = db.scalar(
+        select(CircleApplication)
+        .where(CircleApplication.user_id == current_user.id)
+        .options(selectinload(CircleApplication.user))
+        .order_by(CircleApplication.created_at.desc(), CircleApplication.id.desc())
+    )
+    return success_response(data=_serialize_application(application) if application else None)
+
+
+@router.delete("/circles/my-application")
+def delete_my_application(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    application = db.scalar(
+        select(CircleApplication)
+        .where(CircleApplication.user_id == current_user.id)
+        .order_by(CircleApplication.created_at.desc(), CircleApplication.id.desc())
+    )
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="申请不存在",
+        )
+    if application.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前申请无法撤回",
+        )
+
+    db.delete(application)
+    db.commit()
+    return success_response(data={"id": application.id}, message="申请已撤回")
+
+
+@router.get("/circles/applications")
+def list_circle_applications(
+    status_filter: str | None = Query(default="pending", alias="status"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_admin(current_user)
+
+    normalized_status = (status_filter or "pending").strip().lower()
     stmt = (
         select(CircleApplication)
-        .where(CircleApplication.circle_id == circle_id)
         .options(selectinload(CircleApplication.user))
         .order_by(CircleApplication.created_at.desc(), CircleApplication.id.desc())
     )
@@ -479,38 +606,21 @@ def list_circle_applications(
         stmt = stmt.where(CircleApplication.status == normalized_status)
 
     applications = db.scalars(stmt).all()
-    return success_response(
-        data={
-            "circle": {
-                "id": circle.id,
-                "name": circle.name,
-            },
-            "items": [_serialize_application(item) for item in applications],
-        }
-    )
+    return success_response(data={"items": [_serialize_application(item) for item in applications]})
 
 
-@router.post("/circles/{circle_id}/applications/{application_id}/review")
+@router.put("/circles/applications/{application_id}/review")
 def review_circle_application(
-    circle_id: int,
     application_id: int,
     payload: CircleApplicationReviewRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    circle = _get_circle_or_404(db, circle_id)
-    if circle.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有圈主可以审批申请",
-        )
+    _require_admin(current_user)
 
     application = db.scalar(
         select(CircleApplication)
-        .where(
-            CircleApplication.id == application_id,
-            CircleApplication.circle_id == circle_id,
-        )
+        .where(CircleApplication.id == application_id)
         .options(selectinload(CircleApplication.user))
     )
     if not application:
@@ -525,28 +635,28 @@ def review_circle_application(
         )
 
     if payload.action == "approve":
-        existing_member = db.scalar(
-            select(CircleMember).where(
-                CircleMember.circle_id == circle_id,
-                CircleMember.user_id == application.user_id,
-            )
+        circle = Circle(
+            name=application.circle_name,
+            description=application.circle_description,
+            creator_id=current_user.id,
         )
-        if not existing_member:
-            db.add(CircleMember(circle_id=circle_id, user_id=application.user_id))
+        db.add(circle)
+        db.flush()
+        db.add(CircleMember(circle_id=circle.id, user_id=application.user_id))
         application.status = "approved"
+        application.created_circle_id = circle.id
         success_message = "已通过申请"
     else:
         application.status = "rejected"
+        application.created_circle_id = None
         success_message = "已拒绝申请"
 
+    application.reviewed_by = current_user.id
     application.reviewed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(application)
 
-    return success_response(
-        data=_serialize_application(application),
-        message=success_message,
-    )
+    return success_response(data=_serialize_application(application), message=success_message)
 
 
 @router.get("/circles/{circle_id}/posts")

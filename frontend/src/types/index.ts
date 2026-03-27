@@ -190,23 +190,28 @@ export interface CircleInviteCode {
 }
 
 export type CircleApplicationStatus = 'pending' | 'approved' | 'rejected';
+export type CircleMembershipStatus = 'creator' | 'member' | 'not_member';
+
+export interface CircleOverview {
+  id: number;
+  name: string;
+  description: string | null;
+  creator_id: number;
+  member_count: number;
+  my_status: CircleMembershipStatus;
+  created_at: string;
+}
 
 export interface CircleApplication {
   id: number;
-  circle_id: number;
+  circle_name: string;
+  circle_description: string | null;
   message: string | null;
   status: CircleApplicationStatus;
   created_at: string;
   reviewed_at: string | null;
+  created_circle_id: number | null;
   user: UserSummary;
-}
-
-export interface CircleApplicationList {
-  circle: {
-    id: number;
-    name: string;
-  };
-  items: CircleApplication[];
 }
 
 export interface CircleComment {

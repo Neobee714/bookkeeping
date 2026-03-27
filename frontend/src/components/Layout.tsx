@@ -102,7 +102,7 @@ function Layout() {
 
   useEffect(() => {
     const canManageCircles = Boolean(
-      user?.username && (creatorUsername ? user.username === creatorUsername : true),
+      creatorUsername && user?.username && user.username === creatorUsername,
     );
 
     if (!canManageCircles) {
