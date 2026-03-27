@@ -37,11 +37,27 @@ export interface User {
   username: string;
   nickname: string;
   avatar?: string | null;
+  is_admin: boolean;
   partner_id: number | null;
   partner: Partner | null;
   partner_code: string;
   reg_invite_code: string;
   created_at: string;
+}
+
+export interface JoinedCircleSummary {
+  id: number;
+  name: string;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  nickname: string;
+  avatar?: string | null;
+  is_admin: boolean;
+  created_at: string;
+  joined_circle: JoinedCircleSummary | null;
 }
 
 export interface AuthTokenData {

@@ -45,7 +45,7 @@ function LoginPage() {
         user,
       });
 
-      navigate('/app/home', { replace: true });
+      navigate(user.is_admin ? '/admin/circles' : '/app/home', { replace: true });
     } catch (error) {
       if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
         if (error.code === 'ECONNABORTED') {

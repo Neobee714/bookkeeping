@@ -35,8 +35,6 @@ import type {
 } from '@/types';
 import { relativeTime } from '@/utils/timeUtils';
 
-const creatorUsername = (import.meta.env.VITE_CIRCLE_CREATOR_USERNAME ?? '').trim();
-
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (axios.isAxiosError(error)) {
     return error.response?.data?.message ?? fallback;
@@ -436,7 +434,7 @@ function CirclePage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null);
 
-  const isAdmin = Boolean(creatorUsername && user?.username && user.username === creatorUsername);
+  const isAdmin = Boolean(user?.is_admin);
   const activeCircle = useMemo(
     () => userCircles.find((circle) => circle.id === activeCircleId) ?? null,
     [activeCircleId, userCircles],
@@ -707,7 +705,7 @@ function CirclePage() {
       const application = await applyCreateCircle(name, description || undefined, message || undefined);
       setMyApplication(application);
       setApplySheetOpen(false);
-      setNoticeMessage('申请已提交');
+      setNoticeMessage('申请已提交，等待管理员审批');
     } catch (error) {
       setApplyError(getErrorMessage(error, '申请提交失败'));
     } finally {
@@ -731,7 +729,11 @@ function CirclePage() {
       return;
     }
 
-    const confirmed = window.confirm(`确定退出「${activeCircle.name}」吗？`);
+    const confirmMessage =
+      activeCircle.is_creator && activeCircle.member_count === 1
+        ? '退出后圈子将被解散，确定继续吗？'
+        : `确定退出「${activeCircle.name}」吗？退出后需重新申请加入。`;
+    const confirmed = window.confirm(confirmMessage);
     if (!confirmed) {
       return;
     }
@@ -746,7 +748,11 @@ function CirclePage() {
       setDetailOpen(false);
       setSelectedPostId(null);
       setComments([]);
-      setNoticeMessage('已退出圈子');
+      setNoticeMessage(
+        activeCircle.is_creator && activeCircle.member_count === 1
+          ? '已退出并解散圈子'
+          : '已退出圈子',
+      );
       await loadUserState();
     } catch (error) {
       setNoticeMessage(getErrorMessage(error, '退出圈子失败'));
@@ -1140,6 +1146,20 @@ function CirclePage() {
                 className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
               >
                 申请进度
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setApplyError('');
+                  setApplyCircleName(myApplication?.circle_name ?? '');
+                  setApplyCircleDescription(myApplication?.circle_description ?? '');
+                  setApplyMessage(myApplication?.message ?? '');
+                  setApplySheetOpen(true);
+                  setMenuOpen(null);
+                }}
+                className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
+              >
+                申请创建圈子
               </button>
               <button
                 type="button"

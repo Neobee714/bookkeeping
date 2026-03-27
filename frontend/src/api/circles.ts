@@ -1,5 +1,6 @@
 import client from '@/api/client';
 import type {
+  AdminUser,
   ApiResponse,
   Circle,
   CircleApplication,
@@ -205,4 +206,19 @@ export const getAdminPendingCount = async (): Promise<number> => {
     '/api/v1/circles/applications/pending-count',
   );
   return assertSuccess(response.data).pending_count;
+};
+
+export const getAdminUsers = async (): Promise<AdminUser[]> => {
+  const response = await client.get<ApiResponse<AdminUser[]>>('/api/v1/users');
+  return assertSuccess(response.data);
+};
+
+export const removeCircleMember = async (
+  circleId: number,
+  userId: number,
+): Promise<{ circle_id: number; user_id: number }> => {
+  const response = await client.delete<ApiResponse<{ circle_id: number; user_id: number }>>(
+    `/api/v1/circles/${circleId}/members/${userId}`,
+  );
+  return assertSuccess(response.data);
 };

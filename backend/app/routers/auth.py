@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.admin import is_admin_username
 from app.core.config import FOUNDER_INVITE_CODE
 from app.core.database import get_db
 from app.core.invite import generate_invite_code, generate_registration_code, parse_invite_code
@@ -98,6 +99,7 @@ def _serialize_user(user: User, partner: User | None) -> dict:
         "username": user.username,
         "nickname": user.nickname,
         "avatar": user.avatar,
+        "is_admin": is_admin_username(user.username),
         "partner_id": user.partner_id,
         "partner": partner_data,
         "partner_code": generate_invite_code(user.id),

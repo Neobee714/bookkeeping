@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.config import CIRCLE_CREATOR_USERNAME
+from app.core.admin import is_admin_username
 from app.core.database import get_db
 from app.core.invite import generate_registration_code
 from app.core.response import success_response
@@ -38,7 +38,7 @@ POST_IMAGE_LIMIT = 600000
 
 
 def _is_admin(user: User) -> bool:
-    return bool(CIRCLE_CREATOR_USERNAME and user.username == CIRCLE_CREATOR_USERNAME)
+    return is_admin_username(user.username)
 
 
 def _require_admin(user: User) -> None:
@@ -179,6 +179,15 @@ def _serialize_application(application: CircleApplication) -> dict:
         "created_at": application.created_at.isoformat() if application.created_at else None,
         "reviewed_at": application.reviewed_at.isoformat() if application.reviewed_at else None,
         "user": _serialize_user(application.user),
+    }
+
+
+def _serialize_joined_circle(circle: Circle | None) -> dict | None:
+    if not circle:
+        return None
+    return {
+        "id": circle.id,
+        "name": circle.name,
     }
 
 
@@ -472,11 +481,21 @@ def leave_circle(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="你还不是圈子成员",
         )
+
+    member_count = db.scalar(
+        select(func.count(CircleMember.id)).where(CircleMember.circle_id == circle_id)
+    ) or 0
+
     if circle.creator_id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="圈主不能退出圈子",
-        )
+        if int(member_count) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="圈子内还有成员，请先移出所有成员再退出",
+            )
+
+        db.delete(circle)
+        db.commit()
+        return success_response(data={"circle_id": circle_id}, message="已退出并解散圈子")
 
     db.delete(membership)
     db.commit()
@@ -657,6 +676,73 @@ def review_circle_application(
     db.refresh(application)
 
     return success_response(data=_serialize_application(application), message=success_message)
+
+
+@router.get("/users")
+def list_users(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_admin(current_user)
+
+    users = db.scalars(
+        select(User).order_by(User.created_at.desc(), User.id.desc())
+    ).all()
+
+    membership_rows = db.execute(
+        select(CircleMember.user_id, Circle)
+        .join(Circle, Circle.id == CircleMember.circle_id)
+        .order_by(CircleMember.joined_at.desc(), CircleMember.id.desc())
+    ).all()
+
+    joined_circle_by_user_id: dict[int, Circle] = {}
+    for user_id, circle in membership_rows:
+        joined_circle_by_user_id.setdefault(user_id, circle)
+
+    return success_response(
+        data=[
+            {
+                "id": user.id,
+                "username": user.username,
+                "nickname": user.nickname,
+                "avatar": user.avatar,
+                "is_admin": _is_admin(user),
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "joined_circle": _serialize_joined_circle(joined_circle_by_user_id.get(user.id)),
+            }
+            for user in users
+        ]
+    )
+
+
+@router.delete("/circles/{circle_id:int}/members/{user_id:int}")
+def remove_circle_member(
+    circle_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_admin(current_user)
+    _get_circle_or_404(db, circle_id)
+
+    membership = db.scalar(
+        select(CircleMember).where(
+            CircleMember.circle_id == circle_id,
+            CircleMember.user_id == user_id,
+        )
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="该用户不在圈子内",
+        )
+
+    db.delete(membership)
+    db.commit()
+    return success_response(
+        data={"circle_id": circle_id, "user_id": user_id},
+        message="已移出圈子",
+    )
 
 
 @router.get("/circles/{circle_id:int}/posts")

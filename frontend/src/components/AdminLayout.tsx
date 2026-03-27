@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
-import { useCircleStore } from '@/store/circleStore';
+import { useAuthStore } from '@/store/authStore';
 
 interface NavItem {
   to: string;
@@ -11,37 +10,10 @@ interface NavItem {
 }
 
 const iconClass = 'h-[18px] w-[18px]';
+
 const navItems: NavItem[] = [
   {
-    to: '/app/home',
-    label: '首页',
-    icon: (active) => (
-      <svg viewBox="0 0 24 24" className={iconClass} fill="none">
-        <path
-          d="M4 10.8L12 4l8 6.8V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.2Z"
-          stroke={active ? '#534AB7' : '#9A97A8'}
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: '/app/stats',
-    label: '图表',
-    icon: (active) => (
-      <svg viewBox="0 0 24 24" className={iconClass} fill="none">
-        <path
-          d="M5 19h14M7 16V9m5 7V5m5 11v-4"
-          stroke={active ? '#534AB7' : '#9A97A8'}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: '/app/circle',
+    to: '/admin/circles',
     label: '圈子',
     icon: (active) => (
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
@@ -61,22 +33,8 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    to: '/app/plan',
-    label: '规划',
-    icon: (active) => (
-      <svg viewBox="0 0 24 24" className={iconClass} fill="none">
-        <path
-          d="M4 6.5h16M4 12h16M4 17.5h10"
-          stroke={active ? '#534AB7' : '#9A97A8'}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: '/app/profile',
-    label: '我的',
+    to: '/admin/users',
+    label: '用户',
     icon: (active) => (
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
         <path
@@ -91,22 +49,22 @@ const navItems: NavItem[] = [
   },
 ];
 
-function Layout() {
-  const pendingCount = useCircleStore((state) => state.pendingCount);
-  const setPendingCount = useCircleStore((state) => state.setPendingCount);
-
-  useEffect(() => {
-    setPendingCount(0);
-  }, [setPendingCount]);
+function AdminLayout() {
+  const user = useAuthStore((state) => state.user);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <header className="border-b border-[#ECEAF8] bg-[#F6F5FB] px-4 py-4">
+        <p className="text-[13px] text-[#8A8799]">{user?.username ?? '管理员'} · 管理员</p>
+        <h1 className="mt-1 text-lg font-semibold text-[#2D2940]">管理后台</h1>
+      </header>
+
       <main className="flex-1 px-4 py-4 pb-24">
         <Outlet />
       </main>
 
       <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-[#ECEAF8] bg-white px-3 pb-4 pt-2">
-        <ul className="grid grid-cols-5 gap-2">
+        <ul className="grid grid-cols-2 gap-2">
           {navItems.map((item) => (
             <li key={item.to}>
               <NavLink
@@ -120,11 +78,8 @@ function Layout() {
                 }
               >
                 {({ isActive }) => (
-                  <span className="relative flex flex-col items-center justify-center">
+                  <span className="flex flex-col items-center justify-center">
                     {item.icon(isActive)}
-                    {item.to === '/app/circle' && pendingCount > 0 && (
-                      <span className="absolute -right-2 top-0 h-2.5 w-2.5 rounded-full bg-[#E24B4A]" />
-                    )}
                     <span className="mt-1">{item.label}</span>
                   </span>
                 )}
@@ -137,4 +92,4 @@ function Layout() {
   );
 }
 
-export default Layout;
+export default AdminLayout;
