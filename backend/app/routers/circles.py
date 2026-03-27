@@ -366,7 +366,7 @@ def get_admin_pending_count(
     return success_response(data={"pending_count": int(pending_count)})
 
 
-@router.get("/circles/{circle_id}")
+@router.get("/circles/{circle_id:int}")
 def get_circle_detail(
     circle_id: int,
     current_user: User = Depends(get_current_user),
@@ -377,7 +377,7 @@ def get_circle_detail(
     return success_response(data=_serialize_circle(circle, current_user.id))
 
 
-@router.post("/circles/{circle_id}/invite")
+@router.post("/circles/{circle_id:int}/invite")
 def create_circle_invite(
     circle_id: int,
     current_user: User = Depends(get_current_user),
@@ -454,7 +454,7 @@ def join_circle(
     )
 
 
-@router.delete("/circles/{circle_id}/leave")
+@router.delete("/circles/{circle_id:int}/leave")
 def leave_circle(
     circle_id: int,
     current_user: User = Depends(get_current_user),
@@ -609,7 +609,7 @@ def list_circle_applications(
     return success_response(data={"items": [_serialize_application(item) for item in applications]})
 
 
-@router.put("/circles/applications/{application_id}/review")
+@router.put("/circles/applications/{application_id:int}/review")
 def review_circle_application(
     application_id: int,
     payload: CircleApplicationReviewRequest,
@@ -659,7 +659,7 @@ def review_circle_application(
     return success_response(data=_serialize_application(application), message=success_message)
 
 
-@router.get("/circles/{circle_id}/posts")
+@router.get("/circles/{circle_id:int}/posts")
 def list_circle_posts(
     circle_id: int,
     page: int = Query(default=1, ge=1),
@@ -692,7 +692,7 @@ def list_circle_posts(
     )
 
 
-@router.post("/circles/{circle_id}/posts")
+@router.post("/circles/{circle_id:int}/posts")
 def create_post(
     circle_id: int,
     payload: CirclePostCreateRequest,
@@ -728,7 +728,7 @@ def create_post(
     )
 
 
-@router.delete("/circles/{circle_id}/posts/{post_id}")
+@router.delete("/circles/{circle_id:int}/posts/{post_id:int}")
 def delete_post(
     circle_id: int,
     post_id: int,
@@ -754,7 +754,7 @@ def delete_post(
     return success_response(data={"id": post_id}, message="删除成功")
 
 
-@router.post("/posts/{post_id}/rate")
+@router.post("/posts/{post_id:int}/rate")
 def rate_post(
     post_id: int,
     payload: CircleRateRequest,
@@ -783,7 +783,7 @@ def rate_post(
     return success_response(data=_serialize_rating(rating), message="打分成功")
 
 
-@router.get("/posts/{post_id}/ratings")
+@router.get("/posts/{post_id:int}/ratings")
 def list_post_ratings(
     post_id: int,
     current_user: User = Depends(get_current_user),
@@ -801,7 +801,7 @@ def list_post_ratings(
     return success_response(data=[_serialize_rating(item) for item in ratings])
 
 
-@router.get("/posts/{post_id}/comments")
+@router.get("/posts/{post_id:int}/comments")
 def list_post_comments(
     post_id: int,
     current_user: User = Depends(get_current_user),
@@ -819,7 +819,7 @@ def list_post_comments(
     return success_response(data=[_serialize_comment(item) for item in comments])
 
 
-@router.post("/posts/{post_id}/comments")
+@router.post("/posts/{post_id:int}/comments")
 def create_post_comment(
     post_id: int,
     payload: CircleCommentCreateRequest,
@@ -849,7 +849,7 @@ def create_post_comment(
     return success_response(data=_serialize_comment(comment), message="评论成功")
 
 
-@router.delete("/comments/{comment_id}")
+@router.delete("/comments/{comment_id:int}")
 def delete_comment(
     comment_id: int,
     current_user: User = Depends(get_current_user),
