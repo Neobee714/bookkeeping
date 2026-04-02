@@ -542,6 +542,9 @@ def leave_circle(
         )
 
     return success_response(
+        data={"circle_id": circle_id},
+        message="已退出圈子",
+    )
 
 
 @router.post("/circles/apply-create")
