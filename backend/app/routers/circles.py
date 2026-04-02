@@ -529,10 +529,19 @@ def leave_circle(
 
     db.delete(membership)
     db.commit()
+
+    remaining_count = db.scalar(
+        select(func.count(CircleMember.id)).where(CircleMember.circle_id == circle_id)
+    ) or 0
+    if remaining_count == 0:
+        db.delete(circle)
+        db.commit()
+        return success_response(
+            data={"circle_id": circle_id},
+            message="已退出圈子，圈子已无成员已删除",
+        )
+
     return success_response(
-        data={"circle_id": circle_id},
-        message="已退出圈子",
-    )
 
 
 @router.post("/circles/apply-create")

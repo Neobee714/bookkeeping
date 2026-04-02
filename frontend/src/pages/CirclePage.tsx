@@ -1203,9 +1203,6 @@ function CirclePage() {
 
     return (
       <>
-        <div className="bg-yellow-100 p-2 text-xs">
-          DEBUG: is_creator={String(activeCircle?.is_creator)} isCircleOwner={String(isCircleOwner)}
-        </div>
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm text-[#8A8799]">我的圈子</p>
