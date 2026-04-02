@@ -1202,7 +1202,7 @@ function CirclePage() {
   };
 
   const renderMemberView = () => {
-    const isCircleOwner = Boolean(activeCircle?.is_creator && !user?.is_admin);
+    const isCircleOwner = activeCircle?.is_creator === true;
 
     return (
       <>
