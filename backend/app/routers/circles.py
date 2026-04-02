@@ -392,12 +392,11 @@ def create_circle_invite(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_admin(current_user)
     circle = _get_circle_or_404(db, circle_id)
-    if circle.creator_id != current_user.id:
+    if not (_is_admin(current_user) or circle.creator_id == current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只能管理自己创建的圈子",
+            detail="仅圈主可生成邀请码",
         )
 
     code = _generate_unique_circle_code(db)

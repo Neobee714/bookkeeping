@@ -319,12 +319,14 @@ function InviteSheet({
   open,
   circleName,
   code,
+  copied,
   onClose,
   onCopy,
 }: {
   open: boolean;
   circleName: string;
   code: string;
+  copied: boolean;
   onClose: () => void;
   onCopy: () => void;
 }) {
@@ -356,7 +358,7 @@ function InviteSheet({
           onClick={onCopy}
           className="mt-5 h-12 w-full rounded-[14px] bg-[#534AB7] text-sm font-semibold text-white"
         >
-          复制邀请码
+          {copied ? '已复制 ✓' : '复制邀请码'}
         </button>
         <button
           type="button"
@@ -414,6 +416,7 @@ function CirclePage() {
   const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
   const [inviteCircleName, setInviteCircleName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const [posts, setPosts] = useState<CirclePost[]>([]);
   const [page, setPage] = useState(1);
@@ -552,6 +555,15 @@ function CirclePage() {
   }, [menuOpen]);
 
   useEffect(() => {
+    if (!inviteCopied) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setInviteCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [inviteCopied]);
+
+  useEffect(() => {
     if (isAdmin || !activeCircleId) {
       setPosts([]);
       setPostsError('');
@@ -639,12 +651,13 @@ function CirclePage() {
     }
   };
 
-  const handleGenerateInvite = async (circle: CircleOverview) => {
+  const handleGenerateInvite = async (circle: { id: number; name: string }) => {
     setInviteLoadingId(circle.id);
     try {
       const data = await generateInviteCode(circle.id);
       setInviteCircleName(circle.name);
       setInviteCode(data.code);
+      setInviteCopied(false);
       setInviteSheetOpen(true);
     } catch (error) {
       setNoticeMessage(getErrorMessage(error, '邀请码生成失败'));
@@ -658,16 +671,39 @@ function CirclePage() {
       return;
     }
 
+    const fallbackCopy = () => {
+      const input = document.createElement('textarea');
+      input.value = inviteCode;
+      input.setAttribute('readonly', 'true');
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      input.setSelectionRange(0, input.value.length);
+      const copied = document.execCommand('copy');
+      document.body.removeChild(input);
+      return copied;
+    };
+
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(inviteCode);
-        setNoticeMessage(`邀请码已复制：${inviteCode}`);
-      } else {
-        setNoticeMessage(`邀请码：${inviteCode}`);
+        setInviteCopied(true);
+        return;
+      }
+
+      if (fallbackCopy()) {
+        setInviteCopied(true);
+        return;
       }
     } catch {
-      setNoticeMessage(`邀请码：${inviteCode}`);
+      if (fallbackCopy()) {
+        setInviteCopied(true);
+        return;
+      }
     }
+
+    setNoticeMessage(`邀请码：${inviteCode}`);
   };
 
   const handleJoinCircle = async () => {
@@ -1122,59 +1158,75 @@ function CirclePage() {
     );
   };
 
-  const renderMemberView = () => (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-[#8A8799]">圈子</p>
-          <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-[#2D2940]">{activeCircle?.name ?? '圈子'}</h1>
-        </div>
+  const renderMemberView = () => {
+    const isCircleOwner = Boolean(activeCircle?.is_creator && !user?.is_admin);
 
-        <div ref={menuRef} className="relative">
-          <MenuButton
-            expanded={menuOpen === 'member'}
-            onClick={() => setMenuOpen((current) => (current === 'member' ? null : 'member'))}
-          />
-          {menuOpen === 'member' && (
-            <div className="absolute right-0 top-full z-10 mt-2 w-[156px] rounded-[10px] border border-[#E7E5F2] bg-white p-1.5 shadow-[0_12px_30px_rgba(45,41,64,0.12)]">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowApplicationProgress((current) => !current);
-                  setMenuOpen(null);
-                }}
-                className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
-              >
-                申请进度
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setApplyError('');
-                  setApplyCircleName(myApplication?.circle_name ?? '');
-                  setApplyCircleDescription(myApplication?.circle_description ?? '');
-                  setApplyMessage(myApplication?.message ?? '');
-                  setApplySheetOpen(true);
-                  setMenuOpen(null);
-                }}
-                className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
-              >
-                申请创建圈子
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleLeaveCircle();
-                }}
-                className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#E24B4A] hover:bg-[#FFF6F6]"
-              >
-                退出圈子
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+    return (
+      <>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-[#8A8799]">我的圈子</p>
+            <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-[#2D2940]">{activeCircle?.name ?? '圈子'}</h1>
+          </div>
 
+          <div ref={menuRef} className="relative">
+            <MenuButton
+              expanded={menuOpen === 'member'}
+              onClick={() => setMenuOpen((current) => (current === 'member' ? null : 'member'))}
+            />
+            {menuOpen === 'member' && (
+              <div className="absolute right-0 top-full z-10 mt-2 w-[168px] rounded-[10px] border border-[#E7E5F2] bg-white p-1.5 shadow-[0_12px_30px_rgba(45,41,64,0.12)]">
+                {!isCircleOwner && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowApplicationProgress((current) => !current);
+                      setMenuOpen(null);
+                    }}
+                    className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
+                  >
+                    申请进度
+                  </button>
+                )}
+                {isCircleOwner && activeCircle && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(null);
+                      void handleGenerateInvite({ id: activeCircle.id, name: activeCircle.name });
+                    }}
+                    className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
+                  >
+                    生成邀请码
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApplyError('');
+                    setApplyCircleName(myApplication?.circle_name ?? '');
+                    setApplyCircleDescription(myApplication?.circle_description ?? '');
+                    setApplyMessage(myApplication?.message ?? '');
+                    setApplySheetOpen(true);
+                    setMenuOpen(null);
+                  }}
+                  className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#2D2940] hover:bg-[#F7F6FD]"
+                >
+                  申请创建圈子
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleLeaveCircle();
+                  }}
+                  className="flex h-10 w-full items-center rounded-[8px] px-3 text-sm text-[#E24B4A] hover:bg-[#FFF6F6]"
+                >
+                  退出圈子
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       {activeCircle?.description && (
         <div className="rounded-[18px] border border-[#EEEDFE] bg-white px-4 py-4">
           <p className="text-sm leading-6 text-[#6F6A7E]">{activeCircle.description}</p>
@@ -1302,7 +1354,8 @@ function CirclePage() {
         </div>
       )}
     </>
-  );
+    );
+  };
 
   return (
     <>
@@ -1375,7 +1428,11 @@ function CirclePage() {
         open={inviteSheetOpen}
         circleName={inviteCircleName}
         code={inviteCode}
-        onClose={() => setInviteSheetOpen(false)}
+        copied={inviteCopied}
+        onClose={() => {
+          setInviteSheetOpen(false);
+          setInviteCopied(false);
+        }}
         onCopy={() => {
           void handleCopyInvite();
         }}
