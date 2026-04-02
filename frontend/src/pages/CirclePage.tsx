@@ -1200,6 +1200,7 @@ function CirclePage() {
 
   const renderMemberView = () => {
     const isCircleOwner = activeCircle?.is_creator === true;
+    console.log('DEBUG isCircleOwner:', isCircleOwner, 'is_creator:', activeCircle?.is_creator, 'user:', user);
 
     return (
       <>
