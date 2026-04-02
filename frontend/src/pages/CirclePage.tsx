@@ -419,7 +419,6 @@ function CirclePage() {
   const [inviteCode, setInviteCode] = useState('');
   const [inviteCopied, setInviteCopied] = useState(false);
   const [circleInviteCodes, setCircleInviteCodes] = useState<Record<number, string>>({});
-  const [loadingInviteCode, setLoadingInviteCode] = useState(false);
 
   const [posts, setPosts] = useState<CirclePost[]>([]);
   const [page, setPage] = useState(1);
@@ -553,7 +552,6 @@ function CirclePage() {
     }
 
     let cancelled = false;
-    setLoadingInviteCode(true);
 
     const loadInviteCodes = async () => {
       const codes: Record<number, string> = {};
@@ -571,7 +569,6 @@ function CirclePage() {
       );
       if (!cancelled) {
         setCircleInviteCodes((prev) => ({ ...prev, ...codes }));
-        setLoadingInviteCode(false);
       }
     };
 
@@ -1282,7 +1279,7 @@ function CirclePage() {
             <div>
               <p className="text-xs text-[#8A8799]">邀请码</p>
               <p className="mt-1 text-lg font-semibold tracking-[0.15em] text-[#534AB7]">
-                {loadingInviteCode ? '加载中...' : (circleInviteCodes[activeCircle.id] ?? '暂无邀请码')}
+                {circleInviteCodes[activeCircle.id] || '暂无邀请码'}
               </p>
             </div>
             <button
