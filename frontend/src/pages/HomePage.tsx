@@ -345,9 +345,30 @@ function HomePage() {
           </div>
         ) : (
           <div className={isMineView ? 'space-y-4' : 'pointer-events-none space-y-4'}>
-            {groupedTransactions.map(([date, items]) => (
+            {groupedTransactions.map(([date, items]) => {
+              const dailyExpense = items
+                .filter((t) => t.type === 'expense')
+                .reduce((sum, t) => sum + t.amount, 0);
+              const dailyIncome = items
+                .filter((t) => t.type === 'income')
+                .reduce((sum, t) => sum + t.amount, 0);
+              return (
               <div key={date} className="space-y-2">
-                <p className="px-1 text-xs font-medium text-[#8A8799]">{formatGroupDate(date)}</p>
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs font-medium text-[#8A8799]">{formatGroupDate(date)}</p>
+                  <div className="flex items-center gap-2">
+                    {dailyExpense > 0 && (
+                      <span className="text-xs text-[#E24B4A]">
+                        出 -{dailyExpense.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    )}
+                    {dailyIncome > 0 && (
+                      <span className="text-xs text-[#1D9E75]">
+                        入 +{dailyIncome.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="space-y-2">
                   {items.map((item) => (
                     <TransactionItem
@@ -360,7 +381,8 @@ function HomePage() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

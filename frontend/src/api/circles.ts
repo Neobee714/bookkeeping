@@ -123,6 +123,15 @@ export const deleteComment = async (
   return assertSuccess(response.data);
 };
 
+export const getInviteCode = async (
+  circleId: number,
+): Promise<CircleInviteCode | null> => {
+  const response = await client.get<ApiResponse<CircleInviteCode | null>>(
+    `/api/v1/circles/${circleId}/invite`,
+  );
+  return assertSuccess(response.data);
+};
+
 export const generateInviteCode = async (
   circleId: number,
 ): Promise<CircleInviteCode> => {

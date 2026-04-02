@@ -14,6 +14,7 @@ import {
   getAdminPendingCount,
   getAllCircles,
   getCirclePosts,
+  getInviteCode,
   getMyApplication,
   getMyCircles,
   getPostComments,
@@ -417,6 +418,8 @@ function CirclePage() {
   const [inviteCircleName, setInviteCircleName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [circleInviteCodes, setCircleInviteCodes] = useState<Record<number, string>>({});
+  const [loadingInviteCode, setLoadingInviteCode] = useState(false);
 
   const [posts, setPosts] = useState<CirclePost[]>([]);
   const [page, setPage] = useState(1);
@@ -540,6 +543,45 @@ function CirclePage() {
   }, [isAdmin, loadAdminState, loadUserState, setPendingCount]);
 
   useEffect(() => {
+    if (isAdmin || userCircles.length === 0) {
+      return;
+    }
+
+    const ownedCircles = userCircles.filter((circle) => circle.is_creator);
+    if (ownedCircles.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingInviteCode(true);
+
+    const loadInviteCodes = async () => {
+      const codes: Record<number, string> = {};
+      await Promise.all(
+        ownedCircles.map(async (circle) => {
+          try {
+            const invite = await getInviteCode(circle.id);
+            if (invite && !cancelled) {
+              codes[circle.id] = invite.code;
+            }
+          } catch {
+            // ignore errors for individual circles
+          }
+        }),
+      );
+      if (!cancelled) {
+        setCircleInviteCodes((prev) => ({ ...prev, ...codes }));
+        setLoadingInviteCode(false);
+      }
+    };
+
+    void loadInviteCodes();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, userCircles]);
+
+  useEffect(() => {
     if (!menuOpen) {
       return;
     }
@@ -659,6 +701,7 @@ function CirclePage() {
       setInviteCode(data.code);
       setInviteCopied(false);
       setInviteSheetOpen(true);
+      setCircleInviteCodes((prev) => ({ ...prev, [circle.id]: data.code }));
     } catch (error) {
       setNoticeMessage(getErrorMessage(error, '邀请码生成失败'));
     } finally {
@@ -1230,6 +1273,33 @@ function CirclePage() {
       {activeCircle?.description && (
         <div className="rounded-[18px] border border-[#EEEDFE] bg-white px-4 py-4">
           <p className="text-sm leading-6 text-[#6F6A7E]">{activeCircle.description}</p>
+        </div>
+      )}
+
+      {isCircleOwner && activeCircle && (
+        <div className="rounded-[18px] border border-[#EEEDFE] bg-[#F8F7FE] px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-[#8A8799]">邀请码</p>
+              <p className="mt-1 text-lg font-semibold tracking-[0.15em] text-[#534AB7]">
+                {loadingInviteCode ? '加载中...' : (circleInviteCodes[activeCircle.id] ?? '暂无邀请码')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void handleGenerateInvite({ id: activeCircle.id, name: activeCircle.name });
+              }}
+              className="rounded-[10px] bg-[#534AB7] px-3 py-1.5 text-xs font-medium text-white"
+            >
+              {circleInviteCodes[activeCircle.id] ? '重新生成' : '生成邀请码'}
+            </button>
+          </div>
+          {circleInviteCodes[activeCircle.id] && (
+            <p className="mt-2 text-xs text-[#8A8799]">
+              将此码发给对方，对方在圈子页输入即可加入
+            </p>
+          )}
         </div>
       )}
 

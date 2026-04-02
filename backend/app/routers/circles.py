@@ -386,6 +386,37 @@ def get_circle_detail(
     return success_response(data=_serialize_circle(circle, current_user.id))
 
 
+@router.get("/circles/{circle_id:int}/invite")
+def get_circle_invite(
+    circle_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    circle = _get_circle_or_404(db, circle_id)
+    if not (_is_admin(current_user) or circle.creator_id == current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="仅圈主可查看邀请码",
+        )
+
+    invite = db.scalar(
+        select(CircleInviteCode)
+        .where(
+            CircleInviteCode.circle_id == circle_id,
+            CircleInviteCode.used_by.is_(None),
+        )
+        .order_by(CircleInviteCode.created_at.desc(), CircleInviteCode.id.desc())
+    )
+    return success_response(
+        data={
+            "id": invite.id,
+            "circle_id": invite.circle_id,
+            "code": invite.code,
+            "created_at": invite.created_at.isoformat() if invite.created_at else None,
+        } if invite else None,
+    )
+
+
 @router.post("/circles/{circle_id:int}/invite")
 def create_circle_invite(
     circle_id: int,
