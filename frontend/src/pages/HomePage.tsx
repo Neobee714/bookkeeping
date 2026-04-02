@@ -345,22 +345,34 @@ function HomePage() {
           </div>
         ) : (
           <div className={isMineView ? 'space-y-4' : 'pointer-events-none space-y-4'}>
-            {groupedTransactions.map(([date, items]) => (
-              <div key={date} className="space-y-2">
-                <p className="px-1 text-xs font-medium text-[#8A8799]">{formatGroupDate(date)}</p>
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <TransactionItem
-                      key={item.id}
-                      item={item}
-                      deleting={deletingId === item.id}
-                      onEdit={handleOpenEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+            {groupedTransactions.map(([date, items]) => {
+              const dailyNet = items.reduce(
+                (sum, item) => sum + (item.type === 'income' ? item.amount : -item.amount),
+                0,
+              );
+              const dailyNetColor =
+                dailyNet > 0 ? '#1D9E75' : dailyNet < 0 ? '#E24B4A' : '#8A8799';
+              const dailyNetText = `${dailyNet > 0 ? '+' : ''}${dailyNet.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+              return (
+                <div key={date} className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-xs font-medium text-[#8A8799]">{formatGroupDate(date)}</p>
+                    <p className="text-xs font-medium" style={{ color: dailyNetColor }}>{dailyNetText}</p>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <TransactionItem
+                        key={item.id}
+                        item={item}
+                        deleting={deletingId === item.id}
+                        onEdit={handleOpenEdit}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
