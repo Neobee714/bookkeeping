@@ -687,7 +687,7 @@ def review_circle_application(
         circle = Circle(
             name=application.circle_name,
             description=application.circle_description,
-            creator_id=current_user.id,
+            creator_id=application.user_id,
         )
         db.add(circle)
         db.flush()
