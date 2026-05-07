@@ -317,7 +317,7 @@ function ProfilePage() {
 
   return (
     <section className="space-y-4 pb-2">
-      <article className="rounded-2xl border border-[#EEEDFE] bg-white p-5">
+      <article className="rounded-2xl border border-[#E8F0EC] bg-white p-5">
         <div className="flex items-center gap-3">
           <div className="relative">
             <UserAvatar
@@ -327,7 +327,7 @@ function ProfilePage() {
               textClassName="text-lg"
             />
             {uploadingAvatar && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-[#2D2940]/35">
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-[#2D2824]/35">
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               </div>
             )}
@@ -335,7 +335,7 @@ function ProfilePage() {
               type="button"
               aria-label="更换头像"
               onClick={handleOpenAvatarPicker}
-              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-[#534AB7] text-white shadow-sm"
+              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-[#5A7A6E] text-white shadow-sm"
             >
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
                 <path
@@ -357,14 +357,14 @@ function ProfilePage() {
                   onChange={(event) => setNicknameDraft(event.target.value)}
                   maxLength={16}
                   placeholder="请输入昵称"
-                  className="h-10 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                  className="h-10 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
                 />
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     disabled={savingProfile}
                     onClick={() => void handleSaveNickname()}
-                    className="rounded-[10px] bg-[#534AB7] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                    className="rounded-[10px] bg-[#5A7A6E] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                   >
                     {savingProfile ? '保存中...' : '保存'}
                   </button>
@@ -372,7 +372,7 @@ function ProfilePage() {
                     type="button"
                     disabled={savingProfile}
                     onClick={handleCancelEditNickname}
-                    className="rounded-[10px] border border-[#E7E5F2] bg-white px-3 py-1.5 text-xs text-[#6F6A7E] disabled:opacity-60"
+                    className="rounded-[10px] border border-[#E5DFD5] bg-white px-3 py-1.5 text-xs text-[#6B6560] disabled:opacity-60"
                   >
                     取消
                   </button>
@@ -380,14 +380,14 @@ function ProfilePage() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <p className="truncate text-lg font-semibold text-[#2D2940]">
+                <p className="truncate text-lg font-semibold text-[#2D2824]">
                   {loading ? '加载中...' : user?.nickname ?? '未命名用户'}
                 </p>
                 <button
                   type="button"
                   aria-label="编辑昵称"
                   onClick={handleStartEditNickname}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F4F2FD] text-[#534AB7]"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E8F0EC] text-[#5A7A6E]"
                 >
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
                     <path
@@ -401,27 +401,27 @@ function ProfilePage() {
                 </button>
               </div>
             )}
-            <p className="mt-1 truncate text-sm text-[#8A8799]">@{user?.username ?? 'guest'}</p>
+            <p className="mt-1 truncate text-sm text-[#6B6560]">@{user?.username ?? 'guest'}</p>
           </div>
         </div>
       </article>
 
-      <article className="rounded-2xl border border-[#EEEDFE] bg-white p-4">
-        <h2 className="text-sm font-semibold text-[#2D2940]">我的伴侣</h2>
+      <article className="rounded-2xl border border-[#E8F0EC] bg-white p-4">
+        <h2 className="text-sm font-semibold text-[#2D2824]">我的伴侣</h2>
         <div className="mt-3 space-y-3">
-          <div className="rounded-[10px] border border-[#E8E6F2] bg-[#F8F7FE] p-3">
+          <div className="rounded-[10px] border border-[#E5DFD5] bg-[#FBF7F0] p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs text-[#8A8799]">注册邀请码</p>
-                <p className="mt-1 text-sm font-semibold text-[#534AB7]">
+                <p className="text-xs text-[#6B6560]">注册邀请码</p>
+                <p className="mt-1 text-sm font-semibold text-[#5A7A6E]">
                   {user?.reg_invite_code ?? '加载中...'}
                 </p>
-                <p className="mt-1 text-xs text-[#A29DB4]">分享给想加入记账本的朋友</p>
+                <p className="mt-1 text-xs text-[#A09990]">分享给想加入记账本的朋友</p>
               </div>
               <button
                 type="button"
                 onClick={() => void handleCopyCode(user?.reg_invite_code, '注册邀请码已复制')}
-                className="h-8 rounded-[10px] border border-[#E2DFFF] bg-white px-3 text-xs text-[#534AB7]"
+                className="h-8 rounded-[10px] border border-[#E5DFD5] bg-white px-3 text-xs text-[#5A7A6E]"
               >
                 复制
               </button>
@@ -429,28 +429,28 @@ function ProfilePage() {
           </div>
 
           {user?.partner ? (
-            <div className="flex items-center gap-3 rounded-[10px] bg-[#F8F7FE] p-3">
+            <div className="flex items-center gap-3 rounded-[10px] bg-[#FBF7F0] p-3">
               <UserAvatar avatar={user.partner.avatar} name={user.partner.nickname} />
               <div>
-                <p className="text-sm font-semibold text-[#2D2940]">{user.partner.nickname}</p>
-                <p className="text-xs text-[#8A8799]">@{user.partner.username}</p>
+                <p className="text-sm font-semibold text-[#2D2824]">{user.partner.nickname}</p>
+                <p className="text-xs text-[#6B6560]">@{user.partner.username}</p>
               </div>
             </div>
           ) : (
             <>
-              <div className="rounded-[10px] border border-[#E8E6F2] bg-[#F8F7FE] p-3">
+              <div className="rounded-[10px] border border-[#E5DFD5] bg-[#FBF7F0] p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs text-[#8A8799]">伴侣绑定码</p>
-                    <p className="mt-1 text-sm font-semibold text-[#534AB7]">
+                    <p className="text-xs text-[#6B6560]">伴侣绑定码</p>
+                    <p className="mt-1 text-sm font-semibold text-[#5A7A6E]">
                       {user?.partner_code ?? '加载中...'}
                     </p>
-                    <p className="mt-1 text-xs text-[#A29DB4]">用于和伴侣互绑关系</p>
+                    <p className="mt-1 text-xs text-[#A09990]">用于和伴侣互绑关系</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => void handleCopyCode(user?.partner_code, '伴侣绑定码已复制')}
-                    className="h-8 rounded-[10px] border border-[#E2DFFF] bg-white px-3 text-xs text-[#534AB7]"
+                    className="h-8 rounded-[10px] border border-[#E5DFD5] bg-white px-3 text-xs text-[#5A7A6E]"
                   >
                     复制
                   </button>
@@ -458,20 +458,20 @@ function ProfilePage() {
               </div>
 
               <label className="block">
-                <span className="mb-1 block text-xs text-[#8A8799]">输入对方伴侣绑定码</span>
+                <span className="mb-1 block text-xs text-[#6B6560]">输入对方伴侣绑定码</span>
                 <input
                   type="text"
                   value={partnerCodeInput}
                   onChange={(event) => setPartnerCodeInput(event.target.value)}
                   placeholder="例如：ABC123-XXXXXX"
-                  className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm uppercase outline-none focus:border-[#534AB7]"
+                  className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm uppercase outline-none focus:border-[#5A7A6E]"
                 />
               </label>
               <button
                 type="button"
                 disabled={submittingBind}
                 onClick={handleBindPartner}
-                className="h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
+                className="h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
               >
                 {submittingBind ? '绑定中...' : '绑定伴侣'}
               </button>
@@ -480,17 +480,17 @@ function ProfilePage() {
         </div>
       </article>
 
-      <article className="rounded-2xl border border-[#EEEDFE] bg-white p-4">
-        <h2 className="text-sm font-semibold text-[#2D2940]">货币设置</h2>
-        <p className="mt-1 text-xs text-[#8A8799]">仅本地保存，后续可接入账户设置</p>
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-[10px] bg-[#F4F2FD] p-1">
+      <article className="rounded-2xl border border-[#E8F0EC] bg-white p-4">
+        <h2 className="text-sm font-semibold text-[#2D2824]">货币设置</h2>
+        <p className="mt-1 text-xs text-[#6B6560]">仅本地保存，后续可接入账户设置</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-[10px] bg-[#E8F0EC] p-1">
           {(['CNY', 'USD'] as const).map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => handleChangeCurrency(item)}
               className={`h-9 rounded-[10px] text-xs ${
-                currency === item ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+                currency === item ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
               }`}
             >
               {currencyLabel[item]}
@@ -499,17 +499,17 @@ function ProfilePage() {
         </div>
       </article>
 
-      <article className="rounded-2xl border border-[#EEEDFE] bg-white p-4">
-        <h2 className="text-sm font-semibold text-[#2D2940]">设置</h2>
+      <article className="rounded-2xl border border-[#E8F0EC] bg-white p-4">
+        <h2 className="text-sm font-semibold text-[#2D2824]">设置</h2>
 
         <div className="mt-3 space-y-3">
           <button
             type="button"
             onClick={() => void handleOpenImportPicker()}
-            className="flex w-full items-center justify-between rounded-[16px] border border-[#E7E5F2] bg-[#F8F7FE] px-4 py-4 text-left"
+            className="flex w-full items-center justify-between rounded-[16px] border border-[#E5DFD5] bg-[#FBF7F0] px-4 py-4 text-left"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#EEEDFE] text-[#534AB7]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#E8F0EC] text-[#5A7A6E]">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
                   <path
                     d="M12 16V6m0 0-4 4m4-4 4 4M5 18h14"
@@ -521,11 +521,11 @@ function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-[#2D2940]">导入账单（鲨鱼记账）</p>
-                <p className="mt-1 text-xs text-[#8A8799]">支持导入鲨鱼记账导出的 CSV 文件</p>
+                <p className="text-sm font-medium text-[#2D2824]">导入账单（鲨鱼记账）</p>
+                <p className="mt-1 text-xs text-[#6B6560]">支持导入鲨鱼记账导出的 CSV 文件</p>
               </div>
             </div>
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9A97A8]" fill="none">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9B9590]" fill="none">
               <path
                 d="m9 6 6 6-6 6"
                 stroke="currentColor"
@@ -539,10 +539,10 @@ function ProfilePage() {
           <button
             type="button"
             onClick={() => setShowAbout(true)}
-            className="flex w-full items-center justify-between rounded-[16px] border border-[#E7E5F2] bg-white px-4 py-4 text-left"
+            className="flex w-full items-center justify-between rounded-[16px] border border-[#E5DFD5] bg-white px-4 py-4 text-left"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#EEEDFE] text-[#534AB7]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#E8F0EC] text-[#5A7A6E]">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
                   <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
                   <path
@@ -555,11 +555,11 @@ function ProfilePage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-[#2D2940]">关于记账本</p>
-                <p className="mt-1 text-xs text-[#8A8799]">查看版本号、开发者和技术信息</p>
+                <p className="text-sm font-medium text-[#2D2824]">关于记账本</p>
+                <p className="mt-1 text-xs text-[#6B6560]">查看版本号、开发者和技术信息</p>
               </div>
             </div>
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9A97A8]" fill="none">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#9B9590]" fill="none">
               <path
                 d="m9 6 6 6-6 6"
                 stroke="currentColor"
@@ -573,14 +573,14 @@ function ProfilePage() {
       </article>
 
       {message && (
-        <div className="rounded-[10px] border border-[#E6E3F6] bg-[#F8F7FE] px-3 py-2 text-xs text-[#6F6A7E]">
+        <div className="rounded-[10px] border border-[#E5DFD5] bg-[#FBF7F0] px-3 py-2 text-xs text-[#6B6560]">
           {message}
         </div>
       )}
 
       <button
         type="button"
-        className="w-full rounded-[10px] border border-[#F6D7D6] bg-white px-4 py-3 text-sm font-semibold text-[#E24B4A]"
+        className="w-full rounded-[10px] border border-[#F2D8D1] bg-white px-4 py-3 text-sm font-semibold text-[#C27B6B]"
         onClick={handleLogout}
       >
         退出登录
@@ -625,10 +625,10 @@ function ProfilePage() {
           />
 
           <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-4 pb-6 pt-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-            <div className="mx-auto h-1 w-9 rounded-full bg-[#D8D5E7]" />
+            <div className="mx-auto h-1 w-9 rounded-full bg-[#D5CFC5]" />
 
             <div className="mt-6 flex flex-col items-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#534AB7] text-white">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#5A7A6E] text-white">
                 <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
                   <path
                     d="M6 17V9m6 8V5m6 12v-6"
@@ -639,29 +639,29 @@ function ProfilePage() {
                   />
                 </svg>
               </div>
-              <h2 className="mt-4 text-[18px] font-semibold text-[#2D2940]">记账本</h2>
-              <p className="mt-2 text-[13px] text-[#8A8799]">两个人的记账小工具</p>
+              <h2 className="mt-4 text-[18px] font-semibold text-[#2D2824]">记账本</h2>
+              <p className="mt-2 text-[13px] text-[#6B6560]">两个人的记账小工具</p>
             </div>
 
-            <div className="mt-6 rounded-[12px] bg-[#F8F7FE] p-3">
+            <div className="mt-6 rounded-[12px] bg-[#FBF7F0] p-3">
               <div className="flex items-center justify-between rounded-[10px] px-2 py-2 text-sm">
-                <span className="text-[#8A8799]">当前版本</span>
-                <span className="font-semibold text-[#2D2940]">v{__APP_VERSION__}</span>
+                <span className="text-[#6B6560]">当前版本</span>
+                <span className="font-semibold text-[#2D2824]">v{__APP_VERSION__}</span>
               </div>
               <div className="flex items-center justify-between rounded-[10px] px-2 py-2 text-sm">
-                <span className="text-[#8A8799]">开发者</span>
-                <span className="text-[#2D2940]">Langda</span>
+                <span className="text-[#6B6560]">开发者</span>
+                <span className="text-[#2D2824]">Langda</span>
               </div>
               <div className="flex items-center justify-between rounded-[10px] px-2 py-2 text-sm">
-                <span className="text-[#8A8799]">技术栈</span>
-                <span className="text-[#2D2940]">React + FastAPI</span>
+                <span className="text-[#6B6560]">技术栈</span>
+                <span className="text-[#2D2824]">React + FastAPI</span>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => setShowAbout(false)}
-              className="mt-6 h-12 w-full rounded-[12px] bg-[#534AB7] px-4 text-sm font-semibold text-white"
+              className="mt-6 h-12 w-full rounded-[12px] bg-[#5A7A6E] px-4 text-sm font-semibold text-white"
             >
               关闭
             </button>

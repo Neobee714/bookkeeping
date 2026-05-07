@@ -1,14 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   font-family:
+    "Noto Serif SC",
     "PingFang SC",
     "Hiragino Sans GB",
     "Microsoft YaHei",
-    "Noto Sans SC",
-    sans-serif;
+    "Source Han Serif SC",
+    serif;
 }
 
 * {
@@ -18,8 +21,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f8f7fe;
-  color: #22202d;
+  background: #FBF7F0;
+  color: #2D2824;
 }
 
 #root {

@@ -23,7 +23,7 @@ import type { MonthlySummary, TrendPoint } from '@/types';
 
 type SummaryTab = 'self' | 'partner';
 
-const DEFAULT_COLOR = '#C0BECF';
+const DEFAULT_COLOR = '#C5BFB5';
 
 const formatMonthKey = (value: Date): string => {
   const year = value.getFullYear();
@@ -135,38 +135,38 @@ function StatsPage() {
   const pieData =
     categoryRows.length > 0
       ? categoryRows
-      : [{ name: '暂无支出', value: 1, color: '#E7E5F2' }];
+      : [{ name: '暂无支出', value: 1, color: '#E5DFD5' }];
 
   return (
     <section className="space-y-4 pb-4">
-      <header className="space-y-3 rounded-2xl border border-[#EEEDFE] bg-white p-4">
+      <header className="space-y-3 rounded-2xl border border-[#E8F0EC] bg-white p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 rounded-[10px] border border-[#EAE8F5] bg-white px-2 py-1">
+          <div className="flex items-center gap-1 rounded-[10px] border border-[#E5DFD5] bg-white px-2 py-1">
             <button
               type="button"
               onClick={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6F6A7E] hover:bg-[#F2F0FB]"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
             >
               ‹
             </button>
-            <span className="min-w-[102px] text-center text-sm font-medium text-[#534AB7]">
+            <span className="min-w-[102px] text-center text-sm font-medium text-[#5A7A6E]">
               {monthLabel}
             </span>
             <button
               type="button"
               onClick={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6F6A7E] hover:bg-[#F2F0FB]"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
             >
               ›
             </button>
           </div>
 
-          <div className="grid grid-cols-2 rounded-[10px] bg-[#F4F2FD] p-1">
+          <div className="grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
             <button
               type="button"
               onClick={() => setTab('self')}
               className={`h-8 rounded-[10px] px-4 text-xs ${
-                tab === 'self' ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+                tab === 'self' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
               }`}
             >
               我
@@ -175,7 +175,7 @@ function StatsPage() {
               type="button"
               onClick={() => setTab('partner')}
               className={`h-8 rounded-[10px] px-4 text-xs ${
-                tab === 'partner' ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+                tab === 'partner' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
               }`}
             >
               伴侣
@@ -183,7 +183,7 @@ function StatsPage() {
           </div>
         </div>
 
-        <p className="text-xs text-[#8A8799]">统计月份：{monthKey}</p>
+        <p className="text-xs text-[#6B6560]">统计月份：{monthKey}</p>
       </header>
 
       {loading ? (
@@ -191,49 +191,49 @@ function StatsPage() {
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={`stats-skeleton-${index}`}
-              className="h-24 animate-pulse rounded-2xl border border-[#EEEDFE] bg-[#F8F7FE]"
+              className="h-24 animate-pulse rounded-2xl border border-[#E8F0EC] bg-[#FBF7F0]"
             />
           ))}
         </div>
       ) : partnerUnavailable ? (
-        <div className="rounded-2xl border border-[#EEEDFE] bg-[#F8F7FE] px-4 py-10 text-center text-sm text-[#8A8799]">
+        <div className="rounded-2xl border border-[#E8F0EC] bg-[#FBF7F0] px-4 py-10 text-center text-sm text-[#6B6560]">
           还没有绑定伴侣
         </div>
       ) : errorMessage ? (
-        <div className="rounded-2xl border border-[#F7D6D6] bg-[#FFF7F7] px-4 py-3 text-sm text-[#E24B4A]">
+        <div className="rounded-2xl border border-[#F2D8D1] bg-[#FDF0EB] px-4 py-3 text-sm text-[#C27B6B]">
           {errorMessage}
         </div>
       ) : summary ? (
         <>
           <section className="grid grid-cols-2 gap-3">
-            <article className="rounded-2xl border border-[#F8D8D7] bg-white p-3">
-              <p className="text-xs text-[#8A8799]">总支出</p>
-              <p className="mt-2 text-lg font-semibold text-[#E24B4A]">
+            <article className="rounded-2xl border border-[#F2D8D1] bg-white p-3">
+              <p className="text-xs text-[#6B6560]">总支出</p>
+              <p className="mt-2 text-lg font-semibold text-[#C27B6B]">
                 {summary.total_expense.toLocaleString()}
               </p>
             </article>
-            <article className="rounded-2xl border border-[#D8EFE5] bg-white p-3">
-              <p className="text-xs text-[#8A8799]">总收入</p>
-              <p className="mt-2 text-lg font-semibold text-[#1D9E75]">
+            <article className="rounded-2xl border border-[#C5D9CF] bg-white p-3">
+              <p className="text-xs text-[#6B6560]">总收入</p>
+              <p className="mt-2 text-lg font-semibold text-[#6B9E85]">
                 {summary.total_income.toLocaleString()}
               </p>
             </article>
-            <article className="rounded-2xl border border-[#E7E2FF] bg-white p-3">
-              <p className="text-xs text-[#8A8799]">结余</p>
-              <p className="mt-2 text-lg font-semibold text-[#534AB7]">
+            <article className="rounded-2xl border border-[#E5DFD5] bg-white p-3">
+              <p className="text-xs text-[#6B6560]">结余</p>
+              <p className="mt-2 text-lg font-semibold text-[#5A7A6E]">
                 {summary.balance.toLocaleString()}
               </p>
             </article>
-            <article className="rounded-2xl border border-[#ECEAF5] bg-white p-3">
-              <p className="text-xs text-[#8A8799]">记录笔数</p>
-              <p className="mt-2 text-lg font-semibold text-[#787488]">
+            <article className="rounded-2xl border border-[#E5DFD5] bg-white p-3">
+              <p className="text-xs text-[#6B6560]">记录笔数</p>
+              <p className="mt-2 text-lg font-semibold text-[#7D7872]">
                 {summary.transaction_count.toLocaleString()}
               </p>
             </article>
           </section>
 
-          <section className="rounded-2xl border border-[#EEEDFE] bg-white p-3">
-            <p className="mb-2 text-sm font-semibold text-[#2D2940]">分类支出饼图</p>
+          <section className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
+            <p className="mb-2 text-sm font-semibold text-[#2D2824]">分类支出饼图</p>
             <div className="relative">
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
@@ -258,22 +258,22 @@ function StatsPage() {
                   <Legend
                     verticalAlign="bottom"
                     formatter={(value) => (
-                      <span className="text-xs text-[#6F6A7E]">{value}</span>
+                      <span className="text-xs text-[#6B6560]">{value}</span>
                     )}
                   />
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-[#8A8799]">总支出</span>
-                <span className="mt-1 text-sm font-semibold text-[#E24B4A]">
+                <span className="text-xs text-[#6B6560]">总支出</span>
+                <span className="mt-1 text-sm font-semibold text-[#C27B6B]">
                   {summary.total_expense.toLocaleString()}
                 </span>
               </div>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#EEEDFE] bg-white p-3">
-            <p className="mb-2 text-sm font-semibold text-[#2D2940]">近6个月收支趋势</p>
+          <section className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
+            <p className="mb-2 text-sm font-semibold text-[#2D2824]">近6个月收支趋势</p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={trend}>
                 <XAxis
@@ -281,12 +281,12 @@ function StatsPage() {
                   tickFormatter={formatShortMonth}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#8A8799' }}
+                  tick={{ fontSize: 12, fill: '#6B6560' }}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#8A8799' }}
+                  tick={{ fontSize: 12, fill: '#6B6560' }}
                   tickFormatter={(value: number) => value.toLocaleString()}
                 />
                 <Tooltip
@@ -296,7 +296,7 @@ function StatsPage() {
                 <Line
                   type="monotone"
                   dataKey="income"
-                  stroke="#1D9E75"
+                  stroke="#6B9E85"
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
@@ -304,7 +304,7 @@ function StatsPage() {
                 <Line
                   type="monotone"
                   dataKey="expense"
-                  stroke="#E24B4A"
+                  stroke="#C27B6B"
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
@@ -313,11 +313,11 @@ function StatsPage() {
             </ResponsiveContainer>
           </section>
 
-          <section className="rounded-2xl border border-[#EEEDFE] bg-white p-3">
-            <p className="mb-3 text-sm font-semibold text-[#2D2940]">本月分类支出排行</p>
+          <section className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
+            <p className="mb-3 text-sm font-semibold text-[#2D2824]">本月分类支出排行</p>
 
             {categoryRows.length === 0 ? (
-              <p className="rounded-[10px] bg-[#F8F7FE] px-3 py-6 text-center text-sm text-[#8A8799]">
+              <p className="rounded-[10px] bg-[#FBF7F0] px-3 py-6 text-center text-sm text-[#6B6560]">
                 本月暂无支出记录
               </p>
             ) : (
@@ -327,14 +327,14 @@ function StatsPage() {
                   return (
                     <li key={item.name} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-[#5C5870]">{item.name}</span>
-                        <span className="font-medium text-[#2D2940]">
+                        <span className="text-[#5C5852]">{item.name}</span>
+                        <span className="font-medium text-[#2D2824]">
                           {item.value.toLocaleString()}
                         </span>
                       </div>
-                      <div className="h-2 rounded-full bg-[#ECEAF6]">
+                      <div className="h-2 rounded-full bg-[#F0EBE2]">
                         <div
-                          className="h-2 rounded-full bg-[#534AB7]"
+                          className="h-2 rounded-full bg-[#5A7A6E]"
                           style={{ width: `${Math.max(percent, 4)}%` }}
                         />
                       </div>

@@ -10,15 +10,12 @@ import {
 import client from '@/api/client';
 import AdminLayout from '@/components/AdminLayout';
 import Layout from '@/components/Layout';
-import CirclePage from '@/pages/CirclePage';
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import PlanPage from '@/pages/PlanPage';
 import ProfilePage from '@/pages/ProfilePage';
 import RegisterPage from '@/pages/RegisterPage';
 import StatsPage from '@/pages/StatsPage';
-import AdminApplicationsPage from '@/pages/admin/AdminApplicationsPage';
-import AdminCirclesPage from '@/pages/admin/AdminCirclesPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 import { useAuthStore } from '@/store/authStore';
 import type { ApiResponse, User } from '@/types';
@@ -30,7 +27,7 @@ interface GuardProps {
 type ProtectedMode = 'admin' | 'user';
 
 const getAuthedHome = (user: User | null): string =>
-  user?.is_admin ? '/admin/circles' : '/app/home';
+  user?.is_admin ? '/admin/users' : '/app/home';
 
 function GuestRoute({ children }: GuardProps) {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -96,8 +93,8 @@ function ProtectedRoute({
 
   if (accessToken && !userReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8F7FE]">
-        <p className="text-sm text-[#8A8799]">正在加载...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#FBF7F0]">
+        <p className="text-sm text-[#6B6560]">正在加载...</p>
       </div>
     );
   }
@@ -107,7 +104,7 @@ function ProtectedRoute({
       return <Navigate to="/app/home" replace />;
     }
     if (mode === 'user' && user?.is_admin) {
-      return <Navigate to="/admin/circles" replace />;
+      return <Navigate to="/admin/users" replace />;
     }
   }
 
@@ -160,8 +157,6 @@ function App() {
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<HomePage />} />
           <Route path="stats" element={<StatsPage />} />
-          <Route path="circle" element={<CirclePage />} />
-          <Route path="circle/admin/applications" element={<AdminApplicationsPage />} />
           <Route path="plan" element={<PlanPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
@@ -174,9 +169,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="circles" replace />} />
-          <Route path="circles" element={<AdminCirclesPage />} />
-          <Route path="applications" element={<AdminApplicationsPage />} />
+          <Route index element={<Navigate to="users" replace />} />
           <Route path="users" element={<AdminUsersPage />} />
         </Route>
 

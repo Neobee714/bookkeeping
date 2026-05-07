@@ -65,15 +65,15 @@ function SkeletonList() {
       {Array.from({ length: 5 }).map((_, index) => (
         <div
           key={`skeleton-${index}`}
-          className="animate-pulse rounded-2xl border border-[#EEEDFE] bg-white px-3 py-3"
+          className="animate-pulse rounded-2xl border border-[#E8F0EC] bg-white px-3 py-3"
         >
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#ECEAF8]" />
+            <div className="h-10 w-10 rounded-xl bg-[#F0EBE2]" />
             <div className="flex-1 space-y-2">
-              <div className="h-3 w-24 rounded bg-[#ECEAF8]" />
-              <div className="h-3 w-32 rounded bg-[#F3F1FA]" />
+              <div className="h-3 w-24 rounded bg-[#F0EBE2]" />
+              <div className="h-3 w-32 rounded bg-[#F0EBE2]" />
             </div>
-            <div className="h-3 w-16 rounded bg-[#ECEAF8]" />
+            <div className="h-3 w-16 rounded bg-[#F0EBE2]" />
           </div>
         </div>
       ))}
@@ -252,26 +252,26 @@ function HomePage() {
           <div className="flex items-center gap-3">
             <UserAvatar avatar={user?.avatar} name={user?.nickname} />
             <div>
-              <p className="text-sm text-[#8A8799]">你好</p>
-              <p className="text-base font-semibold text-[#2D2940]">{user?.nickname ?? '我'}</p>
+              <p className="text-sm text-[#6B6560]">你好</p>
+              <p className="text-base font-semibold text-[#2D2824]">{user?.nickname ?? '我'}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 rounded-[10px] border border-[#EAE8F5] bg-white px-2 py-1">
+          <div className="flex items-center gap-1 rounded-[10px] border border-[#E5DFD5] bg-white px-2 py-1">
             <button
               type="button"
               onClick={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6F6A7E] hover:bg-[#F2F0FB]"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
             >
               ‹
             </button>
-            <span className="min-w-[102px] text-center text-sm font-medium text-[#534AB7]">
+            <span className="min-w-[102px] text-center text-sm font-medium text-[#5A7A6E]">
               {monthLabel}
             </span>
             <button
               type="button"
               onClick={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6F6A7E] hover:bg-[#F2F0FB]"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
             >
               ›
             </button>
@@ -279,12 +279,12 @@ function HomePage() {
         </div>
 
         {showPartnerTab && (
-          <div className="grid grid-cols-2 rounded-[10px] bg-[#F4F2FD] p-1">
+          <div className="grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
             <button
               type="button"
               onClick={() => setViewMode('mine')}
               className={`h-9 rounded-[10px] text-sm ${
-                viewMode === 'mine' ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+                viewMode === 'mine' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
               }`}
             >
               我
@@ -293,7 +293,7 @@ function HomePage() {
               type="button"
               onClick={() => setViewMode('partner')}
               className={`h-9 rounded-[10px] text-sm ${
-                viewMode === 'partner' ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+                viewMode === 'partner' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
               }`}
             >
               {partnerName}
@@ -302,20 +302,20 @@ function HomePage() {
         )}
       </header>
 
-      <article className="rounded-2xl bg-[#534AB7] px-4 py-5 text-white">
-        <p className="text-sm text-[#D9D6FF]">本月支出</p>
+      <article className="rounded-2xl bg-[#5A7A6E] px-4 py-5 text-white">
+        <p className="text-sm text-[#D5CFC5]">本月支出</p>
         <p className="mt-2 text-3xl font-semibold">
           {totalExpense.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </p>
         <div className="mt-5 grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-[#D9D6FF]">本月收入</p>
+            <p className="text-xs text-[#D5CFC5]">本月收入</p>
             <p className="mt-1 text-base font-semibold">
               {totalIncome.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </p>
           </div>
           <div>
-            <p className="text-xs text-[#D9D6FF]">本月结余</p>
+            <p className="text-xs text-[#D5CFC5]">本月结余</p>
             <p className="mt-1 text-base font-semibold">
               {balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </p>
@@ -325,20 +325,20 @@ function HomePage() {
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[#2D2940]">
+          <h2 className="text-sm font-semibold text-[#2D2824]">
             {isMineView ? '账单记录' : `${partnerName}的账单`}
           </h2>
-          <span className="text-xs text-[#8A8799]">{monthKey}</span>
+          <span className="text-xs text-[#6B6560]">{monthKey}</span>
         </div>
 
         {loading ? (
           <SkeletonList />
         ) : errorMessage ? (
-          <div className="rounded-2xl border border-[#F7D6D6] bg-[#FFF7F7] px-4 py-3 text-sm text-[#E24B4A]">
+          <div className="rounded-2xl border border-[#F2D8D1] bg-[#FDF0EB] px-4 py-3 text-sm text-[#C27B6B]">
             {errorMessage}
           </div>
         ) : groupedTransactions.length === 0 ? (
-          <div className="rounded-2xl border border-[#EEEDFE] bg-white px-4 py-10 text-center text-sm text-[#8A8799]">
+          <div className="rounded-2xl border border-[#E8F0EC] bg-white px-4 py-10 text-center text-sm text-[#6B6560]">
             {isMineView
               ? '这个月还没有账单，点右下角添加第一笔吧'
               : `${partnerName} 这个月还没有账单`}
@@ -351,10 +351,10 @@ function HomePage() {
                 .reduce((sum, t) => sum + t.amount, 0);
               return (
               <div key={date} className="space-y-2">
-                <div className="flex items-center justify-between border-b border-[#EEEDFE] pb-2">
-                  <p className="text-xs font-medium text-[#8A8799]">{formatGroupDate(date)}</p>
+                <div className="flex items-center justify-between border-b border-[#E8F0EC] pb-2">
+                  <p className="text-xs font-medium text-[#6B6560]">{formatGroupDate(date)}</p>
                   {dailyExpense > 0 && (
-                    <span className="text-xs text-[#E24B4A]">
+                    <span className="text-xs text-[#C27B6B]">
                       支出：{dailyExpense.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </span>
                   )}
@@ -383,7 +383,7 @@ function HomePage() {
             <button
               type="button"
               onClick={handleOpenCreate}
-              className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#534AB7] text-3xl leading-none text-white"
+              className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5A7A6E] text-3xl leading-none text-white"
             >
               +
             </button>

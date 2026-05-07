@@ -88,7 +88,7 @@ function TransactionItem({
   };
 
   const amountText = `${item.type === 'income' ? '+' : '-'}${item.amount.toLocaleString()}`;
-  const amountColor = item.type === 'income' ? '#1D9E75' : '#E24B4A';
+  const amountColor = item.type === 'income' ? '#6B9E85' : '#C27B6B';
 
   return (
     <div
@@ -101,21 +101,21 @@ function TransactionItem({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       onClick={handleClick}
-      className="w-full rounded-2xl border border-[#EEEDFE] bg-white px-3 py-3 text-left transition"
+      className="w-full rounded-2xl border border-[#E8F0EC] bg-white px-3 py-3 text-left transition"
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F3F1FF] text-xl">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0EBE2] text-xl">
           {categoryEmojiMap[item.category]}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
-            <p className="truncate text-sm font-semibold text-[#2D2940]">{item.category}</p>
+            <p className="truncate text-sm font-semibold text-[#2D2824]">{item.category}</p>
             <p className="text-sm font-semibold" style={{ color: amountColor }}>
               {amountText}
             </p>
           </div>
-          <div className="mt-1 flex items-center justify-between text-xs text-[#8A8799]">
+          <div className="mt-1 flex items-center justify-between text-xs text-[#6B6560]">
             <p className="truncate">{item.note || '无备注'}</p>
             <p>{formatDate(item.date)}</p>
           </div>
@@ -127,7 +127,7 @@ function TransactionItem({
           <button
             type="button"
             onClick={handleResetDelete}
-            className="h-8 rounded-[10px] border border-[#E8E6F8] px-3 text-xs text-[#6F6A7E]"
+            className="h-8 rounded-[10px] border border-[#E5DFD5] px-3 text-xs text-[#6B6560]"
           >
             取消
           </button>
@@ -135,7 +135,7 @@ function TransactionItem({
             type="button"
             disabled={deleting}
             onClick={handleDeleteClick}
-            className="h-8 rounded-[10px] border border-[#F7D6D6] bg-[#FFF7F7] px-3 text-xs text-[#E24B4A] disabled:opacity-60"
+            className="h-8 rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 text-xs text-[#C27B6B] disabled:opacity-60"
           >
             {deleting ? '删除中...' : '删除'}
           </button>

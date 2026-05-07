@@ -2,14 +2,14 @@ import client from '@/api/client';
 import type { ApiResponse, MonthlySummary, TrendPoint } from '@/types';
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  餐饮: '#534AB7',
-  交通: '#1D9E75',
-  日用: '#EF9F27',
-  娱乐: '#D4537E',
-  医疗: '#378ADD',
-  教育: '#639922',
-  购物: '#BA7517',
-  其他: '#888780',
+  餐饮: '#5A7A6E',
+  交通: '#6B9E85',
+  日用: '#C4A35A',
+  娱乐: '#CC6B7E',
+  医疗: '#5A8FBF',
+  教育: '#7A9A3E',
+  购物: '#A08548',
+  其他: '#8A8580',
 };
 
 type SummaryTarget = 'self' | 'partner';

@@ -52,14 +52,14 @@ const getProgressInfo = (spent: number, limit: number) => {
       return {
         percent: 100,
         rate: Number.POSITIVE_INFINITY,
-        color: '#E24B4A',
+        color: '#C27B6B',
       };
     }
-    return { percent: 0, rate: 0, color: '#534AB7' };
+    return { percent: 0, rate: 0, color: '#5A7A6E' };
   }
   const rate = spent / limit;
   const percent = Math.min(rate * 100, 100);
-  const color = rate > 1 ? '#E24B4A' : rate >= 0.8 ? '#EF9F27' : '#534AB7';
+  const color = rate > 1 ? '#C27B6B' : rate >= 0.8 ? '#C4A35A' : '#5A7A6E';
   return { percent, rate, color };
 };
 
@@ -109,27 +109,27 @@ function SavingsCard({ goal, onLongPress }: SavingsCardProps) {
       onTouchStart={startPress}
       onTouchEnd={stopPress}
       onTouchCancel={stopPress}
-      className="rounded-2xl border border-[#EEEDFE] bg-white p-4 text-left"
+      className="rounded-2xl border border-[#E8F0EC] bg-white p-4 text-left"
     >
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold text-[#2D2940]">{goal.name}</p>
-          <p className="mt-1 text-sm text-[#8A8799]">
+          <p className="truncate text-base font-semibold text-[#2D2824]">{goal.name}</p>
+          <p className="mt-1 text-sm text-[#6B6560]">
             {formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}
           </p>
-          <p className="mt-2 text-xs text-[#8A8799]">预计完成日期：{deadlineText}</p>
-          <p className="mt-2 text-xs text-[#8A8799]">长按可更新进度</p>
+          <p className="mt-2 text-xs text-[#6B6560]">预计完成日期：{deadlineText}</p>
+          <p className="mt-2 text-xs text-[#6B6560]">长按可更新进度</p>
         </div>
 
         <div className="relative h-20 w-20">
           <svg width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r={radius} fill="none" stroke="#ECEAF6" strokeWidth="8" />
+            <circle cx="40" cy="40" r={radius} fill="none" stroke="#F0EBE2" strokeWidth="8" />
             <circle
               cx="40"
               cy="40"
               r={radius}
               fill="none"
-              stroke="#534AB7"
+              stroke="#5A7A6E"
               strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={circumference}
@@ -137,7 +137,7 @@ function SavingsCard({ goal, onLongPress }: SavingsCardProps) {
               transform="rotate(-90 40 40)"
             />
           </svg>
-          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-[#534AB7]">
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-[#5A7A6E]">
             {percent}%
           </div>
         </div>
@@ -419,20 +419,20 @@ function PlanPage() {
 
   const budgetOverview = useMemo(() => {
     if (!budgetSummary) {
-      return { percent: 0, color: '#534AB7' };
+      return { percent: 0, color: '#5A7A6E' };
     }
     return getProgressInfo(budgetSummary.total_spent, budgetSummary.total_budget);
   }, [budgetSummary]);
 
   return (
     <section className="space-y-4 pb-4">
-      <header className="rounded-2xl border border-[#EEEDFE] bg-white p-3">
-        <div className="grid grid-cols-2 rounded-[10px] bg-[#F4F2FD] p-1">
+      <header className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
+        <div className="grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
           <button
             type="button"
             onClick={() => setTab('budget')}
             className={`h-9 rounded-[10px] text-sm ${
-              tab === 'budget' ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+              tab === 'budget' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
             }`}
           >
             预算
@@ -441,7 +441,7 @@ function PlanPage() {
             type="button"
             onClick={() => setTab('savings')}
             className={`h-9 rounded-[10px] text-sm ${
-              tab === 'savings' ? 'bg-white text-[#534AB7]' : 'text-[#8A8799]'
+              tab === 'savings' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
             }`}
           >
             储蓄
@@ -449,19 +449,19 @@ function PlanPage() {
         </div>
 
         {tab === 'budget' && (
-          <div className="mt-3 flex items-center justify-between rounded-[10px] border border-[#EAE8F5] px-2 py-1">
+          <div className="mt-3 flex items-center justify-between rounded-[10px] border border-[#E5DFD5] px-2 py-1">
             <button
               type="button"
               onClick={() => setMonth((previous) => shiftMonth(previous, -1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6F6A7E] hover:bg-[#F2F0FB]"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
             >
               ‹
             </button>
-            <span className="text-sm font-medium text-[#534AB7]">{monthLabel}</span>
+            <span className="text-sm font-medium text-[#5A7A6E]">{monthLabel}</span>
             <button
               type="button"
               onClick={() => setMonth((previous) => shiftMonth(previous, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6F6A7E] hover:bg-[#F2F0FB]"
+              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
             >
               ›
             </button>
@@ -476,22 +476,22 @@ function PlanPage() {
               {Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={`budget-skeleton-${index}`}
-                  className="h-24 animate-pulse rounded-2xl border border-[#EEEDFE] bg-[#F8F7FE]"
+                  className="h-24 animate-pulse rounded-2xl border border-[#E8F0EC] bg-[#FBF7F0]"
                 />
               ))}
             </div>
           ) : budgetError ? (
-            <div className="rounded-2xl border border-[#F7D6D6] bg-[#FFF7F7] px-4 py-3 text-sm text-[#E24B4A]">
+            <div className="rounded-2xl border border-[#F2D8D1] bg-[#FDF0EB] px-4 py-3 text-sm text-[#C27B6B]">
               {budgetError}
             </div>
           ) : budgetSummary ? (
             <>
-              <section className="rounded-2xl border border-[#EEEDFE] bg-white p-4">
-                <p className="text-sm text-[#8A8799]">本月预算使用情况</p>
-                <p className="mt-2 text-lg font-semibold text-[#2D2940]">
+              <section className="rounded-2xl border border-[#E8F0EC] bg-white p-4">
+                <p className="text-sm text-[#6B6560]">本月预算使用情况</p>
+                <p className="mt-2 text-lg font-semibold text-[#2D2824]">
                   {formatCurrency(budgetSummary.total_spent)} / {formatCurrency(budgetSummary.total_budget)}
                 </p>
-                <div className="mt-3 h-2 rounded-full bg-[#ECEAF6]">
+                <div className="mt-3 h-2 rounded-full bg-[#F0EBE2]">
                   <div
                     className="h-2 rounded-full"
                     style={{
@@ -512,17 +512,17 @@ function PlanPage() {
                       type="button"
                       key={`${item.category}-${item.id ?? 'new'}`}
                       onClick={() => openEditBudgetSheet(item)}
-                      className="w-full rounded-2xl border border-[#EEEDFE] bg-white p-4 text-left"
+                      className="w-full rounded-2xl border border-[#E8F0EC] bg-white p-4 text-left"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-[#2D2940]">
+                        <p className="text-sm font-semibold text-[#2D2824]">
                           {meta?.emoji} {item.category}
                         </p>
-                        <p className="text-xs text-[#8A8799]">
+                        <p className="text-xs text-[#6B6560]">
                           {formatCurrency(item.actual_spent)} / {formatCurrency(item.monthly_limit)}
                         </p>
                       </div>
-                      <div className="mt-2 h-2 rounded-full bg-[#ECEAF6]">
+                      <div className="mt-2 h-2 rounded-full bg-[#F0EBE2]">
                         <div
                           className="h-2 rounded-full"
                           style={{
@@ -532,11 +532,11 @@ function PlanPage() {
                         />
                       </div>
                       {overspend > 0 ? (
-                        <p className="mt-2 text-xs font-medium text-[#E24B4A]">
+                        <p className="mt-2 text-xs font-medium text-[#C27B6B]">
                           超支 {formatCurrency(overspend)}
                         </p>
                       ) : (
-                        <p className="mt-2 text-xs text-[#8A8799]">
+                        <p className="mt-2 text-xs text-[#6B6560]">
                           剩余 {formatCurrency(Math.max(item.monthly_limit - item.actual_spent, 0))}
                         </p>
                       )}
@@ -554,16 +554,16 @@ function PlanPage() {
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={`savings-skeleton-${index}`}
-                  className="h-32 animate-pulse rounded-2xl border border-[#EEEDFE] bg-[#F8F7FE]"
+                  className="h-32 animate-pulse rounded-2xl border border-[#E8F0EC] bg-[#FBF7F0]"
                 />
               ))}
             </div>
           ) : savingsError ? (
-            <div className="rounded-2xl border border-[#F7D6D6] bg-[#FFF7F7] px-4 py-3 text-sm text-[#E24B4A]">
+            <div className="rounded-2xl border border-[#F2D8D1] bg-[#FDF0EB] px-4 py-3 text-sm text-[#C27B6B]">
               {savingsError}
             </div>
           ) : savingsGoals.length === 0 ? (
-            <div className="rounded-2xl border border-[#EEEDFE] bg-white px-4 py-10 text-center text-sm text-[#8A8799]">
+            <div className="rounded-2xl border border-[#E8F0EC] bg-white px-4 py-10 text-center text-sm text-[#6B6560]">
               还没有储蓄目标，点击右下角创建
             </div>
           ) : (
@@ -581,7 +581,7 @@ function PlanPage() {
           <button
             type="button"
             onClick={tab === 'budget' ? openCreateBudgetSheet : openCreateSavingSheet}
-            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#534AB7] text-3xl leading-none text-white"
+            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5A7A6E] text-3xl leading-none text-white"
           >
             ＋
           </button>
@@ -597,17 +597,17 @@ function PlanPage() {
             aria-label="关闭预算弹窗"
           />
           <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-4 pb-6 pt-4">
-            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D8D5E7]" />
-            <h3 className="mt-4 text-lg font-semibold text-[#2D2940]">
+            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5CFC5]" />
+            <h3 className="mt-4 text-lg font-semibold text-[#2D2824]">
               {editingBudget?.id ? '编辑预算' : '设置预算'}
             </h3>
 
             <label className="mt-4 block">
-              <span className="mb-1 block text-xs text-[#8A8799]">分类</span>
+              <span className="mb-1 block text-xs text-[#6B6560]">分类</span>
               <select
                 value={budgetCategory}
                 onChange={(event) => setBudgetCategory(event.target.value as Category)}
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               >
                 {categoryMeta.map((item) => (
                   <option key={item.category} value={item.category}>
@@ -618,7 +618,7 @@ function PlanPage() {
             </label>
 
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs text-[#8A8799]">预算金额</span>
+              <span className="mb-1 block text-xs text-[#6B6560]">预算金额</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -627,12 +627,12 @@ function PlanPage() {
                   setBudgetLimitInput(event.target.value.replace(/[^0-9.]/g, ''))
                 }
                 placeholder="请输入预算金额"
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               />
             </label>
 
             {sheetError && (
-              <p className="mt-3 rounded-[10px] border border-[#F7D6D6] bg-[#FFF7F7] px-3 py-2 text-xs text-[#E24B4A]">
+              <p className="mt-3 rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 py-2 text-xs text-[#C27B6B]">
                 {sheetError}
               </p>
             )}
@@ -641,7 +641,7 @@ function PlanPage() {
               type="button"
               disabled={submitting}
               onClick={handleSubmitBudget}
-              className="mt-4 h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
+              className="mt-4 h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
             >
               {submitting ? '保存中...' : '保存预算'}
             </button>
@@ -658,59 +658,59 @@ function PlanPage() {
             aria-label="关闭储蓄弹窗"
           />
           <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-4 pb-6 pt-4">
-            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D8D5E7]" />
-            <h3 className="mt-4 text-lg font-semibold text-[#2D2940]">
+            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5CFC5]" />
+            <h3 className="mt-4 text-lg font-semibold text-[#2D2824]">
               {editingSaving ? '更新储蓄目标' : '新建储蓄目标'}
             </h3>
 
             <label className="mt-4 block">
-              <span className="mb-1 block text-xs text-[#8A8799]">目标名称</span>
+              <span className="mb-1 block text-xs text-[#6B6560]">目标名称</span>
               <input
                 type="text"
                 value={savingName}
                 onChange={(event) => setSavingName(event.target.value)}
                 maxLength={100}
                 placeholder="例如：买 MacBook"
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               />
             </label>
 
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs text-[#8A8799]">目标金额</span>
+              <span className="mb-1 block text-xs text-[#6B6560]">目标金额</span>
               <input
                 type="text"
                 inputMode="decimal"
                 value={savingTargetInput}
                 onChange={(event) => setSavingTargetInput(event.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder="请输入目标金额"
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               />
             </label>
 
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs text-[#8A8799]">当前已存</span>
+              <span className="mb-1 block text-xs text-[#6B6560]">当前已存</span>
               <input
                 type="text"
                 inputMode="decimal"
                 value={savingCurrentInput}
                 onChange={(event) => setSavingCurrentInput(event.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder="默认 0"
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               />
             </label>
 
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs text-[#8A8799]">预计完成日期</span>
+              <span className="mb-1 block text-xs text-[#6B6560]">预计完成日期</span>
               <input
                 type="date"
                 value={savingDeadline}
                 onChange={(event) => setSavingDeadline(event.target.value)}
-                className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm outline-none focus:border-[#534AB7]"
+                className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               />
             </label>
 
             {sheetError && (
-              <p className="mt-3 rounded-[10px] border border-[#F7D6D6] bg-[#FFF7F7] px-3 py-2 text-xs text-[#E24B4A]">
+              <p className="mt-3 rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 py-2 text-xs text-[#C27B6B]">
                 {sheetError}
               </p>
             )}
@@ -719,7 +719,7 @@ function PlanPage() {
               type="button"
               disabled={submitting}
               onClick={handleSubmitSaving}
-              className="mt-4 h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
+              className="mt-4 h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
             >
               {submitting ? '保存中...' : '保存目标'}
             </button>
@@ -729,7 +729,7 @@ function PlanPage() {
                 type="button"
                 disabled={submitting}
                 onClick={handleDeleteSaving}
-                className="mt-3 h-11 w-full rounded-[10px] border border-[#F7D6D6] bg-[#FFF7F7] text-sm font-semibold text-[#E24B4A] disabled:opacity-60"
+                className="mt-3 h-11 w-full rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] text-sm font-semibold text-[#C27B6B] disabled:opacity-60"
               >
                 {savingDeleting ? '删除中...' : '删除目标'}
               </button>

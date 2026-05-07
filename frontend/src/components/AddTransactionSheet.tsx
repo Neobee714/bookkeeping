@@ -133,27 +133,27 @@ function AddTransactionSheet({
       />
 
       <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-4 pb-6 pt-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D8D5E7]" />
+        <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5CFC5]" />
 
         <div className="mt-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[#2D2940]">{title}</h2>
+          <h2 className="text-lg font-semibold text-[#2D2824]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-[10px] border border-[#E7E5F2] px-3 text-xs text-[#6F6A7E]"
+            className="h-8 rounded-[10px] border border-[#E5DFD5] px-3 text-xs text-[#6B6560]"
           >
             关闭
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 rounded-[10px] bg-[#F4F2FD] p-1">
+        <div className="mt-4 grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
           <button
             type="button"
             onClick={() => setType('expense')}
             className={`h-10 rounded-[10px] text-sm font-medium ${
               type === 'expense'
-                ? 'bg-white text-[#E24B4A]'
-                : 'bg-transparent text-[#8A8799]'
+                ? 'bg-white text-[#C27B6B]'
+                : 'bg-transparent text-[#6B6560]'
             }`}
           >
             支出
@@ -163,8 +163,8 @@ function AddTransactionSheet({
             onClick={() => setType('income')}
             className={`h-10 rounded-[10px] text-sm font-medium ${
               type === 'income'
-                ? 'bg-white text-[#1D9E75]'
-                : 'bg-transparent text-[#8A8799]'
+                ? 'bg-white text-[#6B9E85]'
+                : 'bg-transparent text-[#6B6560]'
             }`}
           >
             收入
@@ -172,19 +172,19 @@ function AddTransactionSheet({
         </div>
 
         <label className="mt-4 block">
-          <span className="mb-1 block text-xs text-[#8A8799]">金额</span>
+          <span className="mb-1 block text-xs text-[#6B6560]">金额</span>
           <input
             type="text"
             inputMode="decimal"
             placeholder="0.00"
             value={amountInput}
             onChange={(event) => setAmountInput(sanitizeAmount(event.target.value))}
-            className="h-12 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-2xl font-semibold text-[#2D2940] outline-none focus:border-[#534AB7]"
+            className="h-12 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-2xl font-semibold text-[#2D2824] outline-none focus:border-[#5A7A6E]"
           />
         </label>
 
         <div className="mt-4">
-          <p className="mb-2 text-xs text-[#8A8799]">分类</p>
+          <p className="mb-2 text-xs text-[#6B6560]">分类</p>
           <div className="grid grid-cols-3 gap-2">
             {activeCategories.map((item) => (
               <button
@@ -193,8 +193,8 @@ function AddTransactionSheet({
                 onClick={() => setCategory(item.key)}
                 className={`flex h-12 items-center justify-center gap-1 rounded-[10px] border text-sm ${
                   category === item.key
-                    ? 'border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]'
-                    : 'border-[#E7E5F2] bg-white text-[#6F6A7E]'
+                    ? 'border-[#5A7A6E] bg-[#E8F0EC] text-[#5A7A6E]'
+                    : 'border-[#E5DFD5] bg-white text-[#6B6560]'
                 }`}
               >
                 <span>{item.emoji}</span>
@@ -206,30 +206,30 @@ function AddTransactionSheet({
 
         <div className="mt-4 grid grid-cols-1 gap-3">
           <label className="block">
-            <span className="mb-1 block text-xs text-[#8A8799]">日期</span>
+            <span className="mb-1 block text-xs text-[#6B6560]">日期</span>
             <input
               type="date"
               value={dateInput}
               onChange={(event) => setDateInput(event.target.value)}
-              className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm text-[#2D2940] outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm text-[#2D2824] outline-none focus:border-[#5A7A6E]"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs text-[#8A8799]">备注（可选）</span>
+            <span className="mb-1 block text-xs text-[#6B6560]">备注（可选）</span>
             <input
               type="text"
               value={note}
               onChange={(event) => setNote(event.target.value)}
               maxLength={255}
               placeholder="写点备注"
-              className="h-11 w-full rounded-[10px] border border-[#E7E5F2] px-3 text-sm text-[#2D2940] outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm text-[#2D2824] outline-none focus:border-[#5A7A6E]"
             />
           </label>
         </div>
 
         {errorMessage && (
-          <p className="mt-3 rounded-[10px] border border-[#F7D6D6] bg-[#FFF7F7] px-3 py-2 text-xs text-[#E24B4A]">
+          <p className="mt-3 rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 py-2 text-xs text-[#C27B6B]">
             {errorMessage}
           </p>
         )}
@@ -238,7 +238,7 @@ function AddTransactionSheet({
           type="button"
           disabled={submitting}
           onClick={handleConfirm}
-          className="mt-4 h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-4 h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
         >
           {submitting ? '提交中...' : buttonText}
         </button>

@@ -25,13 +25,13 @@ function UserAvatar({
 
   return (
     <div
-      className={`overflow-hidden rounded-full bg-[#EEEDFE] ${sizeClassName} ${className}`.trim()}
+      className={`overflow-hidden rounded-full bg-[#E8F0EC] ${sizeClassName} ${className}`.trim()}
     >
       {avatar ? (
         <img src={avatar} alt={name ?? '用户头像'} className="h-full w-full object-cover" />
       ) : (
         <div
-          className={`flex h-full w-full items-center justify-center font-semibold text-[#534AB7] ${textClassName}`.trim()}
+          className={`flex h-full w-full items-center justify-center font-semibold text-[#5A7A6E] ${textClassName}`.trim()}
         >
           {initial}
         </div>

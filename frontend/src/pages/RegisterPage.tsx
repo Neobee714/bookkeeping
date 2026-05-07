@@ -68,83 +68,83 @@ function RegisterPage() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col justify-center px-6">
-      <div className="rounded-2xl border border-[#E8E6F8] bg-white p-6">
-        <h1 className="text-2xl font-semibold text-[#534AB7]">创建账号</h1>
-        <p className="mt-2 text-sm text-[#8A8799]">昵称默认可用「我」和「洗衣粉儿」</p>
+      <div className="rounded-2xl border border-[#E5DFD5] bg-white p-6">
+        <h1 className="text-2xl font-semibold text-[#5A7A6E]">创建账号</h1>
+        <p className="mt-2 text-sm text-[#6B6560]">昵称默认可用「我」和「洗衣粉儿」</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5A5668]">用户名</span>
+            <span className="mb-1 block text-sm text-[#5C5852]">用户名</span>
             <input
               type="text"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               required
-              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               placeholder="请输入用户名"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5A5668]">昵称</span>
+            <span className="mb-1 block text-sm text-[#5C5852]">昵称</span>
             <input
               type="text"
               value={nickname}
               onChange={(event) => setNickname(event.target.value)}
               required
-              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               placeholder="请输入昵称"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5A5668]">密码</span>
+            <span className="mb-1 block text-sm text-[#5C5852]">密码</span>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
               placeholder="至少 6 位"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5A5668]">注册邀请码</span>
+            <span className="mb-1 block text-sm text-[#5C5852]">注册邀请码</span>
             <input
               type="text"
               value={registrationInviteCode}
               onChange={(event) => setRegistrationInviteCode(event.target.value)}
               required
-              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm uppercase outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm uppercase outline-none focus:border-[#5A7A6E]"
               placeholder="请输入邀请码"
             />
           </label>
 
-          <div className="border-t border-dashed border-[#E5E2F2] pt-4">
-            <p className="text-xs font-medium text-[#8A8799]">伴侣绑定</p>
-            <p className="mt-1 text-xs text-[#A29DB4]">可选，注册后也可以在「我的」页面再绑定</p>
+          <div className="border-t border-dashed border-[#E5DFD5] pt-4">
+            <p className="text-xs font-medium text-[#6B6560]">伴侣绑定</p>
+            <p className="mt-1 text-xs text-[#A09990]">可选，注册后也可以在「我的」页面再绑定</p>
           </div>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5A5668]">伴侣绑定码（可选）</span>
+            <span className="mb-1 block text-sm text-[#5C5852]">伴侣绑定码（可选）</span>
             <input
               type="text"
               value={partnerCode}
               onChange={(event) => setPartnerCode(event.target.value)}
-              className="h-11 w-full rounded-[10px] border border-[#E2E1EC] px-3 text-sm uppercase outline-none focus:border-[#534AB7]"
+              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm uppercase outline-none focus:border-[#5A7A6E]"
               placeholder="可选，稍后绑定"
             />
           </label>
 
           {errorMessage && (
-            <p className="rounded-[10px] border border-[#F6D7D6] bg-[#FFF7F7] px-3 py-2 text-sm text-[#E24B4A]">
+            <p className="rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 py-2 text-sm text-[#C27B6B]">
               {errorMessage}
             </p>
           )}
 
           {successMessage && (
-            <p className="rounded-[10px] border border-[#D1F1E5] bg-[#F2FBF7] px-3 py-2 text-sm text-[#1D9E75]">
+            <p className="rounded-[10px] border border-[#C5D9CF] bg-[#D4E8DD] px-3 py-2 text-sm text-[#6B9E85]">
               {successMessage}
             </p>
           )}
@@ -152,15 +152,15 @@ function RegisterPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="h-11 w-full rounded-[10px] bg-[#534AB7] text-sm font-semibold text-white disabled:opacity-60"
+            className="h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
           >
             {submitting ? '提交中...' : '注册'}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-[#787488]">
+        <p className="mt-4 text-center text-sm text-[#7D7872]">
           已有账号？
-          <Link to="/login" className="ml-1 font-medium text-[#534AB7]">
+          <Link to="/login" className="ml-1 font-medium text-[#5A7A6E]">
             去登录
           </Link>
         </p>
