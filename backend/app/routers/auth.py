@@ -226,6 +226,7 @@ def refresh_token(payload: RefreshRequest, db: Session = Depends(get_db)) -> dic
     return success_response(
         data={
             "access_token": create_access_token(user.id),
+            "refresh_token": create_refresh_token(user.id),
             "token_type": "bearer",
         },
         message="刷新成功",

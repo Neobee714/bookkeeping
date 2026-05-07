@@ -47,7 +47,11 @@ const refreshAccessToken = async (): Promise<string | null> => {
   }
 
   const nextAccessToken = response.data.data.access_token;
+  const nextRefreshToken = response.data.data.refresh_token;
   useAuthStore.getState().setAccessToken(nextAccessToken);
+  if (nextRefreshToken) {
+    useAuthStore.getState().setRefreshToken(nextRefreshToken);
+  }
   return nextAccessToken;
 };
 

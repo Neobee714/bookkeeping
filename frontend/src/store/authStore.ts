@@ -71,6 +71,7 @@ interface AuthState {
   logout: () => void;
   updateUser: (user: User | null) => void;
   setAccessToken: (token: string | null) => void;
+  setRefreshToken: (token: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -99,5 +100,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       removeStorage(ACCESS_TOKEN_KEY);
     }
     set({ accessToken: token });
+  },
+  setRefreshToken: (token) => {
+    if (token) {
+      writeStorage(REFRESH_TOKEN_KEY, token);
+    } else {
+      removeStorage(REFRESH_TOKEN_KEY);
+    }
   },
 }));
