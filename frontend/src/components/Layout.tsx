@@ -79,7 +79,7 @@ function Layout() {
         <div className="blob blob-4" />
       </div>
 
-      <main className="relative z-10 flex-1 px-5 pb-28 pt-4">
+      <main className="relative flex-1 px-5 pb-28 pt-4">
         <Outlet />
       </main>
 

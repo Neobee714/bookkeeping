@@ -50,7 +50,7 @@ function AdminLayout() {
         <div className="blob blob-4" />
       </div>
 
-      <header className="relative z-10 px-5 pt-5">
+      <header className="relative px-5 pt-5">
         <div className="ios-glass ios-glass-strong p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -82,7 +82,7 @@ function AdminLayout() {
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 px-5 py-4 pb-28">
+      <main className="relative flex-1 px-5 py-4 pb-28">
         <Outlet />
       </main>
 
