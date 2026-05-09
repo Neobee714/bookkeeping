@@ -6,6 +6,7 @@ import os
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.response import success_response
@@ -21,6 +22,8 @@ from app.routers import (
 
 app = FastAPI(title="Bookkeeping API", version="0.1.0")
 logger = logging.getLogger("bookkeeping.api")
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 allowed_origins = {
     "https://bookkeeping.neobee.top",

@@ -19,7 +19,9 @@ import {
   fetchPartnerMonthlySummary,
 } from '@/api/stats';
 import { useAuthStore } from '@/store/authStore';
+import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { MonthlySummary, TrendPoint } from '@/types';
+import { useCachedResource } from '@/utils/useCachedResource';
 
 type SummaryTab = 'self' | 'partner';
 
@@ -54,16 +56,12 @@ function StatsPage() {
   const user = useAuthStore((state) => state.user);
   const partnerName = user?.partner?.nickname?.trim() || '伴侣';
   const showPartnerTab = Boolean(user?.partner?.nickname);
+  const refreshVersion = useTransactionSyncStore((state) => state.refreshVersion);
 
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [tab, setTab] = useState<SummaryTab>('self');
-  const [summary, setSummary] = useState<MonthlySummary | null>(null);
-  const [trend, setTrend] = useState<TrendPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [partnerUnavailable, setPartnerUnavailable] = useState(false);
 
   const monthKey = useMemo(() => formatMonthKey(currentMonth), [currentMonth]);
   const monthLabel = useMemo(
@@ -71,68 +69,39 @@ function StatsPage() {
     [currentMonth],
   );
 
+  const summaryResource = useCachedResource<MonthlySummary>(
+    `stats-sum:${tab}:${monthKey}`,
+    () => (tab === 'partner' ? fetchPartnerMonthlySummary(monthKey) : fetchMonthlySummary(monthKey)),
+    [tab, monthKey, refreshVersion],
+  );
+  const trendResource = useCachedResource<TrendPoint[]>(
+    `stats-trend:${tab}:${monthKey}`,
+    () =>
+      fetchMonthlyTrendSeries({
+        target: tab === 'partner' ? 'partner' : 'self',
+        months: 6,
+        endMonth: currentMonth,
+      }),
+    [tab, monthKey, refreshVersion],
+  );
+
+  const summary = summaryResource.data ?? null;
+  const trend = trendResource.data ?? [];
+  const loading = summaryResource.loading || trendResource.loading;
+  const error = summaryResource.error ?? trendResource.error;
+  const partnerUnavailable =
+    tab === 'partner' && axios.isAxiosError(error) && error.response?.status === 403;
+  const errorMessage = error && !partnerUnavailable
+    ? axios.isAxiosError(error)
+      ? error.response?.data?.message ?? '统计数据加载失败'
+      : error.message
+    : '';
+
   useEffect(() => {
     if (!showPartnerTab && tab === 'partner') {
       setTab('self');
     }
   }, [showPartnerTab, tab]);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setErrorMessage('');
-      setPartnerUnavailable(false);
-      try {
-        if (tab === 'partner') {
-          const [partnerSummary, partnerTrend] = await Promise.all([
-            fetchPartnerMonthlySummary(monthKey),
-            fetchMonthlyTrendSeries({
-              target: 'partner',
-              months: 6,
-              endMonth: currentMonth,
-            }),
-          ]);
-          setSummary(partnerSummary);
-          setTrend(partnerTrend);
-        } else {
-          const [selfSummary, selfTrend] = await Promise.all([
-            fetchMonthlySummary(monthKey),
-            fetchMonthlyTrendSeries({
-              target: 'self',
-              months: 6,
-              endMonth: currentMonth,
-            }),
-          ]);
-          setSummary(selfSummary);
-          setTrend(selfTrend);
-        }
-      } catch (error) {
-        setSummary(null);
-        setTrend([]);
-        if (
-          tab === 'partner' &&
-          axios.isAxiosError(error) &&
-          error.response?.status === 403
-        ) {
-          setPartnerUnavailable(true);
-          return;
-        }
-        if (axios.isAxiosError(error)) {
-          setErrorMessage(error.response?.data?.message ?? '统计数据加载失败');
-          return;
-        }
-        if (error instanceof Error) {
-          setErrorMessage(error.message);
-          return;
-        }
-        setErrorMessage('统计数据加载失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
-  }, [tab, monthKey, currentMonth]);
 
   const categoryRows = useMemo(() => {
     if (!summary) {
@@ -215,7 +184,7 @@ function StatsPage() {
         </div>
       )}
 
-      {loading ? (
+      {loading && !summary ? (
         <div className="space-y-3">
           <div className="ios-glass h-48 animate-pulse" />
           <div className="ios-glass h-48 animate-pulse" />

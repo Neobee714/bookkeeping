@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { fetchBudget, setBudget, updateBudget } from '@/api/budget';
 import { createSaving, deleteSaving, fetchSavings, updateSaving } from '@/api/savings';
+import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type {
   Budget,
   BudgetSummary,
@@ -11,6 +12,7 @@ import type {
   SavingsGoal,
   SavingsUpdatePayload,
 } from '@/types';
+import { useCachedResource } from '@/utils/useCachedResource';
 
 type PlanTab = 'budget' | 'savings';
 
@@ -153,15 +155,9 @@ function SavingsCard({ goal, onLongPress }: SavingsCardProps) {
 }
 
 function PlanPage() {
+  const refreshVersion = useTransactionSyncStore((state) => state.refreshVersion);
   const [tab, setTab] = useState<PlanTab>('budget');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-
-  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
-  const [loadingBudget, setLoadingBudget] = useState(true);
-  const [loadingSavings, setLoadingSavings] = useState(true);
-  const [budgetError, setBudgetError] = useState('');
-  const [savingsError, setSavingsError] = useState('');
 
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -185,81 +181,65 @@ function PlanPage() {
     [month],
   );
 
-  const loadBudget = async () => {
-    setLoadingBudget(true);
-    setBudgetError('');
-    try {
+  const budgetResource = useCachedResource<BudgetSummary>(
+    `budget:${monthKey}`,
+    async () => {
       const data = await fetchBudget(monthKey);
       const known = new Map<Category, Budget>();
       data.items.forEach((item) => {
         known.set(item.category, item);
       });
-      const mergedItems = categoryMeta
-        .map((meta) => {
-          const existing = known.get(meta.category);
-          if (existing) {
-            return existing;
-          }
-          return {
-            id: null,
-            user_id: 0,
-            category: meta.category,
-            monthly_limit: 0,
-            year_month: monthKey,
-            actual_spent: 0,
-            remaining: 0,
-            created_at: null,
-          } satisfies Budget;
-        });
-
+      const mergedItems = categoryMeta.map((meta) => {
+        const existing = known.get(meta.category);
+        if (existing) {
+          return existing;
+        }
+        return {
+          id: null,
+          user_id: 0,
+          category: meta.category,
+          monthly_limit: 0,
+          year_month: monthKey,
+          actual_spent: 0,
+          remaining: 0,
+          created_at: null,
+        } satisfies Budget;
+      });
       const total_budget = mergedItems.reduce((sum, item) => sum + item.monthly_limit, 0);
       const total_spent = mergedItems.reduce((sum, item) => sum + item.actual_spent, 0);
-
-      setBudgetSummary({
+      return {
         month: monthKey,
         items: mergedItems,
         total_budget,
         total_spent,
-      });
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setBudgetError(error.response?.data?.message ?? '预算加载失败');
-      } else if (error instanceof Error) {
-        setBudgetError(error.message);
-      } else {
-        setBudgetError('预算加载失败');
-      }
-    } finally {
-      setLoadingBudget(false);
-    }
-  };
+      } satisfies BudgetSummary;
+    },
+    [monthKey, refreshVersion],
+  );
 
-  const loadSavings = async () => {
-    setLoadingSavings(true);
-    setSavingsError('');
-    try {
-      const data = await fetchSavings();
-      setSavingsGoals(data);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setSavingsError(error.response?.data?.message ?? '储蓄目标加载失败');
-      } else if (error instanceof Error) {
-        setSavingsError(error.message);
-      } else {
-        setSavingsError('储蓄目标加载失败');
-      }
-    } finally {
-      setLoadingSavings(false);
-    }
-  };
+  const savingsResource = useCachedResource<SavingsGoal[]>(
+    'savings',
+    () => fetchSavings(),
+    [],
+  );
 
-  useEffect(() => {
-    void loadBudget();
-  }, [monthKey]);
+  const budgetSummary = budgetResource.data ?? null;
+  const savingsGoals = savingsResource.data ?? [];
+  const loadingBudget = budgetResource.loading;
+  const loadingSavings = savingsResource.loading;
+  const budgetError = budgetResource.error
+    ? axios.isAxiosError(budgetResource.error)
+      ? budgetResource.error.response?.data?.message ?? '预算加载失败'
+      : budgetResource.error.message
+    : '';
+  const savingsError = savingsResource.error
+    ? axios.isAxiosError(savingsResource.error)
+      ? savingsResource.error.response?.data?.message ?? '储蓄目标加载失败'
+      : savingsResource.error.message
+    : '';
 
-  useEffect(() => {
-    void loadSavings();
-  }, []);
+  const reloadBudget = () => budgetResource.refresh();
+  const reloadSavings = () => savingsResource.refresh();
 
   const openCreateBudgetSheet = () => {
     setEditingBudget(null);
@@ -326,7 +306,7 @@ function PlanPage() {
         });
       }
       setBudgetSheetOpen(false);
-      await loadBudget();
+      await reloadBudget();
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setSheetError(error.response?.data?.message ?? '预算保存失败');
@@ -380,7 +360,7 @@ function PlanPage() {
         await createSaving(payload);
       }
       setSavingSheetOpen(false);
-      await loadSavings();
+      await reloadSavings();
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setSheetError(error.response?.data?.message ?? '储蓄目标保存失败');
@@ -408,7 +388,7 @@ function PlanPage() {
     try {
       await deleteSaving(editingSaving.id);
       setSavingSheetOpen(false);
-      await loadSavings();
+      await reloadSavings();
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setSheetError(error.response?.data?.message ?? '删除失败');
@@ -470,7 +450,7 @@ function PlanPage() {
 
       {tab === 'budget' ? (
         <>
-          {loadingBudget ? (
+          {loadingBudget && !budgetSummary ? (
             <div className="ios-glass h-48 animate-pulse" />
           ) : budgetError ? (
             <div className="ios-glass px-4 py-3 text-sm text-[#FF3B30]">{budgetError}</div>
@@ -515,7 +495,7 @@ function PlanPage() {
         </>
       ) : (
         <>
-          {loadingSavings ? (
+          {loadingSavings && savingsGoals.length === 0 ? (
             <div className="ios-glass h-48 animate-pulse" />
           ) : savingsError ? (
             <div className="ios-glass px-4 py-3 text-sm text-[#FF3B30]">{savingsError}</div>

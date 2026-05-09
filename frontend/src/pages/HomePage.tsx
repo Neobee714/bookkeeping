@@ -19,7 +19,7 @@ import type {
   Transaction,
   TransactionCreatePayload,
 } from '@/types';
-
+import { useCachedResource } from '@/utils/useCachedResource';
 type ViewMode = 'mine' | 'partner';
 
 const getMonthKey = (value: Date): string => {
@@ -89,10 +89,6 @@ function HomePage() {
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [summary, setSummary] = useState<MonthlySummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Transaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -103,6 +99,29 @@ function HomePage() {
   const partnerName = user?.partner?.nickname?.trim() || '伴侣';
   const showPartnerTab = Boolean(user?.partner?.nickname);
   const isMineView = viewMode === 'mine';
+
+  const txResource = useCachedResource<Transaction[]>(
+    `tx:${viewMode}:${monthKey}`,
+    () => (isMineView ? fetchTransactions(monthKey) : fetchPartnerTransactions(monthKey)),
+    [viewMode, monthKey, refreshVersion],
+  );
+  const summaryResource = useCachedResource<MonthlySummary>(
+    `sum:${viewMode}:${monthKey}`,
+    () => (isMineView ? fetchMonthlySummary(monthKey) : fetchPartnerMonthlySummary(monthKey)),
+    [viewMode, monthKey, refreshVersion],
+  );
+
+  const transactions = txResource.data ?? [];
+  const summary = summaryResource.data ?? null;
+  const loading = txResource.loading || summaryResource.loading;
+  const error = txResource.error ?? summaryResource.error;
+  const errorMessage = error
+    ? axios.isAxiosError(error) && viewMode === 'partner' && error.response?.status === 403
+      ? '还没有绑定伴侣'
+      : axios.isAxiosError(error)
+        ? error.response?.data?.message ?? '账单加载失败'
+        : error.message
+    : '';
 
   useEffect(() => {
     if (!showPartnerTab && viewMode === 'partner') {
@@ -118,39 +137,9 @@ function HomePage() {
     }
   }, [viewMode]);
 
-  const loadDashboard = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    setTransactions([]);
-    setSummary(null);
-
-    try {
-      const [nextTransactions, nextSummary] = await Promise.all([
-        isMineView ? fetchTransactions(monthKey) : fetchPartnerTransactions(monthKey),
-        isMineView ? fetchMonthlySummary(monthKey) : fetchPartnerMonthlySummary(monthKey),
-      ]);
-      setTransactions(nextTransactions);
-      setSummary(nextSummary);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (viewMode === 'partner' && error.response?.status === 403) {
-          setErrorMessage('还没有绑定伴侣');
-        } else {
-          setErrorMessage(error.response?.data?.message ?? '账单加载失败');
-        }
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('账单加载失败');
-      }
-    } finally {
-      setLoading(false);
-    }
+  const reloadAfterMutation = async () => {
+    useTransactionSyncStore.getState().bumpRefreshVersion();
   };
-
-  useEffect(() => {
-    void loadDashboard();
-  }, [monthKey, viewMode, refreshVersion]);
 
   const groupedTransactions = useMemo(() => {
     const groups = new Map<string, Transaction[]>();
@@ -200,7 +189,7 @@ function HomePage() {
         await createTransaction(payload);
       }
       handleCloseSheet();
-      await loadDashboard();
+      await reloadAfterMutation();
     } catch (error) {
       if (axios.isAxiosError(error)) {
         window.alert(error.response?.data?.message ?? '提交失败');
@@ -227,7 +216,7 @@ function HomePage() {
     setDeletingId(transaction.id);
     try {
       await removeTransaction(transaction.id);
-      await loadDashboard();
+      await reloadAfterMutation();
     } catch (error) {
       if (axios.isAxiosError(error)) {
         window.alert(error.response?.data?.message ?? '删除失败');
@@ -272,23 +261,23 @@ function HomePage() {
           </button>
         </div>
 
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-2">
           <div className="flex-1 text-center">
             <p className="mb-1 text-xs font-medium text-[#8E8E93]">收入</p>
-            <p className="text-[24px] font-bold tracking-tight text-[#34C759]">
-              ¥ {formatMoney(totalIncome)}
+            <p className="whitespace-nowrap text-[17px] font-bold tracking-tight text-[#34C759]">
+              ¥{formatMoney(totalIncome)}
             </p>
           </div>
           <div className="flex-1 text-center">
             <p className="mb-1 text-xs font-medium text-[#8E8E93]">支出</p>
-            <p className="text-[24px] font-bold tracking-tight text-[#FF3B30]">
-              ¥ {formatMoney(totalExpense)}
+            <p className="whitespace-nowrap text-[17px] font-bold tracking-tight text-[#FF3B30]">
+              ¥{formatMoney(totalExpense)}
             </p>
           </div>
           <div className="flex-1 text-center">
             <p className="mb-1 text-xs font-medium text-[#8E8E93]">结余</p>
-            <p className="text-[24px] font-bold tracking-tight text-[#1C1C1E]">
-              ¥ {formatMoney(balance)}
+            <p className="whitespace-nowrap text-[17px] font-bold tracking-tight text-[#1C1C1E]">
+              ¥{formatMoney(balance)}
             </p>
           </div>
         </div>
@@ -313,7 +302,7 @@ function HomePage() {
         </div>
       )}
 
-      {loading ? (
+      {loading && transactions.length === 0 && !summary ? (
         <SkeletonList />
       ) : errorMessage ? (
         <div className="ios-glass ios-anim ios-anim-d3 px-4 py-3 text-sm text-[#FF3B30]">
@@ -327,7 +316,12 @@ function HomePage() {
         </div>
       ) : (
         <div className={isMineView ? '' : 'pointer-events-none'}>
-          {groupedTransactions.map(([date, items], groupIndex) => (
+          {groupedTransactions.map(([date, items], groupIndex) => {
+            const dayExpense = items.reduce(
+              (sum, item) => (item.type === 'expense' ? sum + item.amount : sum),
+              0,
+            );
+            return (
             <div
               key={date}
               className={`ios-glass ios-anim p-4 ${
@@ -338,9 +332,16 @@ function HomePage() {
                     : 'ios-anim-d5'
               }`}
             >
-              <p className="mb-2 text-[13px] font-semibold tracking-wide text-[#8E8E93]">
-                {formatGroupDate(date)}
-              </p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[13px] font-semibold tracking-wide text-[#8E8E93]">
+                  {formatGroupDate(date)}
+                </p>
+                {dayExpense > 0 && (
+                  <p className="text-[13px] font-semibold tracking-wide text-[#8E8E93]">
+                    支出 ¥{formatMoney(dayExpense)}
+                  </p>
+                )}
+              </div>
               {items.map((item) => (
                 <TransactionItem
                   key={item.id}
@@ -351,7 +352,8 @@ function HomePage() {
                 />
               ))}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
