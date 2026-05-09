@@ -132,104 +132,105 @@ function AddTransactionSheet({
         onClick={onClose}
       />
 
-      <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-4 pb-6 pt-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5CFC5]" />
+      <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-5 pb-8 pt-4">
+        <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5D5DB]" />
 
         <div className="mt-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[#2D2824]">{title}</h2>
+          <h2 className="text-[18px] font-semibold text-[#1C1C1E]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-[10px] border border-[#E5DFD5] px-3 text-xs text-[#6B6560]"
+            className="h-8 rounded-[10px] bg-[rgba(118,118,128,0.12)] px-3 text-xs text-[#1C1C1E]"
           >
             关闭
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
+        <div className="ios-segment mt-4 flex">
           <button
             type="button"
             onClick={() => setType('expense')}
-            className={`h-10 rounded-[10px] text-sm font-medium ${
-              type === 'expense'
-                ? 'bg-white text-[#C27B6B]'
-                : 'bg-transparent text-[#6B6560]'
-            }`}
+            className={`ios-segment-btn ${type === 'expense' ? 'active' : ''}`}
+            style={{
+              color: type === 'expense' ? '#FF3B30' : '#1C1C1E',
+            }}
           >
             支出
           </button>
           <button
             type="button"
             onClick={() => setType('income')}
-            className={`h-10 rounded-[10px] text-sm font-medium ${
-              type === 'income'
-                ? 'bg-white text-[#6B9E85]'
-                : 'bg-transparent text-[#6B6560]'
-            }`}
+            className={`ios-segment-btn ${type === 'income' ? 'active' : ''}`}
+            style={{
+              color: type === 'income' ? '#34C759' : '#1C1C1E',
+            }}
           >
             收入
           </button>
         </div>
 
         <label className="mt-4 block">
-          <span className="mb-1 block text-xs text-[#6B6560]">金额</span>
+          <span className="mb-1 block text-xs text-[#8E8E93]">金额</span>
           <input
             type="text"
             inputMode="decimal"
             placeholder="0.00"
             value={amountInput}
             onChange={(event) => setAmountInput(sanitizeAmount(event.target.value))}
-            className="h-12 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-2xl font-semibold text-[#2D2824] outline-none focus:border-[#5A7A6E]"
+            className="h-12 w-full rounded-[10px] border border-[rgba(60,60,67,0.12)] px-3 text-2xl font-semibold text-[#1C1C1E] outline-none focus:border-[#007AFF]"
           />
         </label>
 
         <div className="mt-4">
-          <p className="mb-2 text-xs text-[#6B6560]">分类</p>
+          <p className="mb-2 text-xs text-[#8E8E93]">分类</p>
           <div className="grid grid-cols-3 gap-2">
-            {activeCategories.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setCategory(item.key)}
-                className={`flex h-12 items-center justify-center gap-1 rounded-[10px] border text-sm ${
-                  category === item.key
-                    ? 'border-[#5A7A6E] bg-[#E8F0EC] text-[#5A7A6E]'
-                    : 'border-[#E5DFD5] bg-white text-[#6B6560]'
-                }`}
-              >
-                <span>{item.emoji}</span>
-                <span>{item.key}</span>
-              </button>
-            ))}
+            {activeCategories.map((item) => {
+              const active = category === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setCategory(item.key)}
+                  className={`flex h-12 items-center justify-center gap-1 rounded-[10px] border text-sm transition ${
+                    active
+                      ? 'border-[#007AFF] bg-[rgba(0,122,255,0.08)] text-[#007AFF]'
+                      : 'border-[rgba(60,60,67,0.12)] bg-white text-[#1C1C1E]'
+                  }`}
+                >
+                  <span>{item.emoji}</span>
+                  <span>{item.key}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
           <label className="block">
-            <span className="mb-1 block text-xs text-[#6B6560]">日期</span>
+            <span className="mb-1 block text-xs text-[#8E8E93]">日期</span>
             <input
               type="date"
               value={dateInput}
               onChange={(event) => setDateInput(event.target.value)}
-              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm text-[#2D2824] outline-none focus:border-[#5A7A6E]"
+              className="h-11 w-full rounded-[10px] border border-[rgba(60,60,67,0.12)] px-3 text-sm text-[#1C1C1E] outline-none focus:border-[#007AFF]"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs text-[#6B6560]">备注（可选）</span>
+            <span className="mb-1 block text-xs text-[#8E8E93]">备注（可选）</span>
             <input
               type="text"
               value={note}
               onChange={(event) => setNote(event.target.value)}
               maxLength={255}
               placeholder="写点备注"
-              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm text-[#2D2824] outline-none focus:border-[#5A7A6E]"
+              className="h-11 w-full rounded-[10px] border border-[rgba(60,60,67,0.12)] px-3 text-sm text-[#1C1C1E] outline-none focus:border-[#007AFF]"
             />
           </label>
         </div>
 
         {errorMessage && (
-          <p className="mt-3 rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 py-2 text-xs text-[#C27B6B]">
+          <p className="mt-3 rounded-[10px] bg-[rgba(255,59,48,0.1)] px-3 py-2 text-xs text-[#FF3B30]">
             {errorMessage}
           </p>
         )}
@@ -238,7 +239,7 @@ function AddTransactionSheet({
           type="button"
           disabled={submitting}
           onClick={handleConfirm}
-          className="mt-4 h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-4 h-12 w-full rounded-[12px] bg-[#007AFF] text-[15px] font-semibold text-white disabled:opacity-60"
         >
           {submitting ? '提交中...' : buttonText}
         </button>

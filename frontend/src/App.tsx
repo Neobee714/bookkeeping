@@ -93,8 +93,8 @@ function ProtectedRoute({
 
   if (accessToken && !userReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FBF7F0]">
-        <p className="text-sm text-[#6B6560]">正在加载...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F2F2F7]">
+        <p className="text-sm text-[#8E8E93]">正在加载...</p>
       </div>
     );
   }

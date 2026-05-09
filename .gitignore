@@ -11,3 +11,7 @@ plan.md
 frontend/scripts/build-apk.ps1
 frontend/build-apk.bat
 frontend/.gradle-user-home/
+
+# Local tooling
+.claude/
+CLAUDE.md

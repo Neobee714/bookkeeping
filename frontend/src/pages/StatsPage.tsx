@@ -2,7 +2,6 @@ import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Cell,
-  Legend,
   Line,
   LineChart,
   Pie,
@@ -19,11 +18,12 @@ import {
   fetchMonthlyTrendSeries,
   fetchPartnerMonthlySummary,
 } from '@/api/stats';
+import { useAuthStore } from '@/store/authStore';
 import type { MonthlySummary, TrendPoint } from '@/types';
 
 type SummaryTab = 'self' | 'partner';
 
-const DEFAULT_COLOR = '#C5BFB5';
+const DEFAULT_COLOR = '#8E8E93';
 
 const formatMonthKey = (value: Date): string => {
   const year = value.getFullYear();
@@ -34,7 +34,11 @@ const formatMonthKey = (value: Date): string => {
 const shiftMonth = (value: Date, offset: number): Date =>
   new Date(value.getFullYear(), value.getMonth() + offset, 1);
 
-const formatShortMonth = (value: string): string => value.slice(5);
+const formatShortMonth = (value: string): string => {
+  const month = value.slice(5);
+  return `${Number.parseInt(month, 10)}月`;
+};
+
 const formatTooltipNumber = (value: unknown): string => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -43,7 +47,14 @@ const formatTooltipNumber = (value: unknown): string => {
   return numeric.toLocaleString();
 };
 
+const formatMoney = (value: number): string =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
 function StatsPage() {
+  const user = useAuthStore((state) => state.user);
+  const partnerName = user?.partner?.nickname?.trim() || '伴侣';
+  const showPartnerTab = Boolean(user?.partner?.nickname);
+
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
@@ -59,6 +70,12 @@ function StatsPage() {
     () => currentMonth.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' }),
     [currentMonth],
   );
+
+  useEffect(() => {
+    if (!showPartnerTab && tab === 'partner') {
+      setTab('self');
+    }
+  }, [showPartnerTab, tab]);
 
   useEffect(() => {
     const load = async () => {
@@ -131,111 +148,92 @@ function StatsPage() {
       .sort((a, b) => b.value - a.value);
   }, [summary]);
 
-  const topCategoryAmount = categoryRows[0]?.value ?? 0;
   const pieData =
     categoryRows.length > 0
       ? categoryRows
-      : [{ name: '暂无支出', value: 1, color: '#E5DFD5' }];
+      : [{ name: '暂无支出', value: 1, color: '#E5E5EA' }];
 
   return (
-    <section className="space-y-4 pb-4">
-      <header className="space-y-3 rounded-2xl border border-[#E8F0EC] bg-white p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 rounded-[10px] border border-[#E5DFD5] bg-white px-2 py-1">
-            <button
-              type="button"
-              onClick={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
-            >
-              ‹
-            </button>
-            <span className="min-w-[102px] text-center text-sm font-medium text-[#5A7A6E]">
-              {monthLabel}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
-            >
-              ›
-            </button>
-          </div>
+    <section className="space-y-3 pb-2">
+      <h1 className="ios-anim mb-1 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
+        图表
+      </h1>
 
-          <div className="grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
-            <button
-              type="button"
-              onClick={() => setTab('self')}
-              className={`h-8 rounded-[10px] px-4 text-xs ${
-                tab === 'self' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
-              }`}
-            >
-              我
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('partner')}
-              className={`h-8 rounded-[10px] px-4 text-xs ${
-                tab === 'partner' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
-              }`}
-            >
-              伴侣
-            </button>
-          </div>
+      <div className="ios-glass ios-glass-strong ios-anim ios-anim-d1 p-4">
+        <div className="mb-3 flex items-center justify-center gap-5">
+          <button
+            type="button"
+            onClick={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[rgba(0,122,255,0.1)] text-[15px] font-semibold text-[#007AFF]"
+            aria-label="上个月"
+          >
+            ‹
+          </button>
+          <span className="text-[17px] font-semibold text-[#1C1C1E]">{monthLabel}</span>
+          <button
+            type="button"
+            onClick={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[rgba(0,122,255,0.1)] text-[15px] font-semibold text-[#007AFF]"
+            aria-label="下个月"
+          >
+            ›
+          </button>
         </div>
 
-        <p className="text-xs text-[#6B6560]">统计月份：{monthKey}</p>
-      </header>
+        <div className="flex justify-between">
+          <div className="flex-1 text-center">
+            <p className="mb-1 text-xs font-medium text-[#8E8E93]">收入</p>
+            <p className="text-[24px] font-bold tracking-tight text-[#34C759]">
+              ¥ {formatMoney(summary?.total_income ?? 0)}
+            </p>
+          </div>
+          <div className="flex-1 text-center">
+            <p className="mb-1 text-xs font-medium text-[#8E8E93]">支出</p>
+            <p className="text-[24px] font-bold tracking-tight text-[#FF3B30]">
+              ¥ {formatMoney(summary?.total_expense ?? 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {showPartnerTab && (
+        <div className="ios-segment ios-anim ios-anim-d2 flex">
+          <button
+            type="button"
+            onClick={() => setTab('self')}
+            className={`ios-segment-btn ${tab === 'self' ? 'active' : ''}`}
+          >
+            我的
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('partner')}
+            className={`ios-segment-btn ${tab === 'partner' ? 'active' : ''}`}
+          >
+            {partnerName}
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={`stats-skeleton-${index}`}
-              className="h-24 animate-pulse rounded-2xl border border-[#E8F0EC] bg-[#FBF7F0]"
-            />
-          ))}
+          <div className="ios-glass h-48 animate-pulse" />
+          <div className="ios-glass h-48 animate-pulse" />
         </div>
       ) : partnerUnavailable ? (
-        <div className="rounded-2xl border border-[#E8F0EC] bg-[#FBF7F0] px-4 py-10 text-center text-sm text-[#6B6560]">
+        <div className="ios-glass ios-anim ios-anim-d3 px-4 py-10 text-center text-sm text-[#8E8E93]">
           还没有绑定伴侣
         </div>
       ) : errorMessage ? (
-        <div className="rounded-2xl border border-[#F2D8D1] bg-[#FDF0EB] px-4 py-3 text-sm text-[#C27B6B]">
+        <div className="ios-glass ios-anim ios-anim-d3 px-4 py-3 text-sm text-[#FF3B30]">
           {errorMessage}
         </div>
       ) : summary ? (
         <>
-          <section className="grid grid-cols-2 gap-3">
-            <article className="rounded-2xl border border-[#F2D8D1] bg-white p-3">
-              <p className="text-xs text-[#6B6560]">总支出</p>
-              <p className="mt-2 text-lg font-semibold text-[#C27B6B]">
-                {summary.total_expense.toLocaleString()}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[#C5D9CF] bg-white p-3">
-              <p className="text-xs text-[#6B6560]">总收入</p>
-              <p className="mt-2 text-lg font-semibold text-[#6B9E85]">
-                {summary.total_income.toLocaleString()}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[#E5DFD5] bg-white p-3">
-              <p className="text-xs text-[#6B6560]">结余</p>
-              <p className="mt-2 text-lg font-semibold text-[#5A7A6E]">
-                {summary.balance.toLocaleString()}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-[#E5DFD5] bg-white p-3">
-              <p className="text-xs text-[#6B6560]">记录笔数</p>
-              <p className="mt-2 text-lg font-semibold text-[#7D7872]">
-                {summary.transaction_count.toLocaleString()}
-              </p>
-            </article>
-          </section>
-
-          <section className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
-            <p className="mb-2 text-sm font-semibold text-[#2D2824]">分类支出饼图</p>
-            <div className="relative">
-              <ResponsiveContainer width="100%" height={220}>
+          <div className="ios-glass ios-anim ios-anim-d3 p-4">
+            <div className="mb-3 text-[15px] font-semibold text-[#1C1C1E]">支出分布</div>
+            <div className="relative flex h-[180px] items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -243,9 +241,10 @@ function StatsPage() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={52}
-                    outerRadius={78}
-                    paddingAngle={2}
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={1.5}
+                    stroke="none"
                   >
                     {pieData.map((entry) => (
                       <Cell key={`pie-${entry.name}`} fill={entry.color} />
@@ -254,96 +253,126 @@ function StatsPage() {
                   <Tooltip
                     formatter={(value: unknown) => formatTooltipNumber(value)}
                     separator="："
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    formatter={(value) => (
-                      <span className="text-xs text-[#6B6560]">{value}</span>
-                    )}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: '0.5px solid rgba(60,60,67,0.12)',
+                      background: 'rgba(255,255,255,0.92)',
+                      backdropFilter: 'blur(12px)',
+                      fontSize: 12,
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-[#6B6560]">总支出</span>
-                <span className="mt-1 text-sm font-semibold text-[#C27B6B]">
-                  {summary.total_expense.toLocaleString()}
+                <span className="text-xs text-[#8E8E93]">总计</span>
+                <span className="mt-0.5 text-[13px] font-semibold text-[#1C1C1E]">
+                  ¥{formatMoney(summary.total_expense)}
                 </span>
               </div>
             </div>
-          </section>
 
-          <section className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
-            <p className="mb-2 text-sm font-semibold text-[#2D2824]">近6个月收支趋势</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={trend}>
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={formatShortMonth}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#6B6560' }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#6B6560' }}
-                  tickFormatter={(value: number) => value.toLocaleString()}
-                />
-                <Tooltip
-                  formatter={(value: unknown) => formatTooltipNumber(value)}
-                  labelFormatter={(value: unknown) => `月份：${String(value ?? '')}`}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="income"
-                  stroke="#6B9E85"
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="expense"
-                  stroke="#C27B6B"
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </section>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2.5">
+              {categoryRows.length === 0 ? (
+                <div className="col-span-2 py-3 text-center text-xs text-[#8E8E93]">
+                  本月暂无支出
+                </div>
+              ) : (
+                categoryRows.map((item) => (
+                  <div key={item.name} className="flex items-center gap-2 text-[13px] text-[#1C1C1E]">
+                    <span
+                      className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                      style={{ background: item.color }}
+                    />
+                    <span>{item.name}</span>
+                    <span className="ml-auto text-xs text-[#8E8E93]">
+                      ¥{formatMoney(item.value)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-          <section className="rounded-2xl border border-[#E8F0EC] bg-white p-3">
-            <p className="mb-3 text-sm font-semibold text-[#2D2824]">本月分类支出排行</p>
+          <div className="ios-glass ios-anim ios-anim-d4 p-4">
+            <div className="mb-2 text-[15px] font-semibold text-[#1C1C1E]">月度趋势</div>
+            <div className="h-[180px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trend} margin={{ top: 10, right: 8, left: 0, bottom: 4 }}>
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={formatShortMonth}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#8E8E93' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#8E8E93' }}
+                    tickFormatter={(value: number) => value.toLocaleString()}
+                    width={40}
+                  />
+                  <Tooltip
+                    formatter={(value: unknown) => formatTooltipNumber(value)}
+                    labelFormatter={(value: unknown) => `月份：${String(value ?? '')}`}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: '0.5px solid rgba(60,60,67,0.12)',
+                      background: 'rgba(255,255,255,0.92)',
+                      backdropFilter: 'blur(12px)',
+                      fontSize: 12,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="income"
+                    stroke="#34C759"
+                    strokeWidth={2.5}
+                    dot={{ r: 3, fill: '#34C759', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 5 }}
+                    name="收入"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="expense"
+                    stroke="#007AFF"
+                    strokeWidth={2.5}
+                    dot={{ r: 3, fill: '#007AFF', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 5 }}
+                    name="支出"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-1 flex items-center justify-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5 text-[#1C1C1E]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#34C759]" />
+                收入
+              </span>
+              <span className="flex items-center gap-1.5 text-[#1C1C1E]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#007AFF]" />
+                支出
+              </span>
+            </div>
+          </div>
 
-            {categoryRows.length === 0 ? (
-              <p className="rounded-[10px] bg-[#FBF7F0] px-3 py-6 text-center text-sm text-[#6B6560]">
-                本月暂无支出记录
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {categoryRows.map((item) => {
-                  const percent = topCategoryAmount > 0 ? (item.value / topCategoryAmount) * 100 : 0;
-                  return (
-                    <li key={item.name} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[#5C5852]">{item.name}</span>
-                        <span className="font-medium text-[#2D2824]">
-                          {item.value.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-[#F0EBE2]">
-                        <div
-                          className="h-2 rounded-full bg-[#5A7A6E]"
-                          style={{ width: `${Math.max(percent, 4)}%` }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+          <div className="ios-glass ios-anim ios-anim-d5 p-4">
+            <div className="mb-3 text-[15px] font-semibold text-[#1C1C1E]">本月指标</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-[rgba(118,118,128,0.06)] p-3">
+                <p className="text-xs text-[#8E8E93]">结余</p>
+                <p className="mt-1 text-[17px] font-semibold text-[#1C1C1E]">
+                  ¥ {formatMoney(summary.balance)}
+                </p>
+              </div>
+              <div className="rounded-xl bg-[rgba(118,118,128,0.06)] p-3">
+                <p className="text-xs text-[#8E8E93]">记录笔数</p>
+                <p className="mt-1 text-[17px] font-semibold text-[#1C1C1E]">
+                  {summary.transaction_count.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
         </>
       ) : null}
     </section>

@@ -16,20 +16,24 @@ const categoryEmojiMap: Record<Category, string> = {
   其他: '📌',
 };
 
+const categoryIconBg: Record<Category, string> = {
+  餐饮: 'rgba(255,149,0,0.12)',
+  交通: 'rgba(0,122,255,0.12)',
+  日用: 'rgba(88,86,214,0.12)',
+  娱乐: 'rgba(255,45,85,0.12)',
+  医疗: 'rgba(52,199,89,0.12)',
+  教育: 'rgba(90,200,250,0.12)',
+  购物: 'rgba(175,82,222,0.12)',
+  收入: 'rgba(52,199,89,0.12)',
+  其他: 'rgba(142,142,147,0.16)',
+};
+
 interface TransactionItemProps {
   item: Transaction;
   deleting: boolean;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
 }
-
-const formatDate = (value: string): string => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-};
 
 function TransactionItem({
   item,
@@ -79,16 +83,8 @@ function TransactionItem({
     setShowDeleteAction(false);
   };
 
-  const handleTouchStart = () => {
-    startLongPress();
-  };
-
-  const handleTouchEnd = () => {
-    stopLongPress();
-  };
-
-  const amountText = `${item.type === 'income' ? '+' : '-'}${item.amount.toLocaleString()}`;
-  const amountColor = item.type === 'income' ? '#6B9E85' : '#C27B6B';
+  const amountText = `${item.type === 'income' ? '+¥ ' : '-¥ '}${item.amount.toLocaleString()}`;
+  const amountColor = item.type === 'income' ? '#34C759' : '#FF3B30';
 
   return (
     <div
@@ -97,37 +93,30 @@ function TransactionItem({
       onMouseDown={startLongPress}
       onMouseUp={stopLongPress}
       onMouseLeave={stopLongPress}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      onTouchStart={startLongPress}
+      onTouchEnd={stopLongPress}
+      onTouchCancel={stopLongPress}
       onClick={handleClick}
-      className="w-full rounded-2xl border border-[#E8F0EC] bg-white px-3 py-3 text-left transition"
+      className="flex items-center gap-3 border-b border-[rgba(60,60,67,0.08)] py-3 last:border-b-0"
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0EBE2] text-xl">
-          {categoryEmojiMap[item.category]}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between">
-            <p className="truncate text-sm font-semibold text-[#2D2824]">{item.category}</p>
-            <p className="text-sm font-semibold" style={{ color: amountColor }}>
-              {amountText}
-            </p>
-          </div>
-          <div className="mt-1 flex items-center justify-between text-xs text-[#6B6560]">
-            <p className="truncate">{item.note || '无备注'}</p>
-            <p>{formatDate(item.date)}</p>
-          </div>
-        </div>
+      <div
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl"
+        style={{ background: categoryIconBg[item.category] }}
+      >
+        {categoryEmojiMap[item.category]}
       </div>
 
-      {showDeleteAction && (
-        <div className="mt-3 flex items-center justify-end gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-[16px] font-medium text-[#1C1C1E]">{item.category}</p>
+        <p className="mt-0.5 truncate text-[13px] text-[#8E8E93]">{item.note || '无备注'}</p>
+      </div>
+
+      {showDeleteAction ? (
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleResetDelete}
-            className="h-8 rounded-[10px] border border-[#E5DFD5] px-3 text-xs text-[#6B6560]"
+            className="h-8 rounded-[10px] border border-[rgba(60,60,67,0.12)] bg-white/60 px-3 text-xs text-[#8E8E93]"
           >
             取消
           </button>
@@ -135,10 +124,17 @@ function TransactionItem({
             type="button"
             disabled={deleting}
             onClick={handleDeleteClick}
-            className="h-8 rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 text-xs text-[#C27B6B] disabled:opacity-60"
+            className="h-8 rounded-[10px] bg-[#FF3B30] px-3 text-xs font-medium text-white disabled:opacity-60"
           >
-            {deleting ? '删除中...' : '删除'}
+            {deleting ? '删除中' : '删除'}
           </button>
+        </div>
+      ) : (
+        <div
+          className="flex-shrink-0 text-[17px] font-semibold tracking-tight"
+          style={{ color: amountColor }}
+        >
+          {amountText}
         </div>
       )}
     </div>

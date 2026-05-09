@@ -7,7 +7,8 @@ interface NavItem {
   icon: (active: boolean) => ReactNode;
 }
 
-const iconClass = 'h-[18px] w-[18px]';
+const iconClass = 'h-6 w-6';
+
 const navItems: NavItem[] = [
   {
     to: '/app/home',
@@ -16,7 +17,7 @@ const navItems: NavItem[] = [
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
         <path
           d="M4 10.8L12 4l8 6.8V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.2Z"
-          stroke={active ? '#5A7A6E' : '#9B9590'}
+          stroke={active ? '#007AFF' : '#8E8E93'}
           strokeWidth="1.8"
           strokeLinejoin="round"
         />
@@ -30,7 +31,7 @@ const navItems: NavItem[] = [
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
         <path
           d="M5 19h14M7 16V9m5 7V5m5 11v-4"
-          stroke={active ? '#5A7A6E' : '#9B9590'}
+          stroke={active ? '#007AFF' : '#8E8E93'}
           strokeWidth="1.8"
           strokeLinecap="round"
         />
@@ -44,7 +45,7 @@ const navItems: NavItem[] = [
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
         <path
           d="M4 6.5h16M4 12h16M4 17.5h10"
-          stroke={active ? '#5A7A6E' : '#9B9590'}
+          stroke={active ? '#007AFF' : '#8E8E93'}
           strokeWidth="1.8"
           strokeLinecap="round"
         />
@@ -58,7 +59,7 @@ const navItems: NavItem[] = [
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
         <path
           d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0"
-          stroke={active ? '#5A7A6E' : '#9B9590'}
+          stroke={active ? '#007AFF' : '#8E8E93'}
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -70,30 +71,36 @@ const navItems: NavItem[] = [
 
 function Layout() {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
-      <main className="flex-1 px-4 py-4 pb-24">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-[#F2F2F7]">
+      <div className="ios-bg-blobs">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
+        <div className="blob blob-4" />
+      </div>
+
+      <main className="relative z-10 flex-1 px-5 pb-28 pt-4">
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 border-t border-[#F0EBE2] bg-white px-3 pb-4 pt-2">
-        <ul className="grid grid-cols-4 gap-2">
+      <nav className="ios-glass-tabbar fixed bottom-0 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 px-0 pb-[calc(env(safe-area-inset-bottom,0)+18px)] pt-1.5">
+        <ul className="flex">
           {navItems.map((item) => (
-            <li key={item.to}>
+            <li key={item.to} className="flex-1">
               <NavLink
                 to={item.to}
-                className={({ isActive }) =>
-                  `flex h-[56px] flex-col items-center justify-center rounded-[10px] text-xs transition-colors ${
-                    isActive
-                      ? 'bg-[#E8F0EC] text-[#5A7A6E]'
-                      : 'bg-transparent text-[#9B9590]'
-                  }`
-                }
+                className="flex flex-col items-center justify-center gap-0.5 py-1.5"
               >
                 {({ isActive }) => (
-                  <span className="relative flex flex-col items-center justify-center">
+                  <>
                     {item.icon(isActive)}
-                    <span className="mt-1">{item.label}</span>
-                  </span>
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: isActive ? '#007AFF' : '#8E8E93' }}
+                    >
+                      {item.label}
+                    </span>
+                  </>
                 )}
               </NavLink>
             </li>

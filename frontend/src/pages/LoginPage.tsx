@@ -66,38 +66,45 @@ function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col justify-center px-6">
-      <div className="rounded-2xl border border-[#E5DFD5] bg-white p-6">
-        <h1 className="text-2xl font-semibold text-[#5A7A6E]">欢迎回来</h1>
-        <p className="mt-2 text-sm text-[#6B6560]">登录后进入双人记账</p>
+    <div className="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col justify-center bg-[#F2F2F7] px-6">
+      <div className="ios-bg-blobs">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
+        <div className="blob blob-4" />
+      </div>
+
+      <div className="ios-glass ios-glass-strong relative z-10 p-6">
+        <h1 className="text-[28px] font-bold tracking-tight text-[#1C1C1E]">欢迎回来</h1>
+        <p className="mt-2 text-sm text-[#8E8E93]">登录后进入双人记账</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5C5852]">用户名</span>
+            <span className="mb-1 block text-xs text-[#8E8E93]">用户名</span>
             <input
               type="text"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               required
-              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
+              className="h-11 w-full rounded-[10px] border border-[rgba(60,60,67,0.12)] bg-white/80 px-3 text-sm outline-none focus:border-[#007AFF]"
               placeholder="请输入用户名"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-[#5C5852]">密码</span>
+            <span className="mb-1 block text-xs text-[#8E8E93]">密码</span>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              className="h-11 w-full rounded-[10px] border border-[#E5DFD5] px-3 text-sm outline-none focus:border-[#5A7A6E]"
+              className="h-11 w-full rounded-[10px] border border-[rgba(60,60,67,0.12)] bg-white/80 px-3 text-sm outline-none focus:border-[#007AFF]"
               placeholder="请输入密码"
             />
           </label>
 
           {errorMessage && (
-            <p className="rounded-[10px] border border-[#F2D8D1] bg-[#FDF0EB] px-3 py-2 text-sm text-[#C27B6B]">
+            <p className="rounded-[10px] bg-[rgba(255,59,48,0.1)] px-3 py-2 text-sm text-[#FF3B30]">
               {errorMessage}
             </p>
           )}
@@ -105,15 +112,15 @@ function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="h-11 w-full rounded-[10px] bg-[#5A7A6E] text-sm font-semibold text-white disabled:opacity-60"
+            className="h-12 w-full rounded-[12px] bg-[#007AFF] text-[15px] font-semibold text-white disabled:opacity-60"
           >
             {submitting ? '登录中...' : '登录'}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-[#7D7872]">
+        <p className="mt-4 text-center text-sm text-[#8E8E93]">
           没有账号？
-          <Link to="/register" className="ml-1 font-medium text-[#5A7A6E]">
+          <Link to="/register" className="ml-1 font-medium text-[#007AFF]">
             去注册
           </Link>
         </p>

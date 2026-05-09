@@ -1,17 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   font-family:
-    "Noto Serif SC",
-    "PingFang SC",
-    "Hiragino Sans GB",
-    "Microsoft YaHei",
-    "Source Han Serif SC",
-    serif;
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Noto Sans SC',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
 }
 
 * {
@@ -21,8 +23,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #FBF7F0;
-  color: #2D2824;
+  background: #F2F2F7;
+  color: #1C1C1E;
+  letter-spacing: -0.01em;
 }
 
 #root {
@@ -30,6 +33,146 @@ body {
 }
 
 input,
-button {
+button,
+select,
+textarea {
   font: inherit;
+}
+
+/* ===== iOS 玻璃态工具类 ===== */
+@layer components {
+  .ios-glass {
+    background: rgba(255, 255, 255, 0.65);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 0.5px solid rgba(255, 255, 255, 0.8);
+    border-radius: 16px;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.03),
+      0 4px 16px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .ios-glass-strong {
+    background: rgba(255, 255, 255, 0.82);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    backdrop-filter: blur(40px) saturate(200%);
+    border: 0.5px solid rgba(255, 255, 255, 0.8);
+    border-radius: 16px;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.03),
+      0 4px 16px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .ios-glass-tabbar {
+    background: rgba(242, 242, 247, 0.78);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border-top: 0.5px solid rgba(60, 60, 67, 0.1);
+  }
+
+  .ios-segment {
+    background: rgba(118, 118, 128, 0.12);
+    border-radius: 9px;
+    padding: 2px;
+  }
+
+  .ios-segment-btn {
+    flex: 1;
+    height: 32px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1C1C1E;
+    background: transparent;
+    transition: all 0.2s;
+  }
+
+  .ios-segment-btn.active {
+    background: #fff;
+    box-shadow:
+      0 1px 4px rgba(0, 0, 0, 0.08),
+      0 0.5px 1px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* ===== 背景模糊色块 ===== */
+.ios-bg-blobs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ios-bg-blobs .blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.25;
+}
+
+.ios-bg-blobs .blob-1 {
+  width: 260px;
+  height: 260px;
+  background: #007AFF;
+  top: -60px;
+  left: -80px;
+}
+
+.ios-bg-blobs .blob-2 {
+  width: 200px;
+  height: 200px;
+  background: #5856D6;
+  top: 280px;
+  right: -60px;
+}
+
+.ios-bg-blobs .blob-3 {
+  width: 180px;
+  height: 180px;
+  background: #FF9500;
+  bottom: 240px;
+  left: -40px;
+}
+
+.ios-bg-blobs .blob-4 {
+  width: 150px;
+  height: 150px;
+  background: #34C759;
+  bottom: 40px;
+  right: 20px;
+}
+
+/* ===== 淡入动画 ===== */
+@keyframes iosFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ios-anim {
+  animation: iosFadeUp 0.4s ease-out both;
+}
+.ios-anim-d1 { animation-delay: 0.05s; }
+.ios-anim-d2 { animation-delay: 0.1s; }
+.ios-anim-d3 { animation-delay: 0.15s; }
+.ios-anim-d4 { animation-delay: 0.2s; }
+.ios-anim-d5 { animation-delay: 0.25s; }
+.ios-anim-d6 { animation-delay: 0.3s; }
+
+/* 隐藏原生 number input 箭头 */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
 }

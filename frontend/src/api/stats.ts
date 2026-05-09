@@ -2,14 +2,14 @@ import client from '@/api/client';
 import type { ApiResponse, MonthlySummary, TrendPoint } from '@/types';
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  餐饮: '#5A7A6E',
-  交通: '#6B9E85',
-  日用: '#C4A35A',
-  娱乐: '#CC6B7E',
-  医疗: '#5A8FBF',
-  教育: '#7A9A3E',
-  购物: '#A08548',
-  其他: '#8A8580',
+  餐饮: '#FF9500',
+  交通: '#007AFF',
+  日用: '#5856D6',
+  娱乐: '#FF2D55',
+  医疗: '#34C759',
+  教育: '#5AC8FA',
+  购物: '#AF52DE',
+  其他: '#8E8E93',
 };
 
 type SummaryTarget = 'self' | 'partner';
@@ -51,13 +51,6 @@ export const fetchPartnerMonthlySummary = async (
       params: { month },
     },
   );
-  return assertSuccess(response.data);
-};
-
-export const fetchTrend = async (months: number): Promise<TrendPoint[]> => {
-  const response = await client.get<ApiResponse<TrendPoint[]>>('/stats/trend', {
-    params: { months },
-  });
   return assertSuccess(response.data);
 };
 

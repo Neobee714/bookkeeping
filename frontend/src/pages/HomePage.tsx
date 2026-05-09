@@ -11,7 +11,6 @@ import {
 import { fetchMonthlySummary, fetchPartnerMonthlySummary } from '@/api/stats';
 import AddTransactionSheet from '@/components/AddTransactionSheet';
 import TransactionItem from '@/components/TransactionItem';
-import UserAvatar from '@/components/UserAvatar';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type {
@@ -59,22 +58,23 @@ const fetchPartnerTransactions = async (month: string): Promise<Transaction[]> =
   return response.data.data;
 };
 
+const formatMoney = (value: number): string =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
 function SkeletonList() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, index) => (
+    <div className="ios-glass space-y-3 p-4">
+      {Array.from({ length: 4 }).map((_, index) => (
         <div
           key={`skeleton-${index}`}
-          className="animate-pulse rounded-2xl border border-[#E8F0EC] bg-white px-3 py-3"
+          className="flex items-center gap-3 border-b border-[rgba(60,60,67,0.08)] py-2 last:border-b-0"
         >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#F0EBE2]" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3 w-24 rounded bg-[#F0EBE2]" />
-              <div className="h-3 w-32 rounded bg-[#F0EBE2]" />
-            </div>
-            <div className="h-3 w-16 rounded bg-[#F0EBE2]" />
+          <div className="h-10 w-10 animate-pulse rounded-xl bg-black/5" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-24 animate-pulse rounded bg-black/5" />
+            <div className="h-3 w-32 animate-pulse rounded bg-black/5" />
           </div>
+          <div className="h-3 w-16 animate-pulse rounded bg-black/5" />
         </div>
       ))}
     </div>
@@ -246,144 +246,127 @@ function HomePage() {
   const balance = summary?.balance ?? 0;
 
   return (
-    <section className="space-y-4">
-      <header className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <UserAvatar avatar={user?.avatar} name={user?.nickname} />
-            <div>
-              <p className="text-sm text-[#6B6560]">你好</p>
-              <p className="text-base font-semibold text-[#2D2824]">{user?.nickname ?? '我'}</p>
+    <section className="space-y-3">
+      <h1 className="ios-anim mb-1 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
+        记账本
+      </h1>
+
+      <div className="ios-glass ios-glass-strong ios-anim ios-anim-d1 p-4">
+        <div className="mb-3 flex items-center justify-center gap-5">
+          <button
+            type="button"
+            onClick={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[rgba(0,122,255,0.1)] text-[15px] font-semibold text-[#007AFF]"
+            aria-label="上个月"
+          >
+            ‹
+          </button>
+          <span className="text-[17px] font-semibold text-[#1C1C1E]">{monthLabel}</span>
+          <button
+            type="button"
+            onClick={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[rgba(0,122,255,0.1)] text-[15px] font-semibold text-[#007AFF]"
+            aria-label="下个月"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="flex justify-between">
+          <div className="flex-1 text-center">
+            <p className="mb-1 text-xs font-medium text-[#8E8E93]">收入</p>
+            <p className="text-[24px] font-bold tracking-tight text-[#34C759]">
+              ¥ {formatMoney(totalIncome)}
+            </p>
+          </div>
+          <div className="flex-1 text-center">
+            <p className="mb-1 text-xs font-medium text-[#8E8E93]">支出</p>
+            <p className="text-[24px] font-bold tracking-tight text-[#FF3B30]">
+              ¥ {formatMoney(totalExpense)}
+            </p>
+          </div>
+          <div className="flex-1 text-center">
+            <p className="mb-1 text-xs font-medium text-[#8E8E93]">结余</p>
+            <p className="text-[24px] font-bold tracking-tight text-[#1C1C1E]">
+              ¥ {formatMoney(balance)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {showPartnerTab && (
+        <div className="ios-segment ios-anim ios-anim-d2 flex">
+          <button
+            type="button"
+            onClick={() => setViewMode('mine')}
+            className={`ios-segment-btn ${isMineView ? 'active' : ''}`}
+          >
+            我的
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('partner')}
+            className={`ios-segment-btn ${!isMineView ? 'active' : ''}`}
+          >
+            {partnerName}
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <SkeletonList />
+      ) : errorMessage ? (
+        <div className="ios-glass ios-anim ios-anim-d3 px-4 py-3 text-sm text-[#FF3B30]">
+          {errorMessage}
+        </div>
+      ) : groupedTransactions.length === 0 ? (
+        <div className="ios-glass ios-anim ios-anim-d3 px-4 py-10 text-center text-sm text-[#8E8E93]">
+          {isMineView
+            ? '这个月还没有账单，点右下角添加第一笔吧'
+            : `${partnerName} 这个月还没有账单`}
+        </div>
+      ) : (
+        <div className={isMineView ? '' : 'pointer-events-none'}>
+          {groupedTransactions.map(([date, items], groupIndex) => (
+            <div
+              key={date}
+              className={`ios-glass ios-anim p-4 ${
+                groupIndex === 0
+                  ? 'ios-anim-d3'
+                  : groupIndex === 1
+                    ? 'ios-anim-d4'
+                    : 'ios-anim-d5'
+              }`}
+            >
+              <p className="mb-2 text-[13px] font-semibold tracking-wide text-[#8E8E93]">
+                {formatGroupDate(date)}
+              </p>
+              {items.map((item) => (
+                <TransactionItem
+                  key={item.id}
+                  item={item}
+                  deleting={deletingId === item.id}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
             </div>
-          </div>
-
-          <div className="flex items-center gap-1 rounded-[10px] border border-[#E5DFD5] bg-white px-2 py-1">
-            <button
-              type="button"
-              onClick={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
-            >
-              ‹
-            </button>
-            <span className="min-w-[102px] text-center text-sm font-medium text-[#5A7A6E]">
-              {monthLabel}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#6B6560] hover:bg-[#F0EBE2]"
-            >
-              ›
-            </button>
-          </div>
+          ))}
         </div>
-
-        {showPartnerTab && (
-          <div className="grid grid-cols-2 rounded-[10px] bg-[#E8F0EC] p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode('mine')}
-              className={`h-9 rounded-[10px] text-sm ${
-                viewMode === 'mine' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
-              }`}
-            >
-              我
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('partner')}
-              className={`h-9 rounded-[10px] text-sm ${
-                viewMode === 'partner' ? 'bg-white text-[#5A7A6E]' : 'text-[#6B6560]'
-              }`}
-            >
-              {partnerName}
-            </button>
-          </div>
-        )}
-      </header>
-
-      <article className="rounded-2xl bg-[#5A7A6E] px-4 py-5 text-white">
-        <p className="text-sm text-[#D5CFC5]">本月支出</p>
-        <p className="mt-2 text-3xl font-semibold">
-          {totalExpense.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-[#D5CFC5]">本月收入</p>
-            <p className="mt-1 text-base font-semibold">
-              {totalIncome.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-[#D5CFC5]">本月结余</p>
-            <p className="mt-1 text-base font-semibold">
-              {balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            </p>
-          </div>
-        </div>
-      </article>
-
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[#2D2824]">
-            {isMineView ? '账单记录' : `${partnerName}的账单`}
-          </h2>
-          <span className="text-xs text-[#6B6560]">{monthKey}</span>
-        </div>
-
-        {loading ? (
-          <SkeletonList />
-        ) : errorMessage ? (
-          <div className="rounded-2xl border border-[#F2D8D1] bg-[#FDF0EB] px-4 py-3 text-sm text-[#C27B6B]">
-            {errorMessage}
-          </div>
-        ) : groupedTransactions.length === 0 ? (
-          <div className="rounded-2xl border border-[#E8F0EC] bg-white px-4 py-10 text-center text-sm text-[#6B6560]">
-            {isMineView
-              ? '这个月还没有账单，点右下角添加第一笔吧'
-              : `${partnerName} 这个月还没有账单`}
-          </div>
-        ) : (
-          <div className={isMineView ? 'space-y-4' : 'pointer-events-none space-y-4'}>
-            {groupedTransactions.map(([date, items]) => {
-              const dailyExpense = items
-                .filter((t) => t.type === 'expense')
-                .reduce((sum, t) => sum + t.amount, 0);
-              return (
-              <div key={date} className="space-y-2">
-                <div className="flex items-center justify-between border-b border-[#E8F0EC] pb-2">
-                  <p className="text-xs font-medium text-[#6B6560]">{formatGroupDate(date)}</p>
-                  {dailyExpense > 0 && (
-                    <span className="text-xs text-[#C27B6B]">
-                      支出：{dailyExpense.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <TransactionItem
-                      key={item.id}
-                      item={item}
-                      deleting={deletingId === item.id}
-                      onEdit={handleOpenEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      )}
 
       {isMineView && (
-        <div className="pointer-events-none fixed bottom-24 left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 px-4">
+        <div className="pointer-events-none fixed bottom-[108px] left-1/2 z-20 w-full max-w-[430px] -translate-x-1/2 px-5">
           <div className="flex justify-end">
             <button
               type="button"
               onClick={handleOpenCreate}
-              className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5A7A6E] text-3xl leading-none text-white"
+              className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] text-[30px] font-light leading-none text-white transition-transform active:scale-90"
+              style={{
+                boxShadow:
+                  '0 4px 16px rgba(0,122,255,0.4), 0 1px 3px rgba(0,0,0,0.1)',
+              }}
+              aria-label="添加账单"
             >
               +
             </button>
