@@ -51,7 +51,19 @@ try {
     Write-Host "[3/5] Packaging dist..." -ForegroundColor Yellow
     $BundlePath = "$ProjectRoot\dist-bundle-$Version.zip"
     if (Test-Path $BundlePath) { Remove-Item $BundlePath -Force }
-    Compress-Archive -Path "$ProjectRoot\dist\*" -DestinationPath $BundlePath -Force
+
+    # Use Capgo's official zip command — produces a format compatible with
+    # Android's Java unzip (avoids DEFLATED+EXT descriptor issues that break
+    # zips made by PowerShell's Compress-Archive or .NET ZipArchive).
+    npx @capgo/cli bundle zip `
+        --path "$ProjectRoot\dist" `
+        --name "dist-bundle-$Version.zip" `
+        --no-code-check `
+        com.neobee.bookkeeping
+    if ($LASTEXITCODE -ne 0) { throw "capgo zip failed" }
+    if (-not (Test-Path $BundlePath)) {
+        throw "Expected bundle file not found: $BundlePath"
+    }
     $sizeKb = [math]::Round((Get-Item $BundlePath).Length / 1024, 1)
     Write-Host "       Bundle: $BundlePath ($sizeKb KB)" -ForegroundColor Gray
 
@@ -66,13 +78,38 @@ try {
 
     # --- Step 6: Upload ---
     Write-Host "[5/5] Uploading release..." -ForegroundColor Yellow
-    $uploadResp = & curl.exe --fail --silent --show-error `
-        -H "Authorization: Bearer $token" `
-        -F "version=$Version" `
-        -F "changelog=$Notes" `
-        -F "bundle=@$BundlePath" `
-        "$ApiBaseUrl/app-updates/releases"
-    if ($LASTEXITCODE -ne 0) { throw "Upload failed: $uploadResp" }
+
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls13
+
+    Add-Type -AssemblyName System.Net.Http
+    $httpHandler = New-Object System.Net.Http.HttpClientHandler
+    $httpClient = New-Object System.Net.Http.HttpClient($httpHandler)
+    $httpClient.Timeout = [TimeSpan]::FromMinutes(10)
+    $httpClient.DefaultRequestHeaders.Authorization = `
+        New-Object System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", $token)
+
+    $multipart = New-Object System.Net.Http.MultipartFormDataContent
+    $multipart.Add((New-Object System.Net.Http.StringContent($Version)), "version")
+    $multipart.Add((New-Object System.Net.Http.StringContent($Notes)), "changelog")
+
+    $fileStream = [System.IO.File]::OpenRead($BundlePath)
+    $fileContent = New-Object System.Net.Http.StreamContent($fileStream)
+    $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("application/zip")
+    $multipart.Add($fileContent, "bundle", [System.IO.Path]::GetFileName($BundlePath))
+
+    try {
+        $response = $httpClient.PostAsync("$ApiBaseUrl/app-updates/releases", $multipart).GetAwaiter().GetResult()
+        $uploadResp = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        if (-not $response.IsSuccessStatusCode) {
+            throw "Upload failed ($($response.StatusCode)): $uploadResp"
+        }
+    }
+    finally {
+        $fileStream.Dispose()
+        $multipart.Dispose()
+        $httpClient.Dispose()
+    }
+
     $parsed = $uploadResp | ConvertFrom-Json
     if (-not $parsed.success) { throw "Publish failed: $($parsed.message)" }
 
