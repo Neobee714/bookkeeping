@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.response import success_response
 from app.routers import (
+    app_updates_router,
     auth_router,
     budget_router,
     circles_router,
@@ -86,6 +87,7 @@ app.include_router(stats_router)
 app.include_router(budget_router)
 app.include_router(savings_router)
 app.include_router(circles_router, prefix="/api/v1", tags=["circles"])
+app.include_router(app_updates_router)
 
 
 @app.get("/health")

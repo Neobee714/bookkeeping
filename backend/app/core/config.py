@@ -66,3 +66,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(get_env("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(get_env("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 FOUNDER_INVITE_CODE = (get_env("FOUNDER_INVITE_CODE", "NEOBEE2025") or "NEOBEE2025").strip().upper()
 CIRCLE_CREATOR_USERNAME = (get_env("CIRCLE_CREATOR_USERNAME", "") or "").strip()
+
+APP_RELEASES_DIR = (get_env("APP_RELEASES_DIR", "/var/lib/bookkeeping/updates") or "").strip()
+APP_RELEASES_PUBLIC_BASE_URL = (get_env("APP_RELEASES_PUBLIC_BASE_URL", "") or "").strip().rstrip("/")
+APP_RELEASES_MAX_BUNDLE_MB = int(get_env("APP_RELEASES_MAX_BUNDLE_MB", "50"))

@@ -10,6 +10,7 @@ import {
 import client from '@/api/client';
 import AdminLayout from '@/components/AdminLayout';
 import Layout from '@/components/Layout';
+import UpdateNotice from '@/components/UpdateNotice';
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
 import PlanPage from '@/pages/PlanPage';
@@ -19,6 +20,7 @@ import StatsPage from '@/pages/StatsPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 import { useAuthStore } from '@/store/authStore';
 import type { ApiResponse, User } from '@/types';
+import { initAppUpdates } from '@/utils/appUpdate';
 
 interface GuardProps {
   children: ReactElement;
@@ -115,8 +117,13 @@ function App() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
 
+  useEffect(() => {
+    void initAppUpdates();
+  }, []);
+
   return (
     <BrowserRouter>
+      <UpdateNotice />
       <Routes>
         <Route
           path="/"

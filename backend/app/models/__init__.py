@@ -1,3 +1,4 @@
+from app.models.app_release import AppRelease
 from app.models.budget import Budget
 from app.models.circle import (
     Circle,
@@ -14,6 +15,7 @@ from app.models.transaction import Transaction
 from app.models.user import User
 
 __all__ = [
+    "AppRelease",
     "Budget",
     "CategoryEnum",
     "Circle",
