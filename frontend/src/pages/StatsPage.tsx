@@ -20,12 +20,14 @@ import {
 } from '@/api/stats';
 import { useAuthStore } from '@/store/authStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
-import type { MonthlySummary, TrendPoint } from '@/types';
+import type { MonthlySummary, NoteBreakdownEntry, TrendPoint } from '@/types';
 import { useCachedResource } from '@/utils/useCachedResource';
 
 type SummaryTab = 'self' | 'partner';
 
 const DEFAULT_COLOR = '#8E8E93';
+const EMPTY_SLICE_COLOR = '#E5E5EA';
+const UNLABELED_NOTE = '未备注';
 
 const formatMonthKey = (value: Date): string => {
   const year = value.getFullYear();
@@ -52,6 +54,11 @@ const formatTooltipNumber = (value: unknown): string => {
 const formatMoney = (value: number): string =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+interface TopNoteItem extends NoteBreakdownEntry {
+  category: string;
+  color: string;
+}
+
 function StatsPage() {
   const user = useAuthStore((state) => state.user);
   const partnerName = user?.partner?.nickname?.trim() || '伴侣';
@@ -62,6 +69,7 @@ function StatsPage() {
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [tab, setTab] = useState<SummaryTab>('self');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const monthKey = useMemo(() => formatMonthKey(currentMonth), [currentMonth]);
   const monthLabel = useMemo(
@@ -103,6 +111,11 @@ function StatsPage() {
     }
   }, [showPartnerTab, tab]);
 
+  // Reset the drill-down when the data source changes.
+  useEffect(() => {
+    setSelectedCategory(null);
+  }, [tab, monthKey]);
+
   const categoryRows = useMemo(() => {
     if (!summary) {
       return [] as Array<{ name: string; value: number; color: string }>;
@@ -120,7 +133,47 @@ function StatsPage() {
   const pieData =
     categoryRows.length > 0
       ? categoryRows
-      : [{ name: '暂无支出', value: 1, color: '#E5E5EA' }];
+      : [{ name: '暂无支出', value: 1, color: EMPTY_SLICE_COLOR }];
+
+  // Resolve the active category – either user-selected or the biggest slice.
+  const activeCategory = useMemo(() => {
+    if (categoryRows.length === 0) {
+      return null;
+    }
+    if (selectedCategory) {
+      const match = categoryRows.find((row) => row.name === selectedCategory);
+      if (match) {
+        return match;
+      }
+    }
+    return categoryRows[0];
+  }, [categoryRows, selectedCategory]);
+
+  const noteEntriesForActive = useMemo<NoteBreakdownEntry[]>(() => {
+    if (!summary || !activeCategory) {
+      return [];
+    }
+    return summary.note_breakdown?.[activeCategory.name] ?? [];
+  }, [summary, activeCategory]);
+
+  const topNotes = useMemo<TopNoteItem[]>(() => {
+    if (!summary?.note_breakdown) {
+      return [];
+    }
+    const flat: TopNoteItem[] = [];
+    Object.entries(summary.note_breakdown).forEach(([category, entries]) => {
+      const color = CATEGORY_COLORS[category] ?? DEFAULT_COLOR;
+      entries.forEach((entry) => {
+        if (entry.amount > 0) {
+          flat.push({ ...entry, category, color });
+        }
+      });
+    });
+    return flat.sort((a, b) => b.amount - a.amount).slice(0, 5);
+  }, [summary]);
+
+  const topNoteMax = topNotes[0]?.amount ?? 0;
+  const activeNoteMax = noteEntriesForActive[0]?.amount ?? 0;
 
   return (
     <section className="space-y-3 pb-2">
@@ -200,8 +253,14 @@ function StatsPage() {
       ) : summary ? (
         <>
           <div className="ios-glass ios-anim ios-anim-d3 p-4">
-            <div className="mb-3 text-[15px] font-semibold text-[#1C1C1E]">支出分布</div>
-            <div className="relative flex h-[180px] items-center justify-center">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-[15px] font-semibold text-[#1C1C1E]">支出分布</div>
+              {categoryRows.length > 0 && (
+                <div className="text-[11px] text-[#8E8E93]">点击查看备注明细</div>
+              )}
+            </div>
+
+            <div className="relative flex h-[200px] items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -210,59 +269,233 @@ function StatsPage() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={45}
-                    outerRadius={75}
+                    innerRadius={50}
+                    outerRadius={82}
                     paddingAngle={1.5}
                     stroke="none"
-                  >
-                    {pieData.map((entry) => (
-                      <Cell key={`pie-${entry.name}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: unknown) => formatTooltipNumber(value)}
-                    separator="："
-                    contentStyle={{
-                      borderRadius: 12,
-                      border: '0.5px solid rgba(60,60,67,0.12)',
-                      background: 'rgba(255,255,255,0.92)',
-                      backdropFilter: 'blur(12px)',
-                      fontSize: 12,
+                    onClick={(slice: { name?: string }) => {
+                      if (categoryRows.length === 0 || !slice?.name) {
+                        return;
+                      }
+                      setSelectedCategory(slice.name);
                     }}
-                  />
+                  >
+                    {pieData.map((entry) => {
+                      const isActive =
+                        categoryRows.length > 0 && entry.name === activeCategory?.name;
+                      return (
+                        <Cell
+                          key={`pie-${entry.name}`}
+                          fill={entry.color}
+                          opacity={
+                            categoryRows.length === 0 || isActive ? 1 : 0.55
+                          }
+                          style={{
+                            cursor: categoryRows.length > 0 ? 'pointer' : 'default',
+                            transition: 'opacity 0.2s',
+                          }}
+                        />
+                      );
+                    })}
+                  </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-[#8E8E93]">总计</span>
-                <span className="mt-0.5 text-[13px] font-semibold text-[#1C1C1E]">
-                  ¥{formatMoney(summary.total_expense)}
-                </span>
+                {activeCategory ? (
+                  <>
+                    <span
+                      className="text-[11px] font-medium"
+                      style={{ color: activeCategory.color }}
+                    >
+                      {activeCategory.name}
+                    </span>
+                    <span className="mt-0.5 text-[15px] font-semibold text-[#1C1C1E]">
+                      ¥{formatMoney(activeCategory.value)}
+                    </span>
+                    <span className="mt-0.5 text-[10px] text-[#8E8E93]">
+                      占比{' '}
+                      {summary.total_expense > 0
+                        ? ((activeCategory.value / summary.total_expense) * 100).toFixed(0)
+                        : 0}
+                      %
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs text-[#8E8E93]">总计</span>
+                    <span className="mt-0.5 text-[13px] font-semibold text-[#1C1C1E]">
+                      ¥{formatMoney(summary.total_expense)}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
-            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2.5">
+            <div className="mt-2 flex flex-wrap gap-2">
               {categoryRows.length === 0 ? (
-                <div className="col-span-2 py-3 text-center text-xs text-[#8E8E93]">
+                <div className="w-full py-3 text-center text-xs text-[#8E8E93]">
                   本月暂无支出
                 </div>
               ) : (
-                categoryRows.map((item) => (
-                  <div key={item.name} className="flex items-center gap-2 text-[13px] text-[#1C1C1E]">
-                    <span
-                      className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                      style={{ background: item.color }}
-                    />
-                    <span>{item.name}</span>
-                    <span className="ml-auto text-xs text-[#8E8E93]">
-                      ¥{formatMoney(item.value)}
-                    </span>
-                  </div>
-                ))
+                categoryRows.map((item) => {
+                  const isActive = item.name === activeCategory?.name;
+                  return (
+                    <button
+                      type="button"
+                      key={item.name}
+                      onClick={() => setSelectedCategory(item.name)}
+                      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] transition"
+                      style={{
+                        background: isActive
+                          ? `${item.color}22`
+                          : 'rgba(118,118,128,0.08)',
+                        color: isActive ? item.color : '#1C1C1E',
+                        fontWeight: isActive ? 600 : 500,
+                      }}
+                    >
+                      <span
+                        className="h-2 w-2 flex-shrink-0 rounded-full"
+                        style={{ background: item.color }}
+                      />
+                      <span>{item.name}</span>
+                      <span className="text-[11px] opacity-80">
+                        ¥{formatMoney(item.value)}
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
 
-          <div className="ios-glass ios-anim ios-anim-d4 p-4">
+          {activeCategory && (
+            <div className="ios-glass ios-anim ios-anim-d4 p-4">
+              <div className="mb-3 flex items-baseline justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ background: activeCategory.color }}
+                  />
+                  <span className="text-[15px] font-semibold text-[#1C1C1E]">
+                    {activeCategory.name} · 备注明细
+                  </span>
+                </div>
+                <span className="text-[11px] text-[#8E8E93]">
+                  {noteEntriesForActive.length} 项
+                </span>
+              </div>
+
+              {noteEntriesForActive.length === 0 ? (
+                <div className="py-6 text-center text-xs text-[#8E8E93]">暂无明细</div>
+              ) : (
+                <div className="space-y-2.5">
+                  {noteEntriesForActive.map((entry) => {
+                    const ratio =
+                      activeNoteMax > 0 ? (entry.amount / activeNoteMax) * 100 : 0;
+                    const isUnlabeled = entry.note === UNLABELED_NOTE;
+                    return (
+                      <div key={`${activeCategory.name}-${entry.note}`}>
+                        <div className="mb-1 flex items-baseline justify-between text-[13px]">
+                          <span
+                            className={
+                              isUnlabeled
+                                ? 'text-[#8E8E93] italic'
+                                : 'text-[#1C1C1E]'
+                            }
+                          >
+                            {entry.note}
+                            {entry.count > 1 && (
+                              <span className="ml-1 text-[11px] text-[#8E8E93]">
+                                ×{entry.count}
+                              </span>
+                            )}
+                          </span>
+                          <span className="font-semibold text-[#1C1C1E]">
+                            ¥{formatMoney(entry.amount)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(118,118,128,0.1)]">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.max(ratio, 4)}%`,
+                              background: activeCategory.color,
+                              opacity: isUnlabeled ? 0.4 : 1,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {topNotes.length > 0 && (
+            <div className="ios-glass ios-anim ios-anim-d5 p-4">
+              <div className="mb-3 flex items-baseline justify-between">
+                <span className="text-[15px] font-semibold text-[#1C1C1E]">
+                  花钱最多的备注
+                </span>
+                <span className="text-[11px] text-[#8E8E93]">TOP {topNotes.length}</span>
+              </div>
+              <div className="space-y-2.5">
+                {topNotes.map((entry, index) => {
+                  const ratio =
+                    topNoteMax > 0 ? (entry.amount / topNoteMax) * 100 : 0;
+                  const isUnlabeled = entry.note === UNLABELED_NOTE;
+                  return (
+                    <div key={`${entry.category}-${entry.note}-${index}`}>
+                      <div className="mb-1 flex items-baseline justify-between text-[13px]">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                            style={{ background: entry.color }}
+                          >
+                            {index + 1}
+                          </span>
+                          <span
+                            className={
+                              isUnlabeled
+                                ? 'text-[#8E8E93] italic'
+                                : 'text-[#1C1C1E]'
+                            }
+                          >
+                            {entry.note}
+                          </span>
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[10px]"
+                            style={{
+                              background: `${entry.color}1A`,
+                              color: entry.color,
+                            }}
+                          >
+                            {entry.category}
+                          </span>
+                        </span>
+                        <span className="font-semibold text-[#1C1C1E]">
+                          ¥{formatMoney(entry.amount)}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(118,118,128,0.1)]">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.max(ratio, 4)}%`,
+                            background: entry.color,
+                            opacity: isUnlabeled ? 0.4 : 1,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="ios-glass ios-anim ios-anim-d5 p-4">
             <div className="mb-2 text-[15px] font-semibold text-[#1C1C1E]">月度趋势</div>
             <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">

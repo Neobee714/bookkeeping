@@ -22,6 +22,16 @@ def _to_float(value: Decimal | None) -> float:
     return float(value or Decimal("0"))
 
 
+_UNLABELED_NOTE = "未备注"
+
+
+def _normalize_note(raw: str | None) -> str:
+    if raw is None:
+        return _UNLABELED_NOTE
+    trimmed = raw.strip()
+    return trimmed if trimmed else _UNLABELED_NOTE
+
+
 def _aggregate_month_summary(
     db: Session,
     user_id: int,
@@ -63,6 +73,37 @@ def _aggregate_month_summary(
     category_rows = db.execute(category_stmt).all()
     category_expenses = {category.value: _to_float(amount) for category, amount in category_rows}
 
+    note_stmt = (
+        select(
+            Transaction.category,
+            Transaction.note,
+            func.coalesce(func.sum(Transaction.amount), Decimal("0")),
+            func.count(Transaction.id),
+        )
+        .where(*base_filter, Transaction.type == TransactionType.EXPENSE)
+        .group_by(Transaction.category, Transaction.note)
+    )
+    note_rows = db.execute(note_stmt).all()
+    note_breakdown: dict[str, dict[str, dict[str, float | int]]] = {}
+    for category, note_text, amount_sum, count in note_rows:
+        label = _normalize_note(note_text)
+        category_bucket = note_breakdown.setdefault(category.value, {})
+        entry = category_bucket.setdefault(label, {"amount": 0.0, "count": 0})
+        entry["amount"] = round(float(entry["amount"]) + _to_float(amount_sum), 2)
+        entry["count"] = int(entry["count"]) + int(count or 0)
+
+    note_breakdown_sorted = {
+        category: sorted(
+            (
+                {"note": label, "amount": values["amount"], "count": values["count"]}
+                for label, values in buckets.items()
+            ),
+            key=lambda item: item["amount"],
+            reverse=True,
+        )
+        for category, buckets in note_breakdown.items()
+    }
+
     count_stmt = select(func.count(Transaction.id)).where(*base_filter)
     total_count = int(db.scalar(count_stmt) or 0)
 
@@ -73,6 +114,7 @@ def _aggregate_month_summary(
         "balance": _to_float(total_income - total_expense),
         "transaction_count": total_count,
         "category_expenses": category_expenses,
+        "note_breakdown": note_breakdown_sorted,
     }
 
 

@@ -159,6 +159,12 @@ export interface SavingsUpdatePayload {
   deadline?: string | null;
 }
 
+export interface NoteBreakdownEntry {
+  note: string;
+  amount: number;
+  count: number;
+}
+
 export interface MonthlySummary {
   month: string;
   total_income: number;
@@ -166,6 +172,7 @@ export interface MonthlySummary {
   balance: number;
   transaction_count: number;
   category_expenses: Record<string, number>;
+  note_breakdown: Record<string, NoteBreakdownEntry[]>;
 }
 
 export interface TrendPoint {
