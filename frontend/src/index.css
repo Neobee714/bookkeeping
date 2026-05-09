@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,6 +16,23 @@
     sans-serif;
   -webkit-font-smoothing: antialiased;
   color-scheme: light;
+
+  /* 主题变量：用于无法通过 class 覆盖的 inline style 场景 */
+  --theme-avatar-gradient: linear-gradient(135deg, #007AFF, #5856D6);
+  --theme-avatar-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+}
+
+html[data-theme='porcelain'] {
+  font-family:
+    'Noto Serif SC',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    'Source Han Serif SC',
+    serif;
+
+  --theme-avatar-gradient: linear-gradient(135deg, #5A7A6E, #8A6E5A);
+  --theme-avatar-shadow: 0 4px 16px rgba(90, 122, 110, 0.28);
 }
 
 * {
@@ -176,3 +195,78 @@ input[type='number']::-webkit-inner-spin-button {
 input[type='number'] {
   -moz-appearance: textfield;
 }
+
+/* ===== 暖瓷主题覆盖 =====
+ * 通过 [data-theme='porcelain'] 选择器覆盖现有 Tailwind 任意值类，
+ * 实现从 iOS 蓝到暖瓷青瓷绿的全局主题切换。
+ * 色板：
+ *   主色 青瓷绿 #5A7A6E（替代 iOS 蓝 #007AFF）
+ *   背景 奶油白 #FBF7F0（替代 #F2F2F7）
+ *   文本 #2D2824（替代 #1C1C1E）
+ *   次文本 #6B6560（替代 #8E8E93）
+ *   分割线色 #E5DFD5（替代 #E5E5EA 等冷灰）
+ *   危险色 赤陶 #C27B6B（替代 #FF3B30）
+ *   成功色 青玉 #6B9E85（替代 #34C759）
+ *   警告色 琥珀 #C28B5A（替代 #FF9500）
+ *   紫调 藤色 #8A6E5A（替代 #5856D6）
+ */
+
+html[data-theme='porcelain'] body {
+  background: #FBF7F0;
+  color: #2D2824;
+}
+
+/* 基础文本色 */
+html[data-theme='porcelain'] .text-\[\#1C1C1E\] { color: #2D2824; }
+html[data-theme='porcelain'] .text-\[\#8E8E93\] { color: #6B6560; }
+html[data-theme='porcelain'] .text-\[\#A0A0A5\] { color: #8A8278; }
+html[data-theme='porcelain'] .text-\[\#C6C6C8\] { color: #BFB6A8; }
+
+/* 主色：iOS 蓝 → 青瓷绿 */
+html[data-theme='porcelain'] .text-\[\#007AFF\] { color: #5A7A6E; }
+html[data-theme='porcelain'] .bg-\[\#007AFF\] { background-color: #5A7A6E; }
+html[data-theme='porcelain'] .border-\[\#007AFF\] { border-color: #5A7A6E; }
+html[data-theme='porcelain'] .focus\:border-\[\#007AFF\]:focus { border-color: #5A7A6E; }
+
+/* 语义色：红 / 绿 / 橙 / 紫 */
+html[data-theme='porcelain'] .text-\[\#FF3B30\] { color: #C27B6B; }
+html[data-theme='porcelain'] .bg-\[\#FF3B30\] { background-color: #C27B6B; }
+html[data-theme='porcelain'] .text-\[\#34C759\] { color: #6B9E85; }
+html[data-theme='porcelain'] .bg-\[\#34C759\] { background-color: #6B9E85; }
+html[data-theme='porcelain'] .text-\[\#FF9500\] { color: #C28B5A; }
+html[data-theme='porcelain'] .bg-\[\#FF9500\] { background-color: #C28B5A; }
+html[data-theme='porcelain'] .text-\[\#5856D6\] { color: #8A6E5A; }
+html[data-theme='porcelain'] .bg-\[\#5856D6\] { background-color: #8A6E5A; }
+
+/* 页面背景 */
+html[data-theme='porcelain'] .bg-\[\#F2F2F7\] { background-color: #FBF7F0; }
+
+/* 半透明 rgba 类：用 color-mix 不稳，直接按出现的值逐个替换 */
+html[data-theme='porcelain'] .bg-\[rgba\(0\,122\,255\,0\.1\)\] { background-color: rgba(90, 122, 110, 0.12); }
+html[data-theme='porcelain'] .bg-\[rgba\(0\,122\,255\,0\.08\)\] { background-color: rgba(90, 122, 110, 0.1); }
+html[data-theme='porcelain'] .bg-\[rgba\(255\,59\,48\,0\.1\)\] { background-color: rgba(194, 123, 107, 0.12); }
+html[data-theme='porcelain'] .bg-\[rgba\(52\,199\,89\,0\.12\)\] { background-color: rgba(107, 158, 133, 0.14); }
+
+/* 玻璃态暖化 */
+html[data-theme='porcelain'] .ios-glass {
+  background: rgba(251, 247, 240, 0.7);
+  border-color: rgba(229, 223, 213, 0.8);
+}
+html[data-theme='porcelain'] .ios-glass-strong {
+  background: rgba(251, 247, 240, 0.88);
+  border-color: rgba(229, 223, 213, 0.8);
+}
+html[data-theme='porcelain'] .ios-glass-tabbar {
+  background: rgba(251, 247, 240, 0.82);
+  border-top-color: rgba(90, 70, 50, 0.1);
+}
+
+/* Segment 控件 */
+html[data-theme='porcelain'] .ios-segment { background: rgba(90, 70, 50, 0.1); }
+html[data-theme='porcelain'] .ios-segment-btn { color: #2D2824; }
+
+/* 背景模糊色块调色（主页/登录页装饰） */
+html[data-theme='porcelain'] .ios-bg-blobs .blob-1 { background: #5A7A6E; }
+html[data-theme='porcelain'] .ios-bg-blobs .blob-2 { background: #8A6E5A; }
+html[data-theme='porcelain'] .ios-bg-blobs .blob-3 { background: #C28B5A; }
+html[data-theme='porcelain'] .ios-bg-blobs .blob-4 { background: #6B9E85; }

@@ -9,6 +9,7 @@ import { importTransactions } from '@/api/transactions';
 import ImportModal from '@/components/ImportModal';
 import UserAvatar from '@/components/UserAvatar';
 import { useAuthStore } from '@/store/authStore';
+import { themeLabel, useThemeStore, type ThemeName } from '@/store/themeStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { TransactionImportResult } from '@/types';
 import { isNativeImportPicker, pickImportCsvFile } from '@/utils/importFilePicker';
@@ -82,6 +83,8 @@ function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
   const bumpRefreshVersion = useTransactionSyncStore((state) => state.bumpRefreshVersion);
 
   const [loading, setLoading] = useState(true);
@@ -101,6 +104,7 @@ function ProfilePage() {
   const [showAbout, setShowAbout] = useState(false);
   const [showCurrencySheet, setShowCurrencySheet] = useState(false);
   const [showPartnerSheet, setShowPartnerSheet] = useState(false);
+  const [showThemeSheet, setShowThemeSheet] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -190,6 +194,12 @@ function ProfilePage() {
     }
     setMessage(`已切换为 ${currencyLabel[next]}`);
     setShowCurrencySheet(false);
+  };
+
+  const handleChangeTheme = (next: ThemeName) => {
+    setTheme(next);
+    setMessage(`已切换为${themeLabel[next]}主题`);
+    setShowThemeSheet(false);
   };
 
   const handleOpenEditProfile = () => {
@@ -366,8 +376,8 @@ function ProfilePage() {
             <div
               className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full text-[32px] text-white"
               style={{
-                background: 'linear-gradient(135deg, #007AFF, #5856D6)',
-                boxShadow: '0 4px 16px rgba(0, 122, 255, 0.25)',
+                background: 'var(--theme-avatar-gradient)',
+                boxShadow: 'var(--theme-avatar-shadow)',
               }}
             >
               {user?.avatar ? (
@@ -428,6 +438,13 @@ function ProfilePage() {
           label="货币设置"
           badge={currency}
           onClick={() => setShowCurrencySheet(true)}
+        />
+        <MenuItem
+          icon={<span className="text-[#5856D6]">🎨</span>}
+          iconBg="rgba(88,86,214,0.12)"
+          label="主题外观"
+          badge={themeLabel[theme]}
+          onClick={() => setShowThemeSheet(true)}
           last
         />
       </div>
@@ -534,6 +551,39 @@ function ProfilePage() {
             >
               取消
             </button>
+          </section>
+        </div>
+      )}
+
+      {showThemeSheet && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/30">
+          <button
+            type="button"
+            aria-label="关闭主题设置"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowThemeSheet(false)}
+          />
+          <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-5 pb-8 pt-4">
+            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5D5DB]" />
+            <h3 className="mt-4 text-lg font-semibold text-[#1C1C1E]">主题外观</h3>
+            <p className="mt-1 text-xs text-[#8E8E93]">切换界面整体视觉风格</p>
+            <div className="mt-4 space-y-2">
+              {(['ios', 'porcelain'] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => handleChangeTheme(item)}
+                  className={`flex h-12 w-full items-center justify-between rounded-[10px] border px-4 text-sm ${
+                    theme === item
+                      ? 'border-[#007AFF] bg-[rgba(0,122,255,0.08)] text-[#007AFF]'
+                      : 'border-[rgba(60,60,67,0.12)] bg-white text-[#1C1C1E]'
+                  }`}
+                >
+                  <span>{themeLabel[item]}</span>
+                  {theme === item && <span>✓</span>}
+                </button>
+              ))}
+            </div>
           </section>
         </div>
       )}
@@ -666,7 +716,7 @@ function ProfilePage() {
             <div className="mt-6 flex flex-col items-center text-center">
               <div
                 className="flex h-16 w-16 items-center justify-center rounded-[18px] text-white"
-                style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)' }}
+                style={{ background: 'var(--theme-avatar-gradient)' }}
               >
                 <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
                   <path
