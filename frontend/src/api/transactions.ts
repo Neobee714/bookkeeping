@@ -14,9 +14,31 @@ const assertSuccess = <T>(response: ApiResponse<T>): T => {
   return response.data;
 };
 
-export const fetchTransactions = async (month: string): Promise<Transaction[]> => {
+interface TransactionPeriodQuery {
+  month: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+const buildTransactionQueryParams = (
+  period: string | TransactionPeriodQuery,
+): Record<string, string> => {
+  if (typeof period === 'string') {
+    return { month: period };
+  }
+
+  return {
+    month: period.month,
+    ...(period.startDate ? { start_date: period.startDate } : {}),
+    ...(period.endDate ? { end_date: period.endDate } : {}),
+  };
+};
+
+export const fetchTransactions = async (
+  period: string | TransactionPeriodQuery,
+): Promise<Transaction[]> => {
   const response = await client.get<ApiResponse<Transaction[]>>('/transactions', {
-    params: { month },
+    params: buildTransactionQueryParams(period),
   });
   return assertSuccess(response.data);
 };

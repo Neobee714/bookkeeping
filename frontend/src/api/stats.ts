@@ -30,25 +30,45 @@ const formatMonth = (value: Date): string => {
 const shiftMonth = (value: Date, offset: number): Date =>
   new Date(value.getFullYear(), value.getMonth() + offset, 1);
 
+interface SummaryPeriodQuery {
+  month: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+const buildSummaryQueryParams = (
+  period: string | SummaryPeriodQuery,
+): Record<string, string> => {
+  if (typeof period === 'string') {
+    return { month: period };
+  }
+
+  return {
+    month: period.month,
+    ...(period.startDate ? { start_date: period.startDate } : {}),
+    ...(period.endDate ? { end_date: period.endDate } : {}),
+  };
+};
+
 export const fetchMonthlySummary = async (
-  month: string,
+  period: string | SummaryPeriodQuery,
 ): Promise<MonthlySummary> => {
   const response = await client.get<ApiResponse<MonthlySummary>>(
     '/stats/monthly-summary',
     {
-      params: { month },
+      params: buildSummaryQueryParams(period),
     },
   );
   return assertSuccess(response.data);
 };
 
 export const fetchPartnerMonthlySummary = async (
-  month: string,
+  period: string | SummaryPeriodQuery,
 ): Promise<MonthlySummary> => {
   const response = await client.get<ApiResponse<MonthlySummary>>(
     '/stats/partner-summary',
     {
-      params: { month },
+      params: buildSummaryQueryParams(period),
     },
   );
   return assertSuccess(response.data);

@@ -12,6 +12,7 @@ import { fetchMonthlySummary, fetchPartnerMonthlySummary } from '@/api/stats';
 import AddTransactionSheet from '@/components/AddTransactionSheet';
 import TransactionItem from '@/components/TransactionItem';
 import { useAuthStore } from '@/store/authStore';
+import { useBillingCycleStore } from '@/store/billingCycleStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type {
   ApiResponse,
@@ -19,6 +20,7 @@ import type {
   Transaction,
   TransactionCreatePayload,
 } from '@/types';
+import { formatBillingCycleTip, getBillingCycleRange } from '@/utils/billingCycle';
 import { useCachedResource } from '@/utils/useCachedResource';
 type ViewMode = 'mine' | 'partner';
 
@@ -28,8 +30,19 @@ const getMonthKey = (value: Date): string => {
   return `${year}-${month}`;
 };
 
-const shiftMonth = (value: Date, delta: number): Date =>
-  new Date(value.getFullYear(), value.getMonth() + delta, 1);
+const shiftMonth = (value: Date, delta: number): Date => {
+  const targetMonth = new Date(value.getFullYear(), value.getMonth() + delta, 1);
+  const lastDay = new Date(
+    targetMonth.getFullYear(),
+    targetMonth.getMonth() + 1,
+    0,
+  ).getDate();
+  return new Date(
+    targetMonth.getFullYear(),
+    targetMonth.getMonth(),
+    Math.min(value.getDate(), lastDay),
+  );
+};
 
 const formatMonthLabel = (value: Date): string =>
   value.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' });
@@ -46,9 +59,17 @@ const formatGroupDate = (value: string): string => {
   });
 };
 
-const fetchPartnerTransactions = async (month: string): Promise<Transaction[]> => {
+const fetchPartnerTransactions = async (period: {
+  month: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<Transaction[]> => {
   const response = await client.get<ApiResponse<Transaction[]>>('/transactions/partner', {
-    params: { month },
+    params: {
+      month: period.month,
+      ...(period.startDate ? { start_date: period.startDate } : {}),
+      ...(period.endDate ? { end_date: period.endDate } : {}),
+    },
   });
 
   if (!response.data.success) {
@@ -60,6 +81,35 @@ const fetchPartnerTransactions = async (month: string): Promise<Transaction[]> =
 
 const formatMoney = (value: number): string =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+const getHomeErrorMessage = (error: unknown, viewMode: ViewMode): string => {
+  if (axios.isAxiosError(error)) {
+    if (viewMode === 'partner' && error.response?.status === 403) {
+      return '还没有绑定伴侣';
+    }
+
+    const serverMessage = error.response?.data?.message;
+    if (typeof serverMessage === 'string' && serverMessage.trim()) {
+      return serverMessage;
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return '账单请求超时，后端可能暂时不可用，请稍后重试';
+    }
+
+    if (!error.response) {
+      return '账单接口没有响应，请检查网络或稍后重试';
+    }
+
+    return `账单接口返回异常状态（${error.response.status}）`;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return '账单加载失败';
+};
 
 function SkeletonList() {
   return (
@@ -83,45 +133,54 @@ function SkeletonList() {
 
 function HomePage() {
   const user = useAuthStore((state) => state.user);
+  const monthlyStartDay = useBillingCycleStore((state) => state.monthlyStartDay);
   const refreshVersion = useTransactionSyncStore((state) => state.refreshVersion);
 
   const [viewMode, setViewMode] = useState<ViewMode>('mine');
-  const [currentMonth, setCurrentMonth] = useState(
-    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-  );
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Transaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showCycleTip, setShowCycleTip] = useState(true);
 
   const monthKey = useMemo(() => getMonthKey(currentMonth), [currentMonth]);
   const monthLabel = useMemo(() => formatMonthLabel(currentMonth), [currentMonth]);
+  const billingCycleRange = useMemo(
+    () => getBillingCycleRange(currentMonth, monthlyStartDay),
+    [currentMonth, monthlyStartDay],
+  );
+  const queryPeriod = useMemo(
+    () => ({
+      month: monthKey,
+      startDate: billingCycleRange.startDate,
+      endDate: billingCycleRange.endDate,
+    }),
+    [billingCycleRange.endDate, billingCycleRange.startDate, monthKey],
+  );
   const partnerName = user?.partner?.nickname?.trim() || '伴侣';
   const showPartnerTab = Boolean(user?.partner?.nickname);
   const isMineView = viewMode === 'mine';
 
   const txResource = useCachedResource<Transaction[]>(
-    `tx:${viewMode}:${monthKey}`,
-    () => (isMineView ? fetchTransactions(monthKey) : fetchPartnerTransactions(monthKey)),
-    [viewMode, monthKey, refreshVersion],
+    `tx:${viewMode}:${monthKey}:${billingCycleRange.rangeKey}`,
+    () => (isMineView ? fetchTransactions(queryPeriod) : fetchPartnerTransactions(queryPeriod)),
+    [viewMode, monthKey, billingCycleRange.rangeKey, refreshVersion],
   );
   const summaryResource = useCachedResource<MonthlySummary>(
-    `sum:${viewMode}:${monthKey}`,
-    () => (isMineView ? fetchMonthlySummary(monthKey) : fetchPartnerMonthlySummary(monthKey)),
-    [viewMode, monthKey, refreshVersion],
+    `sum:${viewMode}:${monthKey}:${billingCycleRange.rangeKey}`,
+    () =>
+      isMineView
+        ? fetchMonthlySummary(queryPeriod)
+        : fetchPartnerMonthlySummary(queryPeriod),
+    [viewMode, monthKey, billingCycleRange.rangeKey, refreshVersion],
   );
 
   const transactions = txResource.data ?? [];
   const summary = summaryResource.data ?? null;
   const loading = txResource.loading || summaryResource.loading;
   const error = txResource.error ?? summaryResource.error;
-  const errorMessage = error
-    ? axios.isAxiosError(error) && viewMode === 'partner' && error.response?.status === 403
-      ? '还没有绑定伴侣'
-      : axios.isAxiosError(error)
-        ? error.response?.data?.message ?? '账单加载失败'
-        : error.message
-    : '';
+  const errorMessage = error ? getHomeErrorMessage(error, viewMode) : '';
 
   useEffect(() => {
     if (!showPartnerTab && viewMode === 'partner') {
@@ -136,6 +195,17 @@ function HomePage() {
       setDeletingId(null);
     }
   }, [viewMode]);
+
+  useEffect(() => {
+    setShowCycleTip(true);
+    const timeoutId = window.setTimeout(() => {
+      setShowCycleTip(false);
+    }, 2600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [monthlyStartDay]);
 
   const reloadAfterMutation = async () => {
     useTransactionSyncStore.getState().bumpRefreshVersion();
@@ -239,6 +309,14 @@ function HomePage() {
       <h1 className="ios-anim mb-1 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
         记账本
       </h1>
+
+      {showCycleTip && (
+        <div className="pointer-events-none fixed left-1/2 top-[82px] z-20 w-[calc(100%-32px)] max-w-[398px] -translate-x-1/2">
+          <div className="ios-glass ios-anim px-4 py-2 text-center text-xs text-[#1C1C1E]">
+            {formatBillingCycleTip(monthlyStartDay)}
+          </div>
+        </div>
+      )}
 
       <div className="ios-glass ios-glass-strong ios-anim ios-anim-d1 p-4">
         <div className="mb-3 flex items-center justify-center gap-5">

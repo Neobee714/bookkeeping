@@ -9,6 +9,11 @@ import { importTransactions } from '@/api/transactions';
 import ImportModal from '@/components/ImportModal';
 import UserAvatar from '@/components/UserAvatar';
 import { useAuthStore } from '@/store/authStore';
+import {
+  BILLING_CYCLE_START_DAY_MAX,
+  BILLING_CYCLE_START_DAY_MIN,
+  useBillingCycleStore,
+} from '@/store/billingCycleStore';
 import { themeLabel, useThemeStore, type ThemeName } from '@/store/themeStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { TransactionImportResult } from '@/types';
@@ -83,6 +88,8 @@ function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const monthlyStartDay = useBillingCycleStore((state) => state.monthlyStartDay);
+  const setMonthlyStartDay = useBillingCycleStore((state) => state.setMonthlyStartDay);
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
   const bumpRefreshVersion = useTransactionSyncStore((state) => state.bumpRefreshVersion);
@@ -102,6 +109,7 @@ function ProfilePage() {
   const [importResult, setImportResult] = useState<TransactionImportResult | null>(null);
   const [importError, setImportError] = useState('');
   const [showAbout, setShowAbout] = useState(false);
+  const [showBillingCycleSheet, setShowBillingCycleSheet] = useState(false);
   const [showCurrencySheet, setShowCurrencySheet] = useState(false);
   const [showPartnerSheet, setShowPartnerSheet] = useState(false);
   const [showThemeSheet, setShowThemeSheet] = useState(false);
@@ -194,6 +202,13 @@ function ProfilePage() {
     }
     setMessage(`已切换为 ${currencyLabel[next]}`);
     setShowCurrencySheet(false);
+  };
+
+  const handleChangeBillingCycleStartDay = (next: number) => {
+    setMonthlyStartDay(next);
+    bumpRefreshVersion();
+    setMessage(`当前账单起始日已设为 ${next} 号`);
+    setShowBillingCycleSheet(false);
   };
 
   const handleChangeTheme = (next: ThemeName) => {
@@ -440,6 +455,13 @@ function ProfilePage() {
           onClick={() => setShowCurrencySheet(true)}
         />
         <MenuItem
+          icon={<span className="text-[#FF3B30]">🗓️</span>}
+          iconBg="rgba(255,59,48,0.12)"
+          label="每月起始日"
+          badge={`${monthlyStartDay}号`}
+          onClick={() => setShowBillingCycleSheet(true)}
+        />
+        <MenuItem
           icon={<span className="text-[#5856D6]">🎨</span>}
           iconBg="rgba(88,86,214,0.12)"
           label="主题外观"
@@ -614,6 +636,44 @@ function ProfilePage() {
                 >
                   <span>{currencyLabel[item]}</span>
                   {currency === item && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showBillingCycleSheet && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/30">
+          <button
+            type="button"
+            aria-label="关闭账单周期设置"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowBillingCycleSheet(false)}
+          />
+          <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-5 pb-8 pt-4">
+            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5D5DB]" />
+            <h3 className="mt-4 text-lg font-semibold text-[#1C1C1E]">每月起始日</h3>
+            <p className="mt-1 text-xs text-[#8E8E93]">仅本地保存，首页账单统计会按该周期计算</p>
+            <div className="mt-4 grid grid-cols-7 gap-2">
+              {Array.from(
+                {
+                  length:
+                    BILLING_CYCLE_START_DAY_MAX - BILLING_CYCLE_START_DAY_MIN + 1,
+                },
+                (_, index) => BILLING_CYCLE_START_DAY_MIN + index,
+              ).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => handleChangeBillingCycleStartDay(item)}
+                  className={`flex h-10 items-center justify-center rounded-[10px] border text-sm ${
+                    monthlyStartDay === item
+                      ? 'border-[#007AFF] bg-[rgba(0,122,255,0.08)] text-[#007AFF]'
+                      : 'border-[rgba(60,60,67,0.12)] bg-white text-[#1C1C1E]'
+                  }`}
+                >
+                  {item}号
                 </button>
               ))}
             </div>

@@ -5,12 +5,12 @@ import io
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.date_utils import month_range
+from app.core.date_utils import resolve_date_window
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.enums import CategoryEnum, TransactionType
@@ -67,15 +67,21 @@ def _query_transactions_for_user(
     db: Session,
     user_id: int,
     month: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> list[Transaction]:
     stmt = select(Transaction).where(Transaction.user_id == user_id)
-    if month:
+    if month or start_date or end_date:
         try:
-            _, start, end = month_range(month)
+            _, start, end = resolve_date_window(
+                month=month,
+                start_date=start_date,
+                end_date=end_date,
+            )
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail='month 参数格式错误，应为 YYYY-MM',
+                detail='日期范围参数错误，month 应为 YYYY-MM，start_date/end_date 应为 YYYY-MM-DD',
             ) from exc
         stmt = stmt.where(Transaction.date >= start, Transaction.date < end)
     stmt = stmt.order_by(Transaction.date.desc(), Transaction.created_at.desc())
@@ -84,17 +90,27 @@ def _query_transactions_for_user(
 
 @router.get('')
 def list_transactions(
-    month: str | None = None,
+    month: str | None = Query(default=None, description='YYYY-MM'),
+    start_date: str | None = Query(default=None, description='YYYY-MM-DD'),
+    end_date: str | None = Query(default=None, description='YYYY-MM-DD'),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    items = _query_transactions_for_user(db=db, user_id=current_user.id, month=month)
+    items = _query_transactions_for_user(
+        db=db,
+        user_id=current_user.id,
+        month=month,
+        start_date=start_date,
+        end_date=end_date,
+    )
     return success_response(data=[_serialize_transaction(item) for item in items])
 
 
 @router.get('/partner')
 def list_partner_transactions(
-    month: str | None = None,
+    month: str | None = Query(default=None, description='YYYY-MM'),
+    start_date: str | None = Query(default=None, description='YYYY-MM-DD'),
+    end_date: str | None = Query(default=None, description='YYYY-MM-DD'),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -104,7 +120,13 @@ def list_partner_transactions(
             detail='尚未绑定伴侣',
         )
 
-    items = _query_transactions_for_user(db=db, user_id=current_user.partner_id, month=month)
+    items = _query_transactions_for_user(
+        db=db,
+        user_id=current_user.partner_id,
+        month=month,
+        start_date=start_date,
+        end_date=end_date,
+    )
     return success_response(data=[_serialize_transaction(item) for item in items])
 
 

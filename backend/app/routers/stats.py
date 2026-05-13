@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.date_utils import add_months, month_range, month_start
+from app.core.date_utils import add_months, month_start, resolve_date_window
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.enums import TransactionType
@@ -36,8 +36,14 @@ def _aggregate_month_summary(
     db: Session,
     user_id: int,
     month: str | None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> dict:
-    month_text, start, end = month_range(month)
+    month_text, start, end = resolve_date_window(
+        month=month,
+        start_date=start_date,
+        end_date=end_date,
+    )
     base_filter = (
         Transaction.user_id == user_id,
         Transaction.date >= start,
@@ -121,15 +127,23 @@ def _aggregate_month_summary(
 @router.get("/monthly-summary")
 def monthly_summary(
     month: str | None = Query(default=None, description="YYYY-MM"),
+    start_date: str | None = Query(default=None, description="YYYY-MM-DD"),
+    end_date: str | None = Query(default=None, description="YYYY-MM-DD"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     try:
-        data = _aggregate_month_summary(db=db, user_id=current_user.id, month=month)
+        data = _aggregate_month_summary(
+            db=db,
+            user_id=current_user.id,
+            month=month,
+            start_date=start_date,
+            end_date=end_date,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="month 参数格式错误，应为 YYYY-MM",
+            detail="日期范围参数错误，month 应为 YYYY-MM，start_date/end_date 应为 YYYY-MM-DD",
         ) from exc
     return success_response(data=data)
 
@@ -137,6 +151,8 @@ def monthly_summary(
 @router.get("/partner-summary")
 def partner_monthly_summary(
     month: str | None = Query(default=None, description="YYYY-MM"),
+    start_date: str | None = Query(default=None, description="YYYY-MM-DD"),
+    end_date: str | None = Query(default=None, description="YYYY-MM-DD"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -146,11 +162,17 @@ def partner_monthly_summary(
             detail="尚未绑定伴侣",
         )
     try:
-        data = _aggregate_month_summary(db=db, user_id=current_user.partner_id, month=month)
+        data = _aggregate_month_summary(
+            db=db,
+            user_id=current_user.partner_id,
+            month=month,
+            start_date=start_date,
+            end_date=end_date,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="month 参数格式错误，应为 YYYY-MM",
+            detail="日期范围参数错误，month 应为 YYYY-MM，start_date/end_date 应为 YYYY-MM-DD",
         ) from exc
     return success_response(data=data)
 
