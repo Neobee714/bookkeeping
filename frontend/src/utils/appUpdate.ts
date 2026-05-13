@@ -23,8 +23,18 @@ interface PendingChangelogRecord {
   changelog: string;
 }
 
+export interface UpdateReadyInfo {
+  version: string;
+}
+
 let pendingSwap: BundleInfo | null = null;
+let pendingReadyInfo: UpdateReadyInfo | null = null;
 let started = false;
+const readyListeners = new Set<(info: UpdateReadyInfo | null) => void>();
+
+function emitReadyInfo(): void {
+  readyListeners.forEach((listener) => listener(pendingReadyInfo));
+}
 
 function shouldRunNative(): boolean {
   return Capacitor.isNativePlatform();
@@ -74,6 +84,44 @@ function stashPendingChangelog(record: PendingChangelogRecord): void {
     localStorage.setItem(PENDING_CHANGELOG_KEY, JSON.stringify(record));
   } catch {
     // ignore storage errors
+  }
+}
+
+export function subscribeUpdateReady(
+  listener: (info: UpdateReadyInfo | null) => void,
+): () => void {
+  readyListeners.add(listener);
+  listener(pendingReadyInfo);
+  return () => {
+    readyListeners.delete(listener);
+  };
+}
+
+export function dismissUpdateReady(): void {
+  pendingReadyInfo = null;
+  emitReadyInfo();
+}
+
+export async function applyPendingUpdate(): Promise<boolean> {
+  if (!pendingSwap) {
+    return false;
+  }
+
+  const bundle = pendingSwap;
+  pendingSwap = null;
+  pendingReadyInfo = null;
+  emitReadyInfo();
+
+  try {
+    await CapacitorUpdater.set({ id: bundle.id });
+    window.location.reload();
+    return true;
+  } catch (err) {
+    console.warn('[appUpdate] set bundle failed', err);
+    pendingSwap = bundle;
+    pendingReadyInfo = { version: bundle.version ?? '新版本' };
+    emitReadyInfo();
+    return false;
   }
 }
 
@@ -132,6 +180,8 @@ export async function initAppUpdates(): Promise<void> {
     }
     const bundle = pendingSwap;
     pendingSwap = null;
+    pendingReadyInfo = null;
+    emitReadyInfo();
     CapacitorUpdater.set({ id: bundle.id }).catch((err) => {
       console.warn('[appUpdate] set bundle failed', err);
     });
@@ -149,6 +199,8 @@ export async function initAppUpdates(): Promise<void> {
   }
 
   pendingSwap = bundle;
+  pendingReadyInfo = { version: latest.version ?? bundle.version ?? '新版本' };
+  emitReadyInfo();
   if (latest.version && latest.changelog !== undefined) {
     stashPendingChangelog({
       version: latest.version,
