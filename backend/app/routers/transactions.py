@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import csv
 import io
@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.date_utils import month_range
+from app.core.date_utils import billing_range, month_range
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.enums import CategoryEnum, TransactionType
@@ -67,11 +67,12 @@ def _query_transactions_for_user(
     db: Session,
     user_id: int,
     month: str | None = None,
+    month_start_day: int = 1,
 ) -> list[Transaction]:
     stmt = select(Transaction).where(Transaction.user_id == user_id)
     if month:
         try:
-            _, start, end = month_range(month)
+            _, start, end = billing_range(month, month_start_day)
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -88,7 +89,7 @@ def list_transactions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    items = _query_transactions_for_user(db=db, user_id=current_user.id, month=month)
+    items = _query_transactions_for_user(db=db, user_id=current_user.id, month=month, month_start_day=current_user.month_start_day)
     return success_response(data=[_serialize_transaction(item) for item in items])
 
 
@@ -104,7 +105,7 @@ def list_partner_transactions(
             detail='尚未绑定伴侣',
         )
 
-    items = _query_transactions_for_user(db=db, user_id=current_user.partner_id, month=month)
+    items = _query_transactions_for_user(db=db, user_id=current_user.partner_id, month=month, month_start_day=current_user.month_start_day)
     return success_response(data=[_serialize_transaction(item) for item in items])
 
 

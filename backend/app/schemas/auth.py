@@ -28,6 +28,7 @@ class BindPartnerRequest(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     nickname: str | None = Field(default=None, min_length=1, max_length=16)
+    month_start_day: int | None = Field(default=None, ge=1, le=28)
 
 
 class UpdateAvatarRequest(BaseModel):

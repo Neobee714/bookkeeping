@@ -27,6 +27,13 @@ export const updateProfile = async (nickname: string): Promise<User> => {
   return assertSuccess(response.data);
 };
 
+export const updateMonthStartDay = async (monthStartDay: number): Promise<User> => {
+  const response = await client.put<ApiResponse<User>>('/auth/profile', {
+    month_start_day: monthStartDay,
+  });
+  return assertSuccess(response.data);
+};
+
 export const updateAvatar = async (avatar: string): Promise<User> => {
   const response = await client.post<ApiResponse<User>>('/auth/avatar', {
     avatar,
