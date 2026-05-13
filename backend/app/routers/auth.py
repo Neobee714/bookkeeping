@@ -105,7 +105,6 @@ def _serialize_user(user: User, partner: User | None) -> dict:
         "partner_code": generate_invite_code(user.id),
         "invite_code": generate_invite_code(user.id),
         "reg_invite_code": user.reg_invite_code,
-        "month_start_day": user.month_start_day,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -259,9 +258,6 @@ def update_profile(
                 detail="昵称长度需在 1 到 16 个字符之间",
             )
         current_user.nickname = nickname
-
-    if payload.month_start_day is not None:
-        current_user.month_start_day = payload.month_start_day
 
     db.commit()
     db.refresh(current_user)

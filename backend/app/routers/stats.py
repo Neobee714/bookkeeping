@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.date_utils import add_months, billing_range, month_range, month_start
+from app.core.date_utils import add_months, month_range, month_start
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.enums import TransactionType
@@ -36,12 +36,8 @@ def _aggregate_month_summary(
     db: Session,
     user_id: int,
     month: str | None,
-    month_start_day: int = 1,
 ) -> dict:
-    if month:
-        month_text, start, end = billing_range(month, month_start_day)
-    else:
-        month_text, start, end = month_range(None)
+    month_text, start, end = month_range(month)
     base_filter = (
         Transaction.user_id == user_id,
         Transaction.date >= start,
@@ -129,7 +125,7 @@ def monthly_summary(
     db: Session = Depends(get_db),
 ) -> dict:
     try:
-        data = _aggregate_month_summary(db=db, user_id=current_user.id, month=month, month_start_day=current_user.month_start_day)
+        data = _aggregate_month_summary(db=db, user_id=current_user.id, month=month)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -150,7 +146,7 @@ def partner_monthly_summary(
             detail="尚未绑定伴侣",
         )
     try:
-        data = _aggregate_month_summary(db=db, user_id=current_user.partner_id, month=month, month_start_day=current_user.month_start_day)
+        data = _aggregate_month_summary(db=db, user_id=current_user.partner_id, month=month)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

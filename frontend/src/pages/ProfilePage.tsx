@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { bindPartner, fetchMe, updateAvatar, updateMonthStartDay, updateProfile } from '@/api/auth';
+import { bindPartner, fetchMe, updateAvatar, updateProfile } from '@/api/auth';
 import { importTransactions } from '@/api/transactions';
 import ImportModal from '@/components/ImportModal';
 import UserAvatar from '@/components/UserAvatar';
@@ -105,8 +105,6 @@ function ProfilePage() {
   const [showCurrencySheet, setShowCurrencySheet] = useState(false);
   const [showPartnerSheet, setShowPartnerSheet] = useState(false);
   const [showThemeSheet, setShowThemeSheet] = useState(false);
-  const [showMonthStartSheet, setShowMonthStartSheet] = useState(false);
-  const [savingMonthStart, setSavingMonthStart] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -202,32 +200,6 @@ function ProfilePage() {
     setTheme(next);
     setMessage(`已切换为${themeLabel[next]}主题`);
     setShowThemeSheet(false);
-  };
-
-  const handleChangeMonthStart = async (day: number) => {
-    if (savingMonthStart) {
-      return;
-    }
-
-    setSavingMonthStart(true);
-    setMessage('');
-
-    try {
-      const updatedUser = await updateMonthStartDay(day);
-      updateUser(updatedUser);
-      setMessage(`每月起始日已设为 ${day} 号`);
-      setShowMonthStartSheet(false);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setMessage(error.response?.data?.message ?? '设置失败');
-      } else if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('设置失败');
-      }
-    } finally {
-      setSavingMonthStart(false);
-    }
   };
 
   const handleOpenEditProfile = () => {
@@ -473,13 +445,6 @@ function ProfilePage() {
           label="主题外观"
           badge={themeLabel[theme]}
           onClick={() => setShowThemeSheet(true)}
-        />
-        <MenuItem
-          icon={<span className="text-[#FF9500]">📅</span>}
-          iconBg="rgba(255,149,0,0.12)"
-          label="每月起始日"
-          badge={`${user?.month_start_day ?? 1}号`}
-          onClick={() => setShowMonthStartSheet(true)}
           last
         />
       </div>
@@ -512,44 +477,6 @@ function ProfilePage() {
       >
         退出登录
       </button>
-
-      {showMonthStartSheet && (
-        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/30">
-          <button
-            type="button"
-            aria-label="关闭起始日设置"
-            className="absolute inset-0 cursor-default"
-            onClick={() => setShowMonthStartSheet(false)}
-          />
-          <section className="relative w-full max-w-[430px] rounded-t-3xl bg-white px-5 pb-8 pt-4">
-            <div className="mx-auto h-1.5 w-10 rounded-full bg-[#D5D5DB]" />
-            <h3 className="mt-4 text-lg font-semibold text-[#1C1C1E]">每月起始日</h3>
-            <p className="mt-1 text-xs text-[#8E8E93]">
-              每月账单周期从哪天开始（默认 1 号）
-            </p>
-            <div className="mt-4 grid grid-cols-7 gap-2">
-              {Array.from({ length: 28 }, (_, index) => index + 1).map((day) => {
-                const isActive = (user?.month_start_day ?? 1) === day;
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    disabled={savingMonthStart}
-                    onClick={() => void handleChangeMonthStart(day)}
-                    className={`flex h-11 items-center justify-center rounded-[10px] text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-[#007AFF] text-white'
-                        : 'border border-[rgba(60,60,67,0.12)] bg-white text-[#1C1C1E] active:bg-[rgba(0,122,255,0.08)]'
-                    } ${savingMonthStart ? 'opacity-60' : ''}`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      )}
 
       <p className="ios-anim ios-anim-d4 mt-2 text-center text-xs text-[#8E8E93]">
         Neobee Bookkeeping v{__APP_VERSION__}

@@ -93,7 +93,6 @@ function HomePage() {
   const [editingItem, setEditingItem] = useState<Transaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [showBillingTip, setShowBillingTip] = useState(false);
 
   const monthKey = useMemo(() => getMonthKey(currentMonth), [currentMonth]);
   const monthLabel = useMemo(() => formatMonthLabel(currentMonth), [currentMonth]);
@@ -111,14 +110,6 @@ function HomePage() {
     () => (isMineView ? fetchMonthlySummary(monthKey) : fetchPartnerMonthlySummary(monthKey)),
     [viewMode, monthKey, refreshVersion],
   );
-
-  useEffect(() => {
-    if (user && user.month_start_day > 1) {
-      setShowBillingTip(true);
-      const timer = setTimeout(() => setShowBillingTip(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [user]);
 
   const transactions = txResource.data ?? [];
   const summary = summaryResource.data ?? null;
@@ -248,12 +239,6 @@ function HomePage() {
       <h1 className="ios-anim mb-1 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
         记账本
       </h1>
-
-      {showBillingTip && user && user.month_start_day > 1 && (
-        <div className="ios-anim rounded-xl bg-[rgba(0,122,255,0.08)] px-4 py-2.5 text-center text-sm font-medium text-[#007AFF]">
-          当前账单起始日：{user.month_start_day}号
-        </div>
-      )}
 
       <div className="ios-glass ios-glass-strong ios-anim ios-anim-d1 p-4">
         <div className="mb-3 flex items-center justify-center gap-5">

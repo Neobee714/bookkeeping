@@ -42,7 +42,6 @@ export interface User {
   partner: Partner | null;
   partner_code: string;
   reg_invite_code: string;
-  month_start_day: number;
   created_at: string;
 }
 
