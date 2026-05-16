@@ -9,6 +9,9 @@ export const CATEGORY_COLORS: Record<string, string> = {
   医疗: '#34C759',
   教育: '#5AC8FA',
   购物: '#AF52DE',
+  零食: '#FF9500',
+  收入: '#34C759',
+  生活费: '#30D158',
   其他: '#8E8E93',
 };
 

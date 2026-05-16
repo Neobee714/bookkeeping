@@ -24,7 +24,9 @@ const categoryMeta: Array<{ category: Category; emoji: string; gradient: [string
   { category: '医疗', emoji: '💊', gradient: ['#34C759', '#5AC8FA'] },
   { category: '教育', emoji: '📚', gradient: ['#5AC8FA', '#64D2FF'] },
   { category: '购物', emoji: '🛍️', gradient: ['#AF52DE', '#FF2D55'] },
+  { category: '零食', emoji: '🍿', gradient: ['#FF9500', '#FFB340'] },
   { category: '收入', emoji: '💰', gradient: ['#34C759', '#30D158'] },
+  { category: '生活费', emoji: '💵', gradient: ['#34C759', '#30D158'] },
   { category: '其他', emoji: '📌', gradient: ['#8E8E93', '#AEAEB2'] },
 ];
 

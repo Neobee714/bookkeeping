@@ -8,7 +8,9 @@ export type Category =
   | '医疗'
   | '教育'
   | '购物'
+  | '零食'
   | '收入'
+  | '生活费'
   | '其他';
 
 export interface ApiResponse<T> {

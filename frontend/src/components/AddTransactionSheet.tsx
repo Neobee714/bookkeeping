@@ -10,7 +10,9 @@ const categories: Array<{ key: Category; emoji: string }> = [
   { key: '医疗', emoji: '💊' },
   { key: '教育', emoji: '📚' },
   { key: '购物', emoji: '🛍️' },
+  { key: '零食', emoji: '🍿' },
   { key: '收入', emoji: '💰' },
+  { key: '生活费', emoji: '💵' },
   { key: '其他', emoji: '📌' },
 ];
 
@@ -86,9 +88,9 @@ function AddTransactionSheet({
 
   const activeCategories = useMemo(() => {
     if (type === 'income') {
-      return categories.filter((item) => item.key === '收入' || item.key === '其他');
+      return categories.filter((item) => item.key === '收入' || item.key === '生活费' || item.key === '其他');
     }
-    return categories.filter((item) => item.key !== '收入');
+    return categories.filter((item) => item.key !== '收入' && item.key !== '生活费');
   }, [type]);
 
   useEffect(() => {

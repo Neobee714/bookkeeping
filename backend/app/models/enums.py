@@ -16,7 +16,9 @@ class CategoryEnum(str, Enum):
     MEDICAL = "医疗"
     EDUCATION = "教育"
     SHOPPING = "购物"
+    SNACKS = "零食"
     INCOME = "收入"
+    ALLOWANCE = "生活费"
     OTHER = "其他"
 
 
