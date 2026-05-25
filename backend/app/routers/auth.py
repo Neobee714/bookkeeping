@@ -163,15 +163,20 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
     default_categories = [
         {"name": "餐饮", "icon": "🍜", "color": "#FF6B6B", "type": "expense"},
         {"name": "交通", "icon": "🚌", "color": "#4F6EF7", "type": "expense"},
-        {"name": "购物", "icon": "🛒", "color": "#FFC93C", "type": "expense"},
+        {"name": "日用", "icon": "🛒", "color": "#5856D6", "type": "expense"},
+        {"name": "购物", "icon": "🛍️", "color": "#AF52DE", "type": "expense"},
         {"name": "娱乐", "icon": "🎮", "color": "#9B59B6", "type": "expense"},
         {"name": "医疗", "icon": "💊", "color": "#36CFC9", "type": "expense"},
+        {"name": "教育", "icon": "📚", "color": "#5AC8FA", "type": "expense"},
         {"name": "零食", "icon": "🍰", "color": "#FF8E53", "type": "expense"},
         {"name": "居住", "icon": "🏠", "color": "#607D8B", "type": "expense"},
+        {"name": "其他", "icon": "📌", "color": "#8E8E93", "type": "expense"},
+        {"name": "收入", "icon": "💰", "color": "#34C759", "type": "income"},
         {"name": "工资", "icon": "💼", "color": "#52C41A", "type": "income"},
-        {"name": "生活费", "icon": "💰", "color": "#FFC93C", "type": "income"},
+        {"name": "生活费", "icon": "💵", "color": "#FFC93C", "type": "income"},
         {"name": "理财", "icon": "📈", "color": "#4F6EF7", "type": "income"},
         {"name": "红包", "icon": "🎁", "color": "#FF6B6B", "type": "income"},
+        {"name": "其他", "icon": "📌", "color": "#8E8E93", "type": "income"},
     ]
     for cat in default_categories:
         db.add(Category(
