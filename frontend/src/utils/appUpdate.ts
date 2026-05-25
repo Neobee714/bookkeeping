@@ -42,9 +42,9 @@ function shouldRunNative(): boolean {
 
 async function getCurrentVersion(): Promise<string | null> {
   try {
-    const bundle = await CapacitorUpdater.current();
-    if (bundle?.version) {
-      return bundle.version;
+    const result = await CapacitorUpdater.current();
+    if (result?.bundle?.version) {
+      return result.bundle.version;
     }
     const info = await App.getInfo();
     return info.version ?? null;
