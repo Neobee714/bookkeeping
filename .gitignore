@@ -20,5 +20,11 @@ CLAUDE.md
 __pycache__/
 *.pyc
 
+# Local databases
+*.db
+
+# Build artifacts
+frontend/dist-bundle-*.zip
+
 # Local temp scripts
 scripts/
