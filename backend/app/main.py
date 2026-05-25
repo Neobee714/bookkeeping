@@ -14,6 +14,7 @@ from app.routers import (
     app_updates_router,
     auth_router,
     budget_router,
+    categories_router,
     circles_router,
     savings_router,
     stats_router,
@@ -85,6 +86,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(auth_router)
+app.include_router(categories_router)
 app.include_router(transactions_router)
 app.include_router(stats_router)
 app.include_router(budget_router)

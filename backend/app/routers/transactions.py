@@ -56,7 +56,7 @@ def _serialize_transaction(item: Transaction) -> dict:
         'user_id': item.user_id,
         'amount': _to_float(item.amount),
         'type': item.type.value,
-        'category': item.category.value,
+        'category': item.category,
         'note': item.note,
         'date': item.date.isoformat(),
         'created_at': item.created_at.isoformat() if item.created_at else None,

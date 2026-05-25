@@ -13,6 +13,7 @@ import AddTransactionSheet from '@/components/AddTransactionSheet';
 import TransactionItem from '@/components/TransactionItem';
 import { useAuthStore } from '@/store/authStore';
 import { useBillingCycleStore } from '@/store/billingCycleStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type {
   ApiResponse,
@@ -135,6 +136,13 @@ function HomePage() {
   const user = useAuthStore((state) => state.user);
   const monthlyStartDay = useBillingCycleStore((state) => state.monthlyStartDay);
   const refreshVersion = useTransactionSyncStore((state) => state.refreshVersion);
+  const { loaded: categoriesLoaded, fetchCategories } = useCategoryStore();
+
+  useEffect(() => {
+    if (!categoriesLoaded) {
+      void fetchCategories();
+    }
+  }, [categoriesLoaded, fetchCategories]);
 
   const [viewMode, setViewMode] = useState<ViewMode>('mine');
   const [currentMonth, setCurrentMonth] = useState(() => new Date());

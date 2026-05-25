@@ -77,7 +77,7 @@ def _aggregate_month_summary(
         .group_by(Transaction.category)
     )
     category_rows = db.execute(category_stmt).all()
-    category_expenses = {category.value: _to_float(amount) for category, amount in category_rows}
+    category_expenses = {category: _to_float(amount) for category, amount in category_rows}
 
     note_stmt = (
         select(
@@ -93,7 +93,7 @@ def _aggregate_month_summary(
     note_breakdown: dict[str, dict[str, dict[str, float | int]]] = {}
     for category, note_text, amount_sum, count in note_rows:
         label = _normalize_note(note_text)
-        category_bucket = note_breakdown.setdefault(category.value, {})
+        category_bucket = note_breakdown.setdefault(category, {})
         entry = category_bucket.setdefault(label, {"amount": 0.0, "count": 0})
         entry["amount"] = round(float(entry["amount"]) + _to_float(amount_sum), 2)
         entry["count"] = int(entry["count"]) + int(count or 0)

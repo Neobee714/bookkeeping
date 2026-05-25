@@ -1,36 +1,9 @@
 import { useRef, useState, type MouseEvent } from 'react';
 
-import type { Category, Transaction } from '@/types';
+import { useCategoryStore } from '@/store/categoryStore';
+import type { Transaction } from '@/types';
 
 const LONG_PRESS_MS = 450;
-
-const categoryEmojiMap: Record<Category, string> = {
-  餐饮: '🍜',
-  交通: '🚇',
-  日用: '🛒',
-  娱乐: '🎮',
-  医疗: '💊',
-  教育: '📚',
-  购物: '🛍️',
-  零食: '🍿',
-  收入: '💰',
-  生活费: '💵',
-  其他: '📌',
-};
-
-const categoryIconBg: Record<Category, string> = {
-  餐饮: 'rgba(255,149,0,0.12)',
-  交通: 'rgba(0,122,255,0.12)',
-  日用: 'rgba(88,86,214,0.12)',
-  娱乐: 'rgba(255,45,85,0.12)',
-  医疗: 'rgba(52,199,89,0.12)',
-  教育: 'rgba(90,200,250,0.12)',
-  购物: 'rgba(175,82,222,0.12)',
-  零食: 'rgba(255,149,0,0.12)',
-  收入: 'rgba(52,199,89,0.12)',
-  生活费: 'rgba(52,199,89,0.12)',
-  其他: 'rgba(142,142,147,0.16)',
-};
 
 interface TransactionItemProps {
   item: Transaction;
@@ -45,6 +18,9 @@ function TransactionItem({
   onEdit,
   onDelete,
 }: TransactionItemProps) {
+  const getCategoryIcon = useCategoryStore((state) => state.getCategoryIcon);
+  const getCategoryColor = useCategoryStore((state) => state.getCategoryColor);
+
   const [showDeleteAction, setShowDeleteAction] = useState(false);
   const longPressRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -89,6 +65,8 @@ function TransactionItem({
 
   const amountText = `${item.type === 'income' ? '+¥ ' : '-¥ '}${item.amount.toLocaleString()}`;
   const amountColor = item.type === 'income' ? '#34C759' : '#FF3B30';
+  const icon = getCategoryIcon(item.category);
+  const iconBg = `${getCategoryColor(item.category)}1A`;
 
   return (
     <div
@@ -105,9 +83,9 @@ function TransactionItem({
     >
       <div
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl"
-        style={{ background: categoryIconBg[item.category] }}
+        style={{ background: iconBg }}
       >
-        {categoryEmojiMap[item.category]}
+        {icon}
       </div>
 
       <div className="min-w-0 flex-1">

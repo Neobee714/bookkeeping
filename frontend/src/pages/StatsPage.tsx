@@ -13,19 +13,18 @@ import {
 } from 'recharts';
 
 import {
-  CATEGORY_COLORS,
   fetchMonthlySummary,
   fetchMonthlyTrendSeries,
   fetchPartnerMonthlySummary,
 } from '@/api/stats';
 import { useAuthStore } from '@/store/authStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useTransactionSyncStore } from '@/store/transactionSyncStore';
 import type { MonthlySummary, NoteBreakdownEntry, TrendPoint } from '@/types';
 import { useCachedResource } from '@/utils/useCachedResource';
 
 type SummaryTab = 'self' | 'partner';
 
-const DEFAULT_COLOR = '#8E8E93';
 const EMPTY_SLICE_COLOR = '#E5E5EA';
 const UNLABELED_NOTE = '未备注';
 
@@ -64,6 +63,13 @@ function StatsPage() {
   const partnerName = user?.partner?.nickname?.trim() || '伴侣';
   const showPartnerTab = Boolean(user?.partner?.nickname);
   const refreshVersion = useTransactionSyncStore((state) => state.refreshVersion);
+  const { loaded: categoriesLoaded, fetchCategories, getCategoryColor } = useCategoryStore();
+
+  useEffect(() => {
+    if (!categoriesLoaded) {
+      void fetchCategories();
+    }
+  }, [categoriesLoaded, fetchCategories]);
 
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -124,7 +130,7 @@ function StatsPage() {
       .map(([name, value]) => ({
         name,
         value,
-        color: CATEGORY_COLORS[name] ?? DEFAULT_COLOR,
+        color: getCategoryColor(name),
       }))
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
@@ -162,7 +168,7 @@ function StatsPage() {
     }
     const flat: TopNoteItem[] = [];
     Object.entries(summary.note_breakdown).forEach(([category, entries]) => {
-      const color = CATEGORY_COLORS[category] ?? DEFAULT_COLOR;
+      const color = getCategoryColor(category);
       entries.forEach((entry) => {
         if (entry.amount > 0) {
           flat.push({ ...entry, category, color });

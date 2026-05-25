@@ -1,17 +1,6 @@
 export type TransactionType = 'income' | 'expense';
 
-export type Category =
-  | '餐饮'
-  | '交通'
-  | '日用'
-  | '娱乐'
-  | '医疗'
-  | '教育'
-  | '购物'
-  | '零食'
-  | '收入'
-  | '生活费'
-  | '其他';
+export type Category = string;
 
 export interface ApiResponse<T> {
   success: boolean;

@@ -40,7 +40,7 @@ def _normalize_database_url(raw_url: str) -> str:
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     is_local_or_private = host in {"localhost", "127.0.0.1", "::1"} or host.endswith(".internal")
 
-    # Railway public proxy often requires SSL; keep private-network URLs untouched.
+    # Non-local URLs (e.g. cloud DB) often require SSL; keep local URLs untouched.
     if not is_local_or_private and "sslmode" not in query:
         query["sslmode"] = "require"
         parsed = parsed._replace(query=urlencode(query))
@@ -50,7 +50,7 @@ def _normalize_database_url(raw_url: str) -> str:
 
 
 def _resolve_database_url() -> str:
-    candidate = get_env("DATABASE_PRIVATE_URL") or get_env("DATABASE_URL")
+    candidate = get_env("DATABASE_URL")
     if not candidate:
         candidate = _build_postgres_url_from_parts()
     if not candidate:

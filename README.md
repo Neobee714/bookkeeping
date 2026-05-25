@@ -21,8 +21,7 @@ Copy-Item .env.example .env
 ```
 
 Edit `backend/.env` with your own values:
-- `DATABASE_PRIVATE_URL` (Railway recommended) or `DATABASE_URL`
-- If you only have `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`, backend can build URL automatically
+- `DATABASE_URL` — PostgreSQL connection string
 - `SECRET_KEY`
 - `ALGORITHM`
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
@@ -50,23 +49,65 @@ npm run dev
 Check:
 - App: `http://127.0.0.1:5173`
 
-## Railway Deployment (Backend)
-1. Create a Railway service pointing to the `backend/` directory.
-2. Railway reads `backend/Dockerfile` and `backend/railway.toml` automatically.
-   - Backend listens on `${PORT}` (fallback `8080`) to match Railway networking.
-3. Set environment variables in Railway:
-   - `DATABASE_PRIVATE_URL` (recommended) or `DATABASE_URL`
-   - `SECRET_KEY`
-   - `ALGORITHM`
-   - `ACCESS_TOKEN_EXPIRE_MINUTES`
-   - `REFRESH_TOKEN_EXPIRE_DAYS`
-   - Optional: `DB_CONNECT_TIMEOUT_SECONDS`
-   - Optional: `CORS_EXTRA_ORIGINS` (comma-separated origins)
-4. After deployment, run migration once in Railway shell:
+## VPS Deployment (Backend)
+
+Backend runs on a VPS (Vultr Tokyo) via Docker.
+
+### 1) Build and run
 ```bash
-python -m alembic upgrade head
+cd backend
+# Create .env with your production values
+cp .env.example .env
+# Edit .env: set DATABASE_URL, SECRET_KEY, etc.
+
+# Build image
+docker build -t bookkeeping-api .
+
+# Run with env file
+docker run -d --name bookkeeping-api \
+  --env-file .env \
+  -p 8080:8080 \
+  --restart unless-stopped \
+  bookkeeping-api
 ```
-5. Verify `https://<your-railway-domain>/health` returns success.
+
+### 2) Run migrations
+```bash
+docker exec bookkeeping-api python -m alembic upgrade head
+```
+
+### 3) Environment variables (set in `.env`)
+- `DATABASE_URL` — PostgreSQL connection string (e.g. `postgresql://user:pass@localhost:5432/bookkeeping`)
+- `SECRET_KEY` — strong random string
+- `ALGORITHM` — default `HS256`
+- `ACCESS_TOKEN_EXPIRE_MINUTES` — default `30`
+- `REFRESH_TOKEN_EXPIRE_DAYS` — default `30`
+- Optional: `DB_CONNECT_TIMEOUT_SECONDS` (default `10`)
+- Optional: `CORS_EXTRA_ORIGINS` (comma-separated origins)
+
+### 4) Nginx reverse proxy
+```nginx
+server {
+    listen 443 ssl;
+    server_name api.yourdomain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### 5) Verify
+```bash
+curl https://api.yourdomain.com/health
+```
 
 ## Vercel Deployment (Frontend)
 1. Import this repository in Vercel.
@@ -74,7 +115,7 @@ python -m alembic upgrade head
    - Build command: `npm --prefix frontend install && npm --prefix frontend run build`
    - Output directory: `frontend/dist`
 3. Add environment variable in Vercel:
-   - `VITE_API_URL=https://<your-railway-domain>`
+   - `VITE_API_URL=https://api.yourdomain.com`
    - Optional: `VITE_API_TIMEOUT_MS=30000` (increase if backend cold starts slowly)
 4. Deploy and verify the app can call backend APIs.
 

@@ -5,13 +5,13 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models.enums import CategoryEnum, TransactionType
+from app.models.enums import TransactionType
 
 
 class TransactionCreateRequest(BaseModel):
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     type: TransactionType
-    category: CategoryEnum
+    category: str = Field(min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     date: DateValue
 
@@ -19,7 +19,7 @@ class TransactionCreateRequest(BaseModel):
 class TransactionUpdateRequest(BaseModel):
     amount: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
     type: TransactionType | None = None
-    category: CategoryEnum | None = None
+    category: str | None = Field(default=None, min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     date: DateValue | None = None
 

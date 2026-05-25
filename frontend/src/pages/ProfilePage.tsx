@@ -448,6 +448,12 @@ function ProfilePage() {
           onClick={() => void handleOpenImportPicker()}
         />
         <MenuItem
+          icon={<span className="text-[#AF52DE]">🏷️</span>}
+          iconBg="rgba(175,82,222,0.12)"
+          label="分类管理"
+          onClick={() => navigate('/app/categories')}
+        />
+        <MenuItem
           icon={<span className="text-[#34C759]">💱</span>}
           iconBg="rgba(52,199,89,0.12)"
           label="货币设置"

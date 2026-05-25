@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://bookkeeping-production-84e0.up.railway.app/$1"
+      "destination": "https://api.yourdomain.com/$1"
     },
     {
       "source": "/(.*)",

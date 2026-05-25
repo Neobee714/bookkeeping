@@ -11,7 +11,7 @@ from app.core.date_utils import month_range
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.budget import Budget
-from app.models.enums import CategoryEnum, TransactionType
+from app.models.enums import TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.budget import BudgetCreateRequest, BudgetUpdateRequest
@@ -29,7 +29,7 @@ def _serialize_budget(item: Budget, actual_spent: Decimal | None = None) -> dict
     return {
         "id": item.id,
         "user_id": item.user_id,
-        "category": item.category.value,
+        "category": item.category,
         "monthly_limit": limit_value,
         "year_month": item.year_month,
         "actual_spent": spent_value,
@@ -90,7 +90,7 @@ def get_budget(
                 {
                     "id": None,
                     "user_id": current_user.id,
-                    "category": category.value,
+                    "category": category,
                     "monthly_limit": 0.0,
                     "year_month": month_text,
                     "actual_spent": _to_float(spent_map.get(category, Decimal("0"))),

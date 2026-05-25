@@ -1,20 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { useCategoryStore } from '@/store/categoryStore';
 import type { Category, Transaction, TransactionCreatePayload, TransactionType } from '@/types';
-
-const categories: Array<{ key: Category; emoji: string }> = [
-  { key: '餐饮', emoji: '🍜' },
-  { key: '交通', emoji: '🚇' },
-  { key: '日用', emoji: '🛒' },
-  { key: '娱乐', emoji: '🎮' },
-  { key: '医疗', emoji: '💊' },
-  { key: '教育', emoji: '📚' },
-  { key: '购物', emoji: '🛍️' },
-  { key: '零食', emoji: '🍿' },
-  { key: '收入', emoji: '💰' },
-  { key: '生活费', emoji: '💵' },
-  { key: '其他', emoji: '📌' },
-];
 
 interface AddTransactionSheetProps {
   open: boolean;
@@ -53,12 +40,21 @@ function AddTransactionSheet({
   onClose,
   onSubmit,
 }: AddTransactionSheetProps) {
+  const { loaded, fetchCategories, expenseCategories, incomeCategories } =
+    useCategoryStore();
+
   const [type, setType] = useState<TransactionType>('expense');
   const [amountInput, setAmountInput] = useState('');
-  const [category, setCategory] = useState<Category>('餐饮');
+  const [category, setCategory] = useState<Category>('');
   const [dateInput, setDateInput] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (open && !loaded) {
+      void fetchCategories();
+    }
+  }, [open, loaded, fetchCategories]);
 
   useEffect(() => {
     if (!open) {
@@ -77,7 +73,7 @@ function AddTransactionSheet({
 
     setType('expense');
     setAmountInput('');
-    setCategory('餐饮');
+    setCategory('');
     setDateInput(new Date().toISOString().slice(0, 10));
     setNote('');
     setErrorMessage('');
@@ -88,14 +84,14 @@ function AddTransactionSheet({
 
   const activeCategories = useMemo(() => {
     if (type === 'income') {
-      return categories.filter((item) => item.key === '收入' || item.key === '生活费' || item.key === '其他');
+      return incomeCategories();
     }
-    return categories.filter((item) => item.key !== '收入' && item.key !== '生活费');
-  }, [type]);
+    return expenseCategories();
+  }, [type, expenseCategories, incomeCategories]);
 
   useEffect(() => {
-    if (!activeCategories.some((item) => item.key === category)) {
-      setCategory(activeCategories[0]?.key ?? '其他');
+    if (activeCategories.length > 0 && !activeCategories.some((c) => c.name === category)) {
+      setCategory(activeCategories[0].name);
     }
   }, [activeCategories, category]);
 
@@ -187,20 +183,20 @@ function AddTransactionSheet({
           <p className="mb-2 text-xs text-[#8E8E93]">分类</p>
           <div className="grid grid-cols-3 gap-2">
             {activeCategories.map((item) => {
-              const active = category === item.key;
+              const active = category === item.name;
               return (
                 <button
-                  key={item.key}
+                  key={item.id}
                   type="button"
-                  onClick={() => setCategory(item.key)}
+                  onClick={() => setCategory(item.name)}
                   className={`flex h-12 items-center justify-center gap-1 rounded-[10px] border text-sm transition ${
                     active
                       ? 'border-[#007AFF] bg-[rgba(0,122,255,0.08)] text-[#007AFF]'
                       : 'border-[rgba(60,60,67,0.12)] bg-white text-[#1C1C1E]'
                   }`}
                 >
-                  <span>{item.emoji}</span>
-                  <span>{item.key}</span>
+                  <span>{item.icon}</span>
+                  <span>{item.name}</span>
                 </button>
               );
             })}

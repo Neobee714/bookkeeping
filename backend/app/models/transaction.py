@@ -7,7 +7,7 @@ from sqlalchemy import Date, DateTime, Enum as SqlEnum, ForeignKey, Numeric, Str
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.models.enums import CategoryEnum, TransactionType, enum_values
+from app.models.enums import TransactionType, enum_values
 
 
 class Transaction(Base):
@@ -26,16 +26,7 @@ class Transaction(Base):
         ),
         nullable=False,
     )
-    category: Mapped[CategoryEnum] = mapped_column(
-        SqlEnum(
-            CategoryEnum,
-            name="category_enum",
-            native_enum=False,
-            values_callable=enum_values,
-            validate_strings=True,
-        ),
-        nullable=False,
-    )
+    category: Mapped[str] = mapped_column(String(10), nullable=False)
     note: Mapped[str | None] = mapped_column(String(255), nullable=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
