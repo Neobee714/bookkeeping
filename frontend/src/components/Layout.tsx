@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
+import UpdateReadyBanner from '@/components/UpdateReadyBanner';
+
 interface NavItem {
   to: string;
   label: string;
@@ -72,6 +74,7 @@ const navItems: NavItem[] = [
 function Layout() {
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-[#F2F2F7]">
+      <UpdateReadyBanner />
       <div className="ios-bg-blobs">
         <div className="blob blob-1" />
         <div className="blob blob-2" />
