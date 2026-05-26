@@ -40,8 +40,7 @@ function AddTransactionSheet({
   onClose,
   onSubmit,
 }: AddTransactionSheetProps) {
-  const { loaded, fetchCategories, expenseCategories, incomeCategories } =
-    useCategoryStore();
+  const { loaded, fetchCategories, categories } = useCategoryStore();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amountInput, setAmountInput] = useState('');
@@ -84,10 +83,10 @@ function AddTransactionSheet({
 
   const activeCategories = useMemo(() => {
     if (type === 'income') {
-      return incomeCategories();
+      return categories.filter((c) => c.type === 'income');
     }
-    return expenseCategories();
-  }, [type, expenseCategories, incomeCategories]);
+    return categories.filter((c) => c.type === 'expense');
+  }, [type, categories]);
 
   useEffect(() => {
     if (activeCategories.length > 0 && !activeCategories.some((c) => c.name === category)) {
