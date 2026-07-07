@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { sendAgentMessage } from '@/api/agent';
 import type { AgentChatMessage } from '@/types';
@@ -15,8 +15,13 @@ function AgentPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, loading, error]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
@@ -111,6 +116,7 @@ function AgentPage() {
             {error}
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
 
       <form

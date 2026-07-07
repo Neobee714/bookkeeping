@@ -60,8 +60,11 @@ def _to_float(value: Decimal | int | float | None) -> float:
 
 
 def _parse_window(start_date: str, end_date: str) -> tuple[date, date]:
-    start = parse_iso_date(start_date)
-    end = parse_iso_date(end_date)
+    try:
+        start = parse_iso_date(start_date)
+        end = parse_iso_date(end_date)
+    except ValueError as exc:
+        raise AgentToolError("日期格式不正确，请使用 YYYY-MM-DD") from exc
     if start >= end:
         raise AgentToolError("start_date must be earlier than end_date")
     return start, end
@@ -124,14 +127,14 @@ def _summary_for_window(
 
     category_total = func.coalesce(func.sum(Transaction.amount), Decimal("0"))
     category_stmt = (
-        select(Transaction.category, category_total)
+        select(Transaction.category, category_total, func.count(Transaction.id))
         .where(*filters, Transaction.type == TransactionType.EXPENSE)
         .group_by(Transaction.category)
         .order_by(category_total.desc(), Transaction.category.asc())
     )
-    category_expenses = {
-        category: _to_float(amount) for category, amount in db.execute(category_stmt).all()
-    }
+    category_rows = db.execute(category_stmt).all()
+    category_expenses = {category: _to_float(amount) for category, amount, _count in category_rows}
+    category_counts = {category: int(count or 0) for category, _amount, count in category_rows}
 
     note_total = func.coalesce(func.sum(Transaction.amount), Decimal("0"))
     note_sort = func.coalesce(Transaction.note, "")
@@ -167,6 +170,7 @@ def _summary_for_window(
         "balance": _to_float(total_income - total_expense),
         "transaction_count": transaction_count,
         "category_expenses": category_expenses,
+        "category_counts": category_counts,
         "top_notes": top_notes,
     }
 
@@ -191,6 +195,7 @@ def category_breakdown_data(
             "category": category,
             "amount": amount,
             "ratio": round(amount / total_expense, 4) if total_expense else 0.0,
+            "count": summary["category_counts"].get(category, 0),
         }
         for category, amount in summary["category_expenses"].items()
     ]

@@ -176,6 +176,21 @@ def test_date_window_excludes_end_date_and_rejects_invalid_window(db: Session) -
         )
 
 
+def test_date_window_rejects_invalid_iso_date_as_agent_tool_error(db: Session) -> None:
+    current_user = make_user(1)
+
+    with pytest.raises(AgentToolError, match="日期格式"):
+        summarize_expenses_data(
+            db,
+            current_user,
+            SummarizeExpensesInput(
+                target="self",
+                start_date="2026-99-01",
+                end_date="2026-06-01",
+            ),
+        )
+
+
 def test_search_transactions_data_reports_truncated_when_matches_exceed_cap(db: Session) -> None:
     current_user = make_user(1)
     add_transaction(db, 1, "30.00", TransactionType.EXPENSE, "food", "a", date(2026, 4, 1))
@@ -242,6 +257,7 @@ def test_build_agent_tools_returns_expected_names() -> None:
 def test_category_breakdown_data_returns_ratios(db: Session) -> None:
     current_user = make_user(1)
     add_transaction(db, 1, "75.00", TransactionType.EXPENSE, "food", "a", date(2026, 7, 1))
+    add_transaction(db, 1, "25.00", TransactionType.EXPENSE, "food", "c", date(2026, 7, 3))
     add_transaction(db, 1, "25.00", TransactionType.EXPENSE, "book", "b", date(2026, 7, 2))
     db.commit()
 
@@ -251,10 +267,10 @@ def test_category_breakdown_data_returns_ratios(db: Session) -> None:
         CategoryBreakdownInput(target="self", start_date="2026-07-01", end_date="2026-08-01"),
     )
 
-    assert result["total_expense"] == 100.0
+    assert result["total_expense"] == 125.0
     assert result["categories"] == [
-        {"category": "food", "amount": 75.0, "ratio": 0.75},
-        {"category": "book", "amount": 25.0, "ratio": 0.25},
+        {"category": "food", "amount": 100.0, "ratio": 0.8, "count": 2},
+        {"category": "book", "amount": 25.0, "ratio": 0.2, "count": 1},
     ]
 
 
