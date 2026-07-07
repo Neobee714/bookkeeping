@@ -65,3 +65,32 @@ def test_agent_chat_rejects_empty_message(client: TestClient) -> None:
     response = client.post("/agent/chat", json={"message": "", "history": []})
 
     assert response.status_code == 422
+
+
+def test_agent_chat_returns_runner_reply(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.core.config.DEEPSEEK_API_KEY", "test-key")
+
+    def fake_run_agent_chat(*, db, current_user, message, history):
+        assert current_user.id == 1
+        assert message == "总结最近六个月开销"
+        assert history == []
+        return {
+            "reply": "最近六个月总支出 100 元。",
+            "tool_calls": [{"name": "summarize_expenses", "target": "self"}],
+        }
+
+    monkeypatch.setattr("app.routers.agent.run_agent_chat", fake_run_agent_chat)
+
+    response = client.post(
+        "/agent/chat",
+        json={"message": "总结最近六个月开销", "history": []},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["reply"] == "最近六个月总支出 100 元。"
+    assert response.json()["data"]["tool_calls"] == [
+        {"name": "summarize_expenses", "target": "self"}
+    ]

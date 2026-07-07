@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.agent.graph import run_agent_chat
 from app.core import config
 from app.core.database import get_db
 from app.core.response import success_response
@@ -25,6 +26,10 @@ def chat_with_agent(
             detail="AI 服务未配置，请先设置 DEEPSEEK_API_KEY",
         )
 
-    _ = current_user, db
-    data = AgentChatResponse(reply="", tool_calls=[])
-    return success_response(data=data.model_dump())
+    data = run_agent_chat(
+        db=db,
+        current_user=current_user,
+        message=payload.message,
+        history=payload.history,
+    )
+    return success_response(data=AgentChatResponse(**data).model_dump())
