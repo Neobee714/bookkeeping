@@ -49,10 +49,10 @@ class TopExpensesInput(DateWindowInput):
 
 class CompareExpensesInput(BaseModel):
     target: Target = Field(default="self", description="查询范围：self、partner 或 both")
-    period_a_start_date: str = Field(description="周期 A 开始日期，格式 YYYY-MM-DD，包含当天")
-    period_a_end_date: str = Field(description="周期 A 结束日期，格式 YYYY-MM-DD，不包含当天")
-    period_b_start_date: str = Field(description="周期 B 开始日期，格式 YYYY-MM-DD，包含当天")
-    period_b_end_date: str = Field(description="周期 B 结束日期，格式 YYYY-MM-DD，不包含当天")
+    start_date_a: str = Field(description="周期 A 开始日期，格式 YYYY-MM-DD，包含当天")
+    end_date_a: str = Field(description="周期 A 结束日期，格式 YYYY-MM-DD，不包含当天")
+    start_date_b: str = Field(description="周期 B 开始日期，格式 YYYY-MM-DD，包含当天")
+    end_date_b: str = Field(description="周期 B 结束日期，格式 YYYY-MM-DD，不包含当天")
 
 
 def _to_float(value: Decimal | int | float | None) -> float:
@@ -122,29 +122,33 @@ def _summary_for_window(
     total_income = totals.get(TransactionType.INCOME, Decimal("0"))
     total_expense = totals.get(TransactionType.EXPENSE, Decimal("0"))
 
+    category_total = func.coalesce(func.sum(Transaction.amount), Decimal("0"))
     category_stmt = (
-        select(Transaction.category, func.coalesce(func.sum(Transaction.amount), Decimal("0")))
+        select(Transaction.category, category_total)
         .where(*filters, Transaction.type == TransactionType.EXPENSE)
         .group_by(Transaction.category)
+        .order_by(category_total.desc(), Transaction.category.asc())
     )
     category_expenses = {
         category: _to_float(amount) for category, amount in db.execute(category_stmt).all()
     }
 
+    note_total = func.coalesce(func.sum(Transaction.amount), Decimal("0"))
+    note_sort = func.coalesce(Transaction.note, "")
     notes_stmt = (
         select(
             Transaction.note,
-            func.coalesce(func.sum(Transaction.amount), Decimal("0")),
+            note_total,
             func.count(Transaction.id),
         )
         .where(*filters, Transaction.type == TransactionType.EXPENSE)
         .group_by(Transaction.note)
-        .order_by(func.coalesce(func.sum(Transaction.amount), Decimal("0")).desc())
+        .order_by(note_total.desc(), note_sort.asc())
         .limit(5)
     )
     top_notes = [
         {
-            "note": (note or "未备注"),
+            "note": note or "未备注",
             "amount": _to_float(amount),
             "count": int(count or 0),
         }
@@ -190,7 +194,7 @@ def category_breakdown_data(
         }
         for category, amount in summary["category_expenses"].items()
     ]
-    categories.sort(key=lambda item: item["amount"], reverse=True)
+    categories.sort(key=lambda item: (-item["amount"], item["category"]))
     return {
         "target": summary["target"],
         "start_date": summary["start_date"],
@@ -274,8 +278,8 @@ def compare_expenses_data(
         current_user,
         SummarizeExpensesInput(
             target=payload.target,
-            start_date=payload.period_a_start_date,
-            end_date=payload.period_a_end_date,
+            start_date=payload.start_date_a,
+            end_date=payload.end_date_a,
         ),
     )
     period_b = _summary_for_window(
@@ -283,8 +287,8 @@ def compare_expenses_data(
         current_user,
         SummarizeExpensesInput(
             target=payload.target,
-            start_date=payload.period_b_start_date,
-            end_date=payload.period_b_end_date,
+            start_date=payload.start_date_b,
+            end_date=payload.end_date_b,
         ),
     )
     return {
