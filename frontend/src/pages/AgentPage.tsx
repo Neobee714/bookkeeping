@@ -10,6 +10,8 @@ const examples = [
   '列出最近三个月餐饮超过 100 的账单',
 ];
 
+const MAX_HISTORY_MESSAGES = 40;
+
 function AgentPage() {
   const [messages, setMessages] = useState<AgentChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -29,7 +31,7 @@ function AgentPage() {
       return;
     }
 
-    const history = messages;
+    const history = messages.slice(-MAX_HISTORY_MESSAGES);
     const userMessage: AgentChatMessage = { role: 'user', content: trimmed };
     setMessages((current) => [...current, userMessage]);
     setInput('');
