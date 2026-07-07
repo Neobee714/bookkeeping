@@ -50,7 +50,7 @@ function AgentPage() {
   };
 
   return (
-    <section className="flex min-h-[calc(100vh-8rem)] flex-col pb-2">
+    <section className="flex h-[calc(100vh-9rem)] min-h-0 flex-col pb-2">
       <h1 className="ios-anim mb-3 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
         AI 助手
       </h1>
@@ -71,7 +71,7 @@ function AgentPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="ios-glass ios-anim ios-anim-d2 px-4 py-10 text-center text-sm text-[#8E8E93]">
             可以问我开销总结、分类排行、伴侣账单和具体明细。
@@ -124,6 +124,7 @@ function AgentPage() {
           value={input}
           onChange={(event) => setInput(event.target.value)}
           rows={1}
+          aria-label="输入给 AI 助手的问题"
           placeholder="问问最近的开销..."
           className="max-h-28 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-[#1C1C1E] outline-none placeholder:text-[#8E8E93]"
         />
