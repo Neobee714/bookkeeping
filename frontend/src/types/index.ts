@@ -194,4 +194,3 @@ export interface AgentChatResponse {
   reply: string;
   tool_calls: AgentToolCallSummary[];
 }
-
