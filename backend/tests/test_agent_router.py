@@ -74,6 +74,8 @@ def test_agent_chat_returns_runner_reply(
     monkeypatch.setattr("app.core.config.DEEPSEEK_API_KEY", "test-key")
 
     def fake_run_agent_chat(*, db, current_user, message, history):
+        assert db is not None
+        assert isinstance(db, Session)
         assert current_user.id == 1
         assert message == "总结最近六个月开销"
         assert history == []
