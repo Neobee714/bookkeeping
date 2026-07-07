@@ -11,6 +11,7 @@ import client from '@/api/client';
 import AdminLayout from '@/components/AdminLayout';
 import Layout from '@/components/Layout';
 import UpdateNotice from '@/components/UpdateNotice';
+import AgentPage from '@/pages/AgentPage';
 import CategoryPage from '@/pages/CategoryPage';
 import HomePage from '@/pages/HomePage';
 import LoginPage from '@/pages/LoginPage';
@@ -165,6 +166,7 @@ function App() {
           <Route index element={<Navigate to="home" replace />} />
           <Route path="home" element={<HomePage />} />
           <Route path="stats" element={<StatsPage />} />
+          <Route path="agent" element={<AgentPage />} />
           <Route path="plan" element={<PlanPage />} />
           <Route path="categories" element={<CategoryPage />} />
           <Route path="profile" element={<ProfilePage />} />
