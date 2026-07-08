@@ -4,7 +4,7 @@ const liveReloadUrl = process.env.CAP_SERVER_URL;
 
 const config: CapacitorConfig = {
   appId: 'com.neobee.bookkeeping',
-  appName: '记账本',
+  appName: '金流',
   webDir: 'dist',
   plugins: {
     CapacitorUpdater: {

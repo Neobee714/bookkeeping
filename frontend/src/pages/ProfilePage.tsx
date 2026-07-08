@@ -713,7 +713,7 @@ function ProfilePage() {
                   复制
                 </button>
               </div>
-              <p className="mt-1 text-xs text-[#A0A0A5]">分享给想加入记账本的朋友</p>
+              <p className="mt-1 text-xs text-[#A0A0A5]">分享给想加入金流的朋友</p>
             </div>
 
             {user?.partner ? (
@@ -794,7 +794,7 @@ function ProfilePage() {
                   />
                 </svg>
               </div>
-              <h2 className="mt-4 text-[18px] font-semibold text-[#1C1C1E]">记账本</h2>
+              <h2 className="mt-4 text-[18px] font-semibold text-[#1C1C1E]">金流</h2>
               <p className="mt-2 text-[13px] text-[#8E8E93]">两个人的记账小工具</p>
             </div>
 

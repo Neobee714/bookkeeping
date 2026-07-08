@@ -120,6 +120,7 @@ function AgentPage() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+  const hasConversation = messages.length > 0;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -163,10 +164,10 @@ function AgentPage() {
       ]);
     } catch (err) {
       const message = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? 'AI 助手暂时不可用'
+        ? err.response?.data?.message ?? '流金暂时不可用'
         : err instanceof Error
           ? err.message
-          : 'AI 助手暂时不可用';
+          : '流金暂时不可用';
       setError(message);
     } finally {
       setLoading(false);
@@ -174,29 +175,31 @@ function AgentPage() {
   };
 
   return (
-    <section className="flex h-[calc(100vh-9rem)] min-h-0 flex-col pb-2">
+    <section className="flex h-[calc(100dvh-5.75rem)] min-h-0 flex-col pb-0">
       <h1 className="ios-anim mb-3 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
-        AI 助手
+        流金
       </h1>
 
-      <div className="ios-glass ios-anim ios-anim-d1 mb-3 p-3">
-        <div className="flex flex-wrap gap-2">
-          {examples.map((example) => (
-            <button
-              key={example}
-              type="button"
-              onClick={() => void sendMessage(example)}
-              className="rounded-full bg-[rgba(0,122,255,0.1)] px-3 py-1.5 text-[12px] font-medium text-[#007AFF]"
-              disabled={loading}
-            >
-              {example}
-            </button>
-          ))}
+      {!hasConversation && (
+        <div className="ios-glass ios-anim ios-anim-d1 mb-3 p-3">
+          <div className="flex flex-wrap gap-2">
+            {examples.map((example) => (
+              <button
+                key={example}
+                type="button"
+                onClick={() => void sendMessage(example)}
+                className="rounded-full bg-[rgba(0,122,255,0.1)] px-3 py-1.5 text-[12px] font-medium text-[#007AFF]"
+                disabled={loading}
+              >
+                {example}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-        {messages.length === 0 ? (
+        {!hasConversation ? (
           <div className="ios-glass ios-anim ios-anim-d2 px-4 py-10 text-center text-sm text-[#8E8E93]">
             可以问我开销总结、分类排行、伴侣账单和具体明细。
           </div>
@@ -249,7 +252,7 @@ function AgentPage() {
           value={input}
           onChange={(event) => setInput(event.target.value)}
           rows={1}
-          aria-label="输入给 AI 助手的问题"
+          aria-label="输入给流金的问题"
           placeholder="问问最近的开销..."
           className="max-h-28 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-[#1C1C1E] outline-none placeholder:text-[#8E8E93]"
         />

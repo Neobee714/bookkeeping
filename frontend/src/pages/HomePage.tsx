@@ -315,7 +315,7 @@ function HomePage() {
   return (
     <section className="space-y-3">
       <h1 className="ios-anim mb-1 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
-        记账本
+        金流
       </h1>
 
       {showCycleTip && (

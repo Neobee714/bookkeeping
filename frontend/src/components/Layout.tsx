@@ -42,7 +42,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/app/agent',
-    label: 'AI',
+    label: '流金',
     icon: (active) => (
       <svg viewBox="0 0 24 24" className={iconClass} fill="none">
         <path
