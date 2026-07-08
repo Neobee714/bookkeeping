@@ -1,7 +1,10 @@
 import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import { sendAgentMessage } from '@/api/agent';
+import { useAuthStore } from '@/store/authStore';
 import type { AgentChatMessage } from '@/types';
 
 const examples = [
@@ -11,9 +14,106 @@ const examples = [
 ];
 
 const MAX_HISTORY_MESSAGES = 40;
+const STORAGE_KEY_PREFIX = 'bookkeeping.agent.messages.v1';
+
+const isAgentChatMessage = (value: unknown): value is AgentChatMessage => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Partial<AgentChatMessage>;
+  return (
+    (candidate.role === 'user' || candidate.role === 'assistant') &&
+    typeof candidate.content === 'string'
+  );
+};
+
+const getStorageKey = (userId: number | undefined): string | null =>
+  userId ? `${STORAGE_KEY_PREFIX}.${userId}` : null;
+
+const readStoredMessages = (userId: number | undefined): AgentChatMessage[] => {
+  const storageKey = getStorageKey(userId);
+  if (!storageKey) {
+    return [];
+  }
+
+  try {
+    const raw = sessionStorage.getItem(storageKey);
+    if (!raw) {
+      return [];
+    }
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.every(isAgentChatMessage) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+function AssistantMessage({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ children }) => (
+          <h2 className="mb-2 mt-1 text-[18px] font-bold leading-7 text-[#1C1C1E]">
+            {children}
+          </h2>
+        ),
+        h2: ({ children }) => (
+          <h3 className="mb-2 mt-1 text-[16px] font-bold leading-7 text-[#1C1C1E]">
+            {children}
+          </h3>
+        ),
+        h3: ({ children }) => (
+          <h4 className="mb-2 mt-1 text-[15px] font-bold leading-6 text-[#1C1C1E]">
+            {children}
+          </h4>
+        ),
+        p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-[#111827]">{children}</strong>
+        ),
+        ul: ({ children }) => (
+          <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>
+        ),
+        table: ({ children }) => (
+          <div className="my-3 overflow-x-auto rounded-xl border border-[rgba(60,60,67,0.16)]">
+            <table className="min-w-full border-collapse text-left text-[13px]">
+              {children}
+            </table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="border-b border-[rgba(60,60,67,0.14)] bg-[rgba(0,122,255,0.08)] px-3 py-2 font-semibold text-[#1C1C1E]">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border-b border-[rgba(60,60,67,0.1)] px-3 py-2 text-[#1C1C1E] last:border-b-0">
+            {children}
+          </td>
+        ),
+        code: ({ children }) => (
+          <code className="rounded-md bg-[rgba(60,60,67,0.12)] px-1.5 py-0.5 text-[12px]">
+            {children}
+          </code>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
 
 function AgentPage() {
-  const [messages, setMessages] = useState<AgentChatMessage[]>([]);
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id;
+  const storageKey = useMemo(() => getStorageKey(userId), [userId]);
+  const [messages, setMessages] = useState<AgentChatMessage[]>(() =>
+    readStoredMessages(userId),
+  );
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,6 +124,23 @@ function AgentPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, loading, error]);
+
+  useEffect(() => {
+    setMessages(readStoredMessages(userId));
+    setError('');
+  }, [userId]);
+
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(messages));
+    } catch {
+      // Ignore storage failures so chat remains usable in restricted browsers.
+    }
+  }, [messages, storageKey]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
@@ -92,13 +209,13 @@ function AgentPage() {
                 className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[82%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 ${
+                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 ${
                     isUser
-                      ? 'bg-[#007AFF] text-white'
+                      ? 'whitespace-pre-wrap bg-[#007AFF] text-white'
                       : 'ios-glass text-[#1C1C1E]'
                   }`}
                 >
-                  {message.content}
+                  {isUser ? message.content : <AssistantMessage content={message.content} />}
                 </div>
               </div>
             );
