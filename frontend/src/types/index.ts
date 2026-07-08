@@ -173,3 +173,24 @@ export interface TrendPoint {
   balance: number;
 }
 
+export type AgentChatRole = 'user' | 'assistant';
+
+export interface AgentChatMessage {
+  role: AgentChatRole;
+  content: string;
+}
+
+export interface AgentChatRequest {
+  message: string;
+  history: AgentChatMessage[];
+}
+
+export interface AgentToolCallSummary {
+  name: string;
+  target?: string | null;
+}
+
+export interface AgentChatResponse {
+  reply: string;
+  tool_calls: AgentToolCallSummary[];
+}

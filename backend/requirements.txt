@@ -7,3 +7,6 @@ passlib[bcrypt]
 alembic
 python-dotenv
 python-multipart
+langchain
+langchain-openai
+langgraph

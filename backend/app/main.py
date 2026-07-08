@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.response import success_response
 from app.routers import (
+    agent_router,
     app_updates_router,
     auth_router,
     budget_router,
@@ -86,6 +87,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(auth_router)
+app.include_router(agent_router)
 app.include_router(categories_router)
 app.include_router(transactions_router)
 app.include_router(stats_router)

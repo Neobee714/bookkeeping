@@ -41,6 +41,28 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: '/app/agent',
+    label: 'AI',
+    icon: (active) => (
+      <svg viewBox="0 0 24 24" className={iconClass} fill="none">
+        <path
+          d="M12 4.5 13.8 9l4.7 1.8-4.7 1.8L12 17l-1.8-4.4-4.7-1.8L10.2 9 12 4.5Z"
+          stroke={active ? '#007AFF' : '#8E8E93'}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M18 15.5 18.7 17l1.5.7-1.5.7L18 20l-.7-1.6-1.5-.7 1.5-.7.7-1.5Z"
+          stroke={active ? '#007AFF' : '#8E8E93'}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/app/plan',
     label: '规划',
     icon: (active) => (
