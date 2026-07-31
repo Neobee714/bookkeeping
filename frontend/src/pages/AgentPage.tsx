@@ -1,7 +1,4 @@
-import { Capacitor } from '@capacitor/core';
-import { SpeechRecognition as NativeSpeechRecognition } from '@capacitor-community/speech-recognition';
 import axios from 'axios';
-import { Mic } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,34 +15,6 @@ const examples = [
 
 const MAX_HISTORY_MESSAGES = 40;
 const STORAGE_KEY_PREFIX = 'bookkeeping.agent.messages.v1';
-
-type WebSpeechRecognitionEvent = {
-  resultIndex: number;
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: { transcript: string };
-  }>;
-};
-
-type WebSpeechRecognition = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: ((event: WebSpeechRecognitionEvent) => void) | null;
-  onend: (() => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-};
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => WebSpeechRecognition;
-    webkitSpeechRecognition?: new () => WebSpeechRecognition;
-  }
-}
 
 const isAgentChatMessage = (value: unknown): value is AgentChatMessage => {
   if (!value || typeof value !== 'object') {
@@ -150,15 +119,6 @@ function AgentPage() {
   const [error, setError] = useState('');
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const [isListening, setIsListening] = useState(false);
-  const [speechHint, setSpeechHint] = useState('');
-  const listeningRef = useRef(false);
-  const speechBaseRef = useRef('');
-  const speechRecognizedRef = useRef('');
-  const speechUserEditedRef = useRef(false);
-  const speechAbortedRef = useRef(false);
-  const speechTimeoutRef = useRef<number | null>(null);
-  const webRecognitionRef = useRef<WebSpeechRecognition | null>(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
   const hasConversation = messages.length > 0;
@@ -184,219 +144,10 @@ function AgentPage() {
     }
   }, [messages, storageKey]);
 
-  useEffect(() => {
-    return () => {
-      webRecognitionRef.current?.abort();
-      webRecognitionRef.current = null;
-      if (Capacitor.isNativePlatform()) {
-        void NativeSpeechRecognition.stop().catch(() => undefined);
-        void NativeSpeechRecognition.removeAllListeners().catch(() => undefined);
-      }
-    };
-  }, []);
-
-  const applySpeechResult = (recognized: string) => {
-    const normalized = recognized.trim();
-    if (!normalized) {
-      return;
-    }
-    speechRecognizedRef.current = normalized;
-    setSpeechHint('');
-    if (speechUserEditedRef.current) {
-      return;
-    }
-    const base = speechBaseRef.current;
-    setInput(base ? `${base} ${normalized}` : normalized);
-  };
-
-  const finalizeSpeech = () => {
-    const recognized = speechRecognizedRef.current.trim();
-    if (!speechAbortedRef.current && speechUserEditedRef.current && recognized) {
-      setInput((current) => {
-        const trimmed = current.trim();
-        return trimmed ? `${trimmed} ${recognized}` : recognized;
-      });
-    }
-    speechRecognizedRef.current = '';
-    speechUserEditedRef.current = false;
-    speechAbortedRef.current = false;
-    listeningRef.current = false;
-    setIsListening(false);
-    setSpeechHint('');
-    if (speechTimeoutRef.current !== null) {
-      window.clearTimeout(speechTimeoutRef.current);
-      speechTimeoutRef.current = null;
-    }
-  };
-
-  const scheduleSpeechHint = (message: string, delayMs: number) => {
-    if (speechTimeoutRef.current !== null) {
-      window.clearTimeout(speechTimeoutRef.current);
-    }
-    speechTimeoutRef.current = window.setTimeout(() => {
-      speechTimeoutRef.current = null;
-      if (listeningRef.current) {
-        setSpeechHint(message);
-      }
-    }, delayMs);
-  };
-
-  const stopListening = () => {
-    speechAbortedRef.current = true;
-    if (Capacitor.isNativePlatform()) {
-      void NativeSpeechRecognition.stop().catch(() => undefined);
-    } else {
-      // abort() 比 stop() 更可靠：即使会话还卡在"启动中"也能立刻终止并触发 onend。
-      webRecognitionRef.current?.abort();
-    }
-    // 兜底：个别情况下浏览器/插件不会回调 onend/stopped，定时强制复位按钮状态。
-    window.setTimeout(() => {
-      if (listeningRef.current) {
-        finalizeSpeech();
-        if (Capacitor.isNativePlatform()) {
-          void NativeSpeechRecognition.removeAllListeners().catch(() => undefined);
-        }
-      }
-    }, 1500);
-  };
-
-  const startListening = async () => {
-    if (listeningRef.current) {
-      stopListening();
-      return;
-    }
-
-    setError('');
-
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const availability = await NativeSpeechRecognition.available();
-        if (!availability.available) {
-          setError('当前设备不支持语音识别');
-          return;
-        }
-        const permissions = await NativeSpeechRecognition.requestPermissions();
-        if (permissions.speechRecognition !== 'granted') {
-          setError('未获得麦克风权限，请在系统设置中允许后重试');
-          return;
-        }
-      } catch {
-        setError('语音识别暂时不可用');
-        return;
-      }
-
-      speechBaseRef.current = input;
-      speechRecognizedRef.current = '';
-      speechUserEditedRef.current = false;
-      speechAbortedRef.current = false;
-      listeningRef.current = true;
-      setIsListening(true);
-      setSpeechHint('正在聆听，请说话…');
-      scheduleSpeechHint('没有识别到声音：请确认麦克风权限并靠近说话', 10000);
-
-      try {
-        await NativeSpeechRecognition.addListener('listeningState', (data) => {
-          if (data.status === 'stopped') {
-            finalizeSpeech();
-            void NativeSpeechRecognition.removeAllListeners().catch(() => undefined);
-          }
-        });
-        const result = await NativeSpeechRecognition.start({
-          language: 'zh-CN',
-          maxResults: 5,
-          partialResults: false,
-          popup: true,
-          prompt: '请说出要记的账',
-        });
-        const matches = result?.matches ?? [];
-        if (matches.length > 0) {
-          applySpeechResult(matches[0] ?? '');
-        }
-        finalizeSpeech();
-      } catch {
-        listeningRef.current = false;
-        setIsListening(false);
-        setError('语音识别启动失败');
-      }
-      return;
-    }
-
-    const RecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!RecognitionCtor) {
-      setError('当前浏览器不支持语音识别');
-      return;
-    }
-
-    speechBaseRef.current = input;
-    speechRecognizedRef.current = '';
-    speechUserEditedRef.current = false;
-    speechAbortedRef.current = false;
-
-    const recognition = new RecognitionCtor();
-    recognition.lang = 'zh-CN';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
-      let finalText = '';
-      let interimText = '';
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        const item = event.results[index];
-        const transcript = item[0]?.transcript ?? '';
-        if (item.isFinal) {
-          finalText += transcript;
-        } else {
-          interimText = transcript;
-        }
-      }
-      const combined = `${finalText}${finalText && interimText ? ' ' : ''}${interimText}`.trim();
-      if (combined) {
-        applySpeechResult(combined);
-      }
-    };
-    recognition.onerror = (event) => {
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setError('未获得麦克风权限，请在浏览器设置中允许后重试');
-      } else if (event.error === 'network') {
-        setError('语音识别失败：network（网页语音依赖 Google 服务，网络不通时请改用手机端语音或直接输入文字）');
-      } else if (event.error === 'audio-capture') {
-        setError('没有检测到麦克风，请检查系统麦克风设置');
-      } else if (event.error === 'no-speech') {
-        setSpeechHint('没有听到声音，请靠近麦克风再试一次');
-      } else if (event.error !== 'aborted') {
-        setError(`语音识别失败：${event.error}`);
-      }
-    };
-    recognition.onend = () => {
-      webRecognitionRef.current = null;
-      finalizeSpeech();
-    };
-    webRecognitionRef.current = recognition;
-    listeningRef.current = true;
-    setIsListening(true);
-    setSpeechHint('正在聆听，请说话…');
-    scheduleSpeechHint(
-      '没有识别到声音：网页语音依赖 Google 服务，请确认麦克风权限与网络（国内网络常受限，建议用手机端）',
-      8000,
-    );
-    try {
-      recognition.start();
-    } catch {
-      webRecognitionRef.current = null;
-      listeningRef.current = false;
-      setIsListening(false);
-      setError('语音识别启动失败');
-    }
-  };
-
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) {
       return;
-    }
-
-    if (listeningRef.current) {
-      stopListening();
     }
 
     const history = messages.slice(-MAX_HISTORY_MESSAGES);
@@ -491,10 +242,6 @@ function AgentPage() {
         <div ref={bottomRef} />
       </div>
 
-      {speechHint && (
-        <div className="mt-2 text-center text-[12px] text-[#8E8E93]">{speechHint}</div>
-      )}
-
       <form
         className="ios-glass ios-glass-strong mt-3 flex items-end gap-2 p-2"
         onSubmit={(event) => {
@@ -506,9 +253,6 @@ function AgentPage() {
           ref={textareaRef}
           value={input}
           onChange={(event) => {
-            if (listeningRef.current) {
-              speechUserEditedRef.current = true;
-            }
             setInput(event.target.value);
           }}
           rows={1}
@@ -516,20 +260,6 @@ function AgentPage() {
           placeholder="问问最近的开销..."
           className="max-h-28 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-[#1C1C1E] outline-none placeholder:text-[#8E8E93]"
         />
-        <button
-          type="button"
-          onClick={() => void startListening()}
-          aria-pressed={isListening}
-          aria-label={isListening ? '停止录音' : '语音输入记账'}
-          title={isListening ? '点击停止录音' : '语音输入记账'}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
-            isListening
-              ? 'bg-[#FF3B30] text-white'
-              : 'bg-[rgba(0,122,255,0.1)] text-[#007AFF]'
-          }`}
-        >
-          <Mic className="h-5 w-5" />
-        </button>
         <button
           type="submit"
           disabled={!canSend}
