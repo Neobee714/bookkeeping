@@ -292,27 +292,27 @@ function AgentPage() {
       listeningRef.current = true;
       setIsListening(true);
       setSpeechHint('正在聆听，请说话…');
-      scheduleSpeechHint('没有识别到声音：请确认已允许麦克风权限，并在安静环境中说话', 8000);
+      scheduleSpeechHint('没有识别到声音：请确认麦克风权限并靠近说话', 10000);
 
       try {
-        await NativeSpeechRecognition.addListener(
-          'partialResults',
-          (data) => {
-            applySpeechResult(data.matches[0] ?? '');
-          },
-        );
         await NativeSpeechRecognition.addListener('listeningState', (data) => {
           if (data.status === 'stopped') {
             finalizeSpeech();
             void NativeSpeechRecognition.removeAllListeners().catch(() => undefined);
           }
         });
-        await NativeSpeechRecognition.start({
+        const result = await NativeSpeechRecognition.start({
           language: 'zh-CN',
           maxResults: 5,
-          partialResults: true,
-          popup: false,
+          partialResults: false,
+          popup: true,
+          prompt: '请说出要记的账',
         });
+        const matches = result?.matches ?? [];
+        if (matches.length > 0) {
+          applySpeechResult(matches[0] ?? '');
+        }
+        finalizeSpeech();
       } catch {
         listeningRef.current = false;
         setIsListening(false);
@@ -375,7 +375,10 @@ function AgentPage() {
     listeningRef.current = true;
     setIsListening(true);
     setSpeechHint('正在聆听，请说话…');
-    scheduleSpeechHint('没有识别到声音：请确认已允许麦克风权限，并在安静环境中说话', 8000);
+    scheduleSpeechHint(
+      '没有识别到声音：网页语音依赖 Google 服务，请确认麦克风权限与网络（国内网络常受限，建议用手机端）',
+      8000,
+    );
     try {
       recognition.start();
     } catch {
