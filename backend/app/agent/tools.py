@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.date_utils import parse_iso_date
-from app.models.enums import TransactionType
+from app.models.enums import CategoryEnum, TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
 
@@ -53,6 +53,17 @@ class CompareExpensesInput(BaseModel):
     end_date_a: str = Field(description="周期 A 结束日期，格式 YYYY-MM-DD，不包含当天")
     start_date_b: str = Field(description="周期 B 开始日期，格式 YYYY-MM-DD，包含当天")
     end_date_b: str = Field(description="周期 B 结束日期，格式 YYYY-MM-DD，不包含当天")
+
+
+class CreateTransactionInput(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="金额，必须大于 0")
+    type: TransactionType = Field(description="账单类型：income 或 expense")
+    category: str = Field(min_length=1, max_length=10, description="账单分类")
+    note: str | None = Field(default=None, max_length=255, description="备注，可省略")
+    date: str = Field(description="账单日期，格式 YYYY-MM-DD")
+
+
+CATEGORY_VALUES = [category.value for category in CategoryEnum]
 
 
 def _to_float(value: Decimal | int | float | None) -> float:
@@ -305,6 +316,43 @@ def compare_expenses_data(
     }
 
 
+def create_transaction_data(
+    db: Session,
+    current_user: User,
+    payload: CreateTransactionInput,
+) -> dict[str, Any]:
+    try:
+        tx_date = parse_iso_date(payload.date)
+    except ValueError as exc:
+        raise AgentToolError("日期格式不正确，请使用 YYYY-MM-DD") from exc
+
+    if payload.category not in CATEGORY_VALUES:
+        raise AgentToolError(
+            f"分类不支持：{payload.category}，可选：{'、'.join(CATEGORY_VALUES)}"
+        )
+
+    item = Transaction(
+        user_id=current_user.id,
+        amount=payload.amount,
+        type=payload.type,
+        category=payload.category,
+        note=payload.note,
+        date=tx_date,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "id": item.id,
+        "amount": _to_float(item.amount),
+        "type": item.type.value,
+        "category": item.category,
+        "note": item.note,
+        "date": item.date.isoformat(),
+    }
+
+
 def build_agent_tools(
     db: Session,
     current_user: User,
@@ -342,6 +390,10 @@ def build_agent_tools(
         """Compare income and expense totals between two date windows."""
         return compare_expenses_data(db, current_user, CompareExpensesInput(**kwargs))
 
+    def create_transaction(**kwargs: Any) -> dict[str, Any]:
+        """Create a transaction for the current user, then return the created record."""
+        return create_transaction_data(db, current_user, CreateTransactionInput(**kwargs))
+
     return [
         StructuredTool.from_function(
             func=summarize_expenses,
@@ -367,5 +419,10 @@ def build_agent_tools(
             func=compare_expenses,
             name="compare_expenses",
             args_schema=CompareExpensesInput,
+        ),
+        StructuredTool.from_function(
+            func=create_transaction,
+            name="create_transaction",
+            args_schema=CreateTransactionInput,
         ),
     ]

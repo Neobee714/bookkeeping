@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -12,11 +13,13 @@ from app.agent.tools import (
     AgentToolError,
     CategoryBreakdownInput,
     CompareExpensesInput,
+    CreateTransactionInput,
     SearchTransactionsInput,
     SummarizeExpensesInput,
     build_agent_tools,
     category_breakdown_data,
     compare_expenses_data,
+    create_transaction_data,
     resolve_target_user_ids,
     search_transactions_data,
     summarize_expenses_data,
@@ -251,6 +254,7 @@ def test_build_agent_tools_returns_expected_names() -> None:
         "search_transactions",
         "top_expenses",
         "compare_expenses",
+        "create_transaction",
     ]
 
 
@@ -289,3 +293,96 @@ def test_summary_aggregates_have_stable_tie_ordering(db: Session) -> None:
 
     assert list(result["category_expenses"]) == ["c", "a", "b"]
     assert [item["note"] for item in result["top_notes"]] == ["z", "a", "b"]
+
+
+def test_create_transaction_data_inserts_and_returns_record(db: Session) -> None:
+    current_user = make_user(1)
+
+    result = create_transaction_data(
+        db,
+        current_user,
+        CreateTransactionInput(
+            amount=Decimal("35.00"),
+            type=TransactionType.EXPENSE,
+            category="餐饮",
+            note="买菜",
+            date="2026-07-31",
+        ),
+    )
+
+    assert result["amount"] == 35.0
+    assert result["type"] == "expense"
+    assert result["category"] == "餐饮"
+    assert result["note"] == "买菜"
+    assert result["date"] == "2026-07-31"
+    assert "user_id" not in result
+
+    stored = db.get(Transaction, result["id"])
+    assert stored is not None
+    assert stored.user_id == current_user.id
+    assert stored.amount == Decimal("35.00")
+    assert stored.type == TransactionType.EXPENSE
+    assert stored.category == "餐饮"
+    assert stored.note == "买菜"
+    assert stored.date == date(2026, 7, 31)
+
+
+def test_create_transaction_data_supports_income(db: Session) -> None:
+    current_user = make_user(1)
+
+    result = create_transaction_data(
+        db,
+        current_user,
+        CreateTransactionInput(
+            amount=Decimal("5000"),
+            type=TransactionType.INCOME,
+            category="收入",
+            date="2026-07-31",
+        ),
+    )
+
+    assert result["type"] == "income"
+    assert result["amount"] == 5000.0
+    assert db.get(Transaction, result["id"]) is not None
+
+
+def test_create_transaction_data_rejects_invalid_date(db: Session) -> None:
+    current_user = make_user(1)
+
+    with pytest.raises(AgentToolError, match="日期格式"):
+        create_transaction_data(
+            db,
+            current_user,
+            CreateTransactionInput(
+                amount=Decimal("10"),
+                type=TransactionType.EXPENSE,
+                category="餐饮",
+                date="2026-99-01",
+            ),
+        )
+
+
+def test_create_transaction_data_rejects_unsupported_category(db: Session) -> None:
+    current_user = make_user(1)
+
+    with pytest.raises(AgentToolError, match="分类不支持"):
+        create_transaction_data(
+            db,
+            current_user,
+            CreateTransactionInput(
+                amount=Decimal("10"),
+                type=TransactionType.EXPENSE,
+                category="宠物",
+                date="2026-07-31",
+            ),
+        )
+
+
+def test_create_transaction_input_rejects_non_positive_amount() -> None:
+    with pytest.raises(ValidationError):
+        CreateTransactionInput(
+            amount=Decimal("0"),
+            type=TransactionType.EXPENSE,
+            category="餐饮",
+            date="2026-07-31",
+        )
