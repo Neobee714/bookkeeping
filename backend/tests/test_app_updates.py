@@ -81,6 +81,29 @@ def test_publish_apk_as_admin_creates_files(
     assert download.content == content
 
 
+def test_publish_apk_url_keeps_api_path_when_public_base_set(
+    client: tuple[TestClient, dict[str, str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, _holder = client
+    monkeypatch.setattr(
+        "app.routers.app_updates.APP_RELEASES_PUBLIC_BASE_URL",
+        "https://api.example.com",
+    )
+    content = make_apk_bytes()
+
+    response = test_client.post(
+        "/app-updates/apk",
+        data={"version": "1.0.26"},
+        files={"apk": ("a.apk", content, "application/vnd.android.package-archive")},
+    )
+
+    assert response.status_code == 200
+    url = response.json()["data"]["url"]
+    assert url == "https://api.example.com/app-updates/apk/files/app-release-1.0.26.apk"
+    assert test_client.get(url).content == content
+
+
 def test_publish_apk_requires_admin(
     client: tuple[TestClient, dict[str, str]],
 ) -> None:

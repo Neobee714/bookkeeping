@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from fastapi import (
     APIRouter,
@@ -68,9 +69,17 @@ def _compare_versions(a: str, b: str) -> int:
 
 
 def _download_url(request: Request, route_name: str, filename: str) -> str:
-    if APP_RELEASES_PUBLIC_BASE_URL:
-        return f"{APP_RELEASES_PUBLIC_BASE_URL}/{filename}"
-    return str(request.url_for(route_name, filename=filename))
+    route_url = str(request.url_for(route_name, filename=filename))
+    if not APP_RELEASES_PUBLIC_BASE_URL:
+        return route_url
+    base = urlparse(APP_RELEASES_PUBLIC_BASE_URL)
+    if not base.scheme or not base.netloc:
+        return route_url
+    route = urlparse(route_url)
+    # 只覆盖协议/域名（解决反代后 scheme 丢失），保留 /app-updates/... 接口路径。
+    return urlunparse(
+        (base.scheme, base.netloc, route.path, route.params, route.query, route.fragment)
+    )
 
 
 def _releases_dir_optional() -> Path | None:
