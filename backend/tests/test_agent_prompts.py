@@ -13,6 +13,7 @@ def test_system_prompt_includes_voice_accounting_rules() -> None:
     assert "search_transactions" in prompt
     assert "create_transaction" in prompt
     assert "📝 已记一笔" in prompt
+    assert "{日期}" in prompt
     assert "参照您的记账习惯" in prompt
     assert "一百八" in prompt
     assert "买菜→餐饮" in prompt

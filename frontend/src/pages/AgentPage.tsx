@@ -151,10 +151,13 @@ function AgentPage() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [speechHint, setSpeechHint] = useState('');
   const listeningRef = useRef(false);
   const speechBaseRef = useRef('');
   const speechRecognizedRef = useRef('');
   const speechUserEditedRef = useRef(false);
+  const speechAbortedRef = useRef(false);
+  const speechTimeoutRef = useRef<number | null>(null);
   const webRecognitionRef = useRef<WebSpeechRecognition | null>(null);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
@@ -198,6 +201,7 @@ function AgentPage() {
       return;
     }
     speechRecognizedRef.current = normalized;
+    setSpeechHint('');
     if (speechUserEditedRef.current) {
       return;
     }
@@ -207,7 +211,7 @@ function AgentPage() {
 
   const finalizeSpeech = () => {
     const recognized = speechRecognizedRef.current.trim();
-    if (speechUserEditedRef.current && recognized) {
+    if (!speechAbortedRef.current && speechUserEditedRef.current && recognized) {
       setInput((current) => {
         const trimmed = current.trim();
         return trimmed ? `${trimmed} ${recognized}` : recognized;
@@ -215,16 +219,45 @@ function AgentPage() {
     }
     speechRecognizedRef.current = '';
     speechUserEditedRef.current = false;
+    speechAbortedRef.current = false;
     listeningRef.current = false;
     setIsListening(false);
+    setSpeechHint('');
+    if (speechTimeoutRef.current !== null) {
+      window.clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleSpeechHint = (message: string, delayMs: number) => {
+    if (speechTimeoutRef.current !== null) {
+      window.clearTimeout(speechTimeoutRef.current);
+    }
+    speechTimeoutRef.current = window.setTimeout(() => {
+      speechTimeoutRef.current = null;
+      if (listeningRef.current) {
+        setSpeechHint(message);
+      }
+    }, delayMs);
   };
 
   const stopListening = () => {
+    speechAbortedRef.current = true;
     if (Capacitor.isNativePlatform()) {
       void NativeSpeechRecognition.stop().catch(() => undefined);
-      return;
+    } else {
+      // abort() 比 stop() 更可靠：即使会话还卡在"启动中"也能立刻终止并触发 onend。
+      webRecognitionRef.current?.abort();
     }
-    webRecognitionRef.current?.stop();
+    // 兜底：个别情况下浏览器/插件不会回调 onend/stopped，定时强制复位按钮状态。
+    window.setTimeout(() => {
+      if (listeningRef.current) {
+        finalizeSpeech();
+        if (Capacitor.isNativePlatform()) {
+          void NativeSpeechRecognition.removeAllListeners().catch(() => undefined);
+        }
+      }
+    }, 1500);
   };
 
   const startListening = async () => {
@@ -255,8 +288,11 @@ function AgentPage() {
       speechBaseRef.current = input;
       speechRecognizedRef.current = '';
       speechUserEditedRef.current = false;
+      speechAbortedRef.current = false;
       listeningRef.current = true;
       setIsListening(true);
+      setSpeechHint('正在聆听，请说话…');
+      scheduleSpeechHint('没有识别到声音：请确认已允许麦克风权限，并在安静环境中说话', 8000);
 
       try {
         await NativeSpeechRecognition.addListener(
@@ -294,6 +330,7 @@ function AgentPage() {
     speechBaseRef.current = input;
     speechRecognizedRef.current = '';
     speechUserEditedRef.current = false;
+    speechAbortedRef.current = false;
 
     const recognition = new RecognitionCtor();
     recognition.lang = 'zh-CN';
@@ -320,7 +357,13 @@ function AgentPage() {
     recognition.onerror = (event) => {
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         setError('未获得麦克风权限，请在浏览器设置中允许后重试');
-      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      } else if (event.error === 'network') {
+        setError('语音识别失败：network（网页语音依赖 Google 服务，网络不通时请改用手机端语音或直接输入文字）');
+      } else if (event.error === 'audio-capture') {
+        setError('没有检测到麦克风，请检查系统麦克风设置');
+      } else if (event.error === 'no-speech') {
+        setSpeechHint('没有听到声音，请靠近麦克风再试一次');
+      } else if (event.error !== 'aborted') {
         setError(`语音识别失败：${event.error}`);
       }
     };
@@ -331,6 +374,8 @@ function AgentPage() {
     webRecognitionRef.current = recognition;
     listeningRef.current = true;
     setIsListening(true);
+    setSpeechHint('正在聆听，请说话…');
+    scheduleSpeechHint('没有识别到声音：请确认已允许麦克风权限，并在安静环境中说话', 8000);
     try {
       recognition.start();
     } catch {
@@ -435,13 +480,17 @@ function AgentPage() {
           </div>
         )}
 
-        {error && (
+      {error && (
           <div className="ios-glass rounded-2xl px-3.5 py-2.5 text-[13px] text-[#FF3B30]">
             {error}
           </div>
         )}
         <div ref={bottomRef} />
       </div>
+
+      {speechHint && (
+        <div className="mt-2 text-center text-[12px] text-[#8E8E93]">{speechHint}</div>
+      )}
 
       <form
         className="ios-glass ios-glass-strong mt-3 flex items-end gap-2 p-2"

@@ -16,9 +16,9 @@ echo "[3/3] Building Android release APK..."
 cd android
 
 if [[ -f "./gradlew" ]]; then
-  ./gradlew assembleRelease
+  ./gradlew --init-script "$(pwd)/gradle/aliyun-mirror.init.gradle" assembleRelease
 elif [[ -f "./gradlew.bat" ]]; then
-  ./gradlew.bat assembleRelease
+  ./gradlew.bat --init-script "$(pwd)/gradle/aliyun-mirror.init.gradle" assembleRelease
 else
   echo "Could not find gradle wrapper in android/."
   exit 1
