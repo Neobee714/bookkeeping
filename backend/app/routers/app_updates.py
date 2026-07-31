@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from fastapi import (
     APIRouter,
@@ -21,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.admin import is_admin_username
 from app.core.config import (
     APP_RELEASES_DIR,
+    APP_RELEASES_MAX_APK_MB,
     APP_RELEASES_MAX_BUNDLE_MB,
     APP_RELEASES_PUBLIC_BASE_URL,
 )
@@ -33,6 +37,8 @@ from app.models.user import User
 router = APIRouter(prefix="/app-updates", tags=["app-updates"])
 
 VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
+APK_FILENAME_PATTERN = re.compile(r"^app-release-(\d+\.\d+\.\d+)\.apk$")
+APK_MEDIA_TYPE = "application/vnd.android.package-archive"
 DOWNLOAD_PATH_PREFIX = "/app-updates/files"
 
 
@@ -61,10 +67,57 @@ def _compare_versions(a: str, b: str) -> int:
     return (pa > pb) - (pa < pb)
 
 
-def _bundle_url(request: Request, filename: str) -> str:
+def _download_url(request: Request, route_name: str, filename: str) -> str:
     if APP_RELEASES_PUBLIC_BASE_URL:
         return f"{APP_RELEASES_PUBLIC_BASE_URL}/{filename}"
-    return str(request.url_for("download_bundle", filename=filename))
+    return str(request.url_for(route_name, filename=filename))
+
+
+def _releases_dir_optional() -> Path | None:
+    if not APP_RELEASES_DIR:
+        return None
+    path = Path(APP_RELEASES_DIR)
+    return path if path.is_dir() else None
+
+
+def _list_apk_versions() -> list[str]:
+    releases_dir = _releases_dir_optional()
+    if not releases_dir:
+        return []
+    versions: list[str] = []
+    for path in releases_dir.glob("app-release-*.apk"):
+        match = APK_FILENAME_PATTERN.match(path.name)
+        if match:
+            versions.append(match.group(1))
+    return versions
+
+
+def _read_apk_meta(version: str) -> dict[str, Any] | None:
+    releases_dir = _releases_dir()
+    meta_path = releases_dir / f"app-release-{version}.json"
+    if meta_path.is_file():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            if isinstance(meta, dict) and meta.get("version") == version:
+                return meta
+        except (OSError, ValueError):
+            pass
+
+    apk_path = releases_dir / f"app-release-{version}.apk"
+    if not apk_path.is_file():
+        return None
+    hasher = hashlib.sha256()
+    with apk_path.open("rb") as fp:
+        for chunk in iter(lambda: fp.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    stat = apk_path.stat()
+    return {
+        "version": version,
+        "checksum": hasher.hexdigest(),
+        "size": int(stat.st_size),
+        "changelog": "",
+        "published_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+    }
 
 
 @router.get("/latest")
@@ -91,7 +144,7 @@ def get_latest_release(
         data={
             "has_update": has_update,
             "version": latest.version,
-            "url": _bundle_url(request, latest.bundle_filename),
+            "url": _download_url(request, "download_bundle", latest.bundle_filename),
             "checksum": latest.checksum,
             "size": latest.bundle_size,
             "changelog": latest.changelog,
@@ -193,7 +246,7 @@ async def publish_release(
     return success_response(
         data={
             "version": release.version,
-            "url": _bundle_url(request, release.bundle_filename),
+            "url": _download_url(request, "download_bundle", release.bundle_filename),
             "checksum": release.checksum,
             "size": release.bundle_size,
             "changelog": release.changelog,
@@ -224,3 +277,176 @@ def list_releases(
             for r in rows
         ]
     )
+
+
+@router.get("/apk/latest")
+def get_latest_apk(
+    request: Request,
+    current: str | None = None,
+) -> dict:
+    versions = _list_apk_versions()
+    if not versions:
+        return success_response(data={"has_update": False})
+
+    latest_version = max(versions, key=lambda version: _compare_versions(version, "0.0.0"))
+    meta = _read_apk_meta(latest_version)
+    if not meta:
+        return success_response(data={"has_update": False})
+
+    current_normalized = (current or "").strip()
+    has_update = True
+    if current_normalized and VERSION_PATTERN.match(current_normalized):
+        has_update = _compare_versions(latest_version, current_normalized) > 0
+
+    return success_response(
+        data={
+            "has_update": has_update,
+            "version": latest_version,
+            "url": _download_url(
+                request,
+                "download_apk",
+                f"app-release-{latest_version}.apk",
+            ),
+            "checksum": meta["checksum"],
+            "size": meta["size"],
+            "changelog": meta.get("changelog", ""),
+            "released_at": meta.get("published_at"),
+        }
+    )
+
+
+@router.get("/apk/files/{filename}", name="download_apk")
+def download_apk(filename: str):
+    from fastapi.responses import FileResponse
+
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or not APK_FILENAME_PATTERN.match(safe_name):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
+    file_path = _releases_dir() / safe_name
+    if not file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文件不存在")
+    return FileResponse(
+        path=str(file_path),
+        media_type=APK_MEDIA_TYPE,
+        filename=safe_name,
+    )
+
+
+@router.post("/apk")
+async def publish_apk(
+    request: Request,
+    version: str = Form(...),
+    changelog: str = Form(""),
+    apk: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    _require_admin(current_user)
+
+    normalized_version = version.strip()
+    if not VERSION_PATTERN.match(normalized_version):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="版本号格式应为 X.Y.Z",
+        )
+
+    target_dir = _releases_dir()
+    filename = f"app-release-{normalized_version}.apk"
+    target_path = target_dir / filename
+    if target_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"版本 {normalized_version} 已发布",
+        )
+
+    max_bytes = APP_RELEASES_MAX_APK_MB * 1024 * 1024
+    hasher = hashlib.sha256()
+    total_size = 0
+    tmp_path = target_dir / f"{filename}.part"
+
+    try:
+        with tmp_path.open("wb") as fp:
+            while True:
+                chunk = await apk.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > max_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"APK 超过 {APP_RELEASES_MAX_APK_MB} MB 限制",
+                    )
+                hasher.update(chunk)
+                fp.write(chunk)
+
+        if total_size == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="APK 文件为空",
+            )
+
+        with tmp_path.open("rb") as check_fp:
+            magic = check_fp.read(2)
+        if magic != b"PK":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="文件不是有效的 APK 包",
+            )
+
+        tmp_path.replace(target_path)
+    except Exception:
+        if tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+        raise
+
+    meta = {
+        "version": normalized_version,
+        "checksum": hasher.hexdigest(),
+        "size": total_size,
+        "changelog": changelog.strip(),
+        "published_at": datetime.now(timezone.utc).isoformat(),
+    }
+    meta_tmp_path = target_dir / f"app-release-{normalized_version}.json.tmp"
+    meta_tmp_path.write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    meta_tmp_path.replace(target_dir / f"app-release-{normalized_version}.json")
+
+    return success_response(
+        data={
+            "version": meta["version"],
+            "url": _download_url(request, "download_apk", filename),
+            "checksum": meta["checksum"],
+            "size": meta["size"],
+            "changelog": meta["changelog"],
+            "released_at": meta["published_at"],
+        },
+        message="发布成功",
+    )
+
+
+@router.delete("/apk/{version}")
+def delete_apk(
+    version: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    _require_admin(current_user)
+
+    normalized_version = version.strip()
+    if not VERSION_PATTERN.match(normalized_version):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="版本号格式应为 X.Y.Z",
+        )
+
+    releases_dir = _releases_dir()
+    apk_path = releases_dir / f"app-release-{normalized_version}.apk"
+    if not apk_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="版本不存在",
+        )
+
+    apk_path.unlink(missing_ok=True)
+    (releases_dir / f"app-release-{normalized_version}.json").unlink(missing_ok=True)
+    return success_response(message="删除成功")

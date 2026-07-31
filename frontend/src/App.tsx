@@ -22,6 +22,7 @@ import StatsPage from '@/pages/StatsPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 import { useAuthStore } from '@/store/authStore';
 import type { ApiResponse, User } from '@/types';
+import { initApkUpdates } from '@/utils/apkUpdate';
 import { initAppUpdates } from '@/utils/appUpdate';
 
 interface GuardProps {
@@ -121,6 +122,7 @@ function App() {
 
   useEffect(() => {
     void initAppUpdates();
+    void initApkUpdates();
   }, []);
 
   return (
