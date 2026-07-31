@@ -26,5 +26,5 @@ __pycache__/
 # Build artifacts
 frontend/dist-bundle-*.zip
 
-# Local temp scripts
-scripts/
+# Local temp scripts (root only; frontend/scripts must be tracked)
+/scripts/
