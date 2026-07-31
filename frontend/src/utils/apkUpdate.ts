@@ -30,6 +30,11 @@ export interface ApkUpdateInfo {
   size?: number;
 }
 
+export interface ApkInstallResult {
+  ok: boolean;
+  error?: string;
+}
+
 const APK_MIME_TYPE = 'application/vnd.android.package-archive';
 const APK_FILENAME_PREFIX = 'app-release-';
 
@@ -85,47 +90,70 @@ export function dismissApkUpdate(): void {
   emit();
 }
 
-async function downloadApk(update: PendingApkUpdate): Promise<string | null> {
-  const response = await fetch(update.url);
-  if (!response.ok) {
-    return null;
+async function downloadApk(
+  update: PendingApkUpdate,
+): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+  let response: Response;
+  try {
+    response = await fetch(update.url);
+  } catch (err) {
+    console.warn('[apkUpdate] fetch failed', update.url, err);
+    return { ok: false, error: '无法连接更新服务器，请检查网络' };
   }
-  const buffer = await response.arrayBuffer();
+  if (!response.ok) {
+    return { ok: false, error: `下载失败（HTTP ${response.status}）` };
+  }
+  let buffer: ArrayBuffer;
+  try {
+    buffer = await response.arrayBuffer();
+  } catch {
+    return { ok: false, error: '下载数据读取失败，请重试' };
+  }
 
   if (update.checksum) {
     const digest = await sha256Hex(buffer);
     if (digest && digest.toLowerCase() !== update.checksum.toLowerCase()) {
       console.warn('[apkUpdate] checksum mismatch, abort install');
-      return null;
+      return { ok: false, error: '更新包校验失败，请重试' };
     }
   }
 
   const filename = `${APK_FILENAME_PREFIX}${update.version}.apk`;
-  await Filesystem.writeFile({
-    path: filename,
-    data: arrayBufferToBase64(buffer),
-    directory: Directory.Cache,
-  });
-  const uri = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
-  return uri.uri;
+  try {
+    await Filesystem.writeFile({
+      path: filename,
+      data: arrayBufferToBase64(buffer),
+      directory: Directory.Cache,
+    });
+    const uri = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
+    return { ok: true, path: uri.uri };
+  } catch (err) {
+    console.warn('[apkUpdate] write failed', err);
+    return { ok: false, error: '更新包保存失败，请重试' };
+  }
 }
 
-export async function installApkUpdate(): Promise<boolean> {
+export async function installApkUpdate(): Promise<ApkInstallResult> {
   const update = pendingUpdate;
   if (!update || working) {
-    return false;
+    return { ok: false, error: '没有待更新的版本' };
   }
   working = true;
   try {
-    const path = await downloadApk(update);
-    if (!path) {
-      return false;
+    const result = await downloadApk(update);
+    if (!result.ok) {
+      return result;
     }
-    await FileOpener.openFile({ path, mimeType: APK_MIME_TYPE });
-    return true;
+    try {
+      await FileOpener.openFile({ path: result.path, mimeType: APK_MIME_TYPE });
+    } catch (err) {
+      console.warn('[apkUpdate] open failed', err);
+      return { ok: false, error: '打开安装器失败，请检查"允许安装未知应用"设置' };
+    }
+    return { ok: true };
   } catch (err) {
     console.warn('[apkUpdate] install failed', err);
-    return false;
+    return { ok: false, error: '更新失败，请重试' };
   } finally {
     working = false;
   }

@@ -10,6 +10,7 @@ import {
 function ApkUpdateBanner() {
   const [info, setInfo] = useState<ApkUpdateInfo | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => subscribeApkUpdate(setInfo), []);
 
@@ -22,12 +23,17 @@ function ApkUpdateBanner() {
       return;
     }
     setInstalling(true);
-    await installApkUpdate();
+    setError('');
+    const result = await installApkUpdate();
     setInstalling(false);
+    if (!result.ok) {
+      setError(result.error ?? '更新失败');
+    }
   };
 
   const handleDismiss = () => {
     dismissApkUpdate();
+    setError('');
   };
 
   const changelog = info.changelog?.trim() ?? '';
@@ -44,6 +50,9 @@ function ApkUpdateBanner() {
             发现新版本 v{info.version}
           </p>
           <p className="mt-0.5 truncate text-[12px] text-[#8E8E93]">{description}</p>
+          {error && (
+            <p className="mt-0.5 text-[12px] font-medium text-[#FF3B30]">{error}</p>
+          )}
         </div>
         <button
           type="button"
