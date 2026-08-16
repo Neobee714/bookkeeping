@@ -27,27 +27,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Drop child tables first to respect foreign-key dependencies.
-    op.drop_index(op.f("ix_post_comments_id"), table_name="post_comments")
-    op.drop_table("post_comments")
-
-    op.drop_index(op.f("ix_post_ratings_id"), table_name="post_ratings")
-    op.drop_table("post_ratings")
-
-    op.drop_index(op.f("ix_posts_id"), table_name="posts")
-    op.drop_table("posts")
-
-    op.drop_index(op.f("ix_circle_applications_status"), table_name="circle_applications")
-    op.drop_index(op.f("ix_circle_applications_id"), table_name="circle_applications")
-    op.drop_table("circle_applications")
-
-    op.drop_index(op.f("ix_circle_invite_codes_id"), table_name="circle_invite_codes")
-    op.drop_table("circle_invite_codes")
-
-    op.drop_index(op.f("ix_circle_members_id"), table_name="circle_members")
-    op.drop_table("circle_members")
-
-    op.drop_index(op.f("ix_circles_id"), table_name="circles")
-    op.drop_table("circles")
+    # 用 DROP TABLE IF EXISTS ... CASCADE 容错:生产库(旧迁移链升级)可能缺失
+    # 部分索引(如 ix_circle_applications_status),单独 drop_index 会失败;
+    # CASCADE 会一并清理表上的索引与约束,删圈子表不影响业务表。
+    op.execute("DROP TABLE IF EXISTS post_comments CASCADE")
+    op.execute("DROP TABLE IF EXISTS post_ratings CASCADE")
+    op.execute("DROP TABLE IF EXISTS posts CASCADE")
+    op.execute("DROP TABLE IF EXISTS circle_applications CASCADE")
+    op.execute("DROP TABLE IF EXISTS circle_invite_codes CASCADE")
+    op.execute("DROP TABLE IF EXISTS circle_members CASCADE")
+    op.execute("DROP TABLE IF EXISTS circles CASCADE")
 
 
 def downgrade() -> None:
