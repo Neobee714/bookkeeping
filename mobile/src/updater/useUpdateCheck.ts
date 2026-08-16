@@ -78,7 +78,7 @@ export function useUpdateCheck() {
   const updateInfo = useUpdateCheckStore((s) => s.updateInfo);
   const visible = useUpdateCheckStore((s) => s.visible);
 
-  /** 点「立即更新」:权限检查 → 引导或下载;已开始下载才关闭弹窗。 */
+  /** 点「立即更新」:权限检查 → 引导或下载;已开始下载才关闭弹窗并提示后台更新。 */
   const onUpdate = useCallback(() => {
     const { updateInfo: info, updating } = useUpdateCheckStore.getState();
     if (!info || updating) {
@@ -88,8 +88,9 @@ export function useUpdateCheck() {
     void performUpdate(info).then((started) => {
       useUpdateCheckStore.setState({ updating: false });
       if (started) {
-        // 已交由系统下载/安装(通知栏进度),关闭弹窗;权限引导/失败则保持以便重试
+        // 已交由系统后台下载(通知栏进度),关闭弹窗并提示用户
         useUpdateCheckStore.getState().hide();
+        Alert.alert('后台更新中', '正在后台下载更新包,完成后会自动安装');
       }
     });
   }, []);
