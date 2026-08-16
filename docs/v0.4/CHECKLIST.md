@@ -74,3 +74,7 @@
 - [x] 发布 OTA 并验证 ✅ 2026-08-16 19:40（latest.apk=SHA1 3799db… 与本地一致；info.json v2.1.0；下载页含 2.1.0；发布链路说明：CLI/代理大文件通道不稳，改 GitHub Release 中转 + 服务器下载完成）
 - [x] 修复「检查更新失败」✅ 2026-08-16 20:15（根因：CLI update-metadata 的 SFTP 写流把 info.json 截断为 0 字节；已用 SSH 命令重写 435 字节并验证公网 200/version=2.1.0/CF 缓存命中 65ms。教训：发布写 info.json 不用 CLI，用 SSH 命令）
 - [x] v2.1.1 上线（点击立即更新 → 提示「后台更新中」并关闭弹窗）✅ 2026-08-16 20:30（versionCode 211；APK SHA1 5d4080… 校验一致；info.json/latest.apk 公网验证 200；发布沿用 GitHub Release 中转 + SSH 写清单）
+- [x] **v2.1.2 上线：修复启动闪退 + App 更名「时光」/AI 更名「小光」** ✅ 2026-08-16 21:10（versionCode 212，SHA1 64d465… 校验一致，公网验证 200）
+  - 闪退根因：FR-02 吸顶代码把 `Animated.event + useNativeDriver:true` 直接挂在普通 FlatList 上 → RN Invariant Violation → 进入首页即崩（模拟器未登录未触发）
+  - 修复：HomeScreen 改 onScroll 回调驱动 collapse 动画（JS 驱动），模拟器强制进主界面验证通过
+  - 改名：金流→时光（6 文件）、流金→小光（5 文件），17 处替换，tsc 通过
