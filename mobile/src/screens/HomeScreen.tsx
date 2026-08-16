@@ -10,6 +10,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -91,8 +93,7 @@ export default function HomeScreen() {
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
 
-  // FR-02 吸顶:FlatList contentOffset → 原生驱动 scrollY;阈值触发 collapse 0↔1 动画。
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // FR-02 吸顶:collapse 0↔1 动画值(由滚动回调触发)。
   const collapse = useRef(new Animated.Value(0)).current;
   const collapsedRef = useRef(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -149,24 +150,8 @@ export default function HomeScreen() {
     void loadCategories();
   }, [loadCategories]);
 
-  // FR-02 吸顶:监听滚动偏移,越过阈值时以 200ms 动画收缩/恢复,双向平滑。
-  useEffect(() => {
-    const listenerId = scrollY.addListener(({ value }) => {
-      const shouldCollapse = value > COLLAPSE_SCROLL_THRESHOLD;
-      if (shouldCollapse === collapsedRef.current) {
-        return;
-      }
-      collapsedRef.current = shouldCollapse;
-      setCollapsed(shouldCollapse);
-      Animated.timing(collapse, {
-        toValue: shouldCollapse ? 1 : 0,
-        duration: COLLAPSE_ANIM_DURATION,
-        // 高度/阴影等布局属性无法走原生驱动;滚动事件本身已用 useNativeDriver: true
-        useNativeDriver: false,
-      }).start();
-    });
-    return () => scrollY.removeListener(listenerId);
-  }, [scrollY, collapse]);
+  // FR-02 吸顶:滚动监听已并入 handleScroll(滚动回调直接驱动 collapse 动画)。
+  // (原 scrollY.addListener 在 native driver 下不触发,已废弃)
 
   // 月份切换 / 视图切换 / 首次加载:进入加载态并拉取数据。
   useEffect(() => {
@@ -360,14 +345,25 @@ export default function HomeScreen() {
     [collapse, cardFullHeight]
   );
 
-  // FR-02 吸顶:FlatList 滚动事件 → scrollY(原生驱动,不阻塞滚动)。
-  const onScroll = useMemo(
-    () =>
-      Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: true }
-      ),
-    [scrollY]
+  // FR-02 吸顶:FlatList 滚动回调 → 阈值触发 collapse 0↔1 动画(JS 驱动)。
+  // 注意:不可用 Animated.event + useNativeDriver 直接挂普通 FlatList,
+  // RN 会抛 Invariant Violation 导致闪退(2.1.x 线上事故根因)。
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = event.nativeEvent.contentOffset.y;
+      const shouldCollapse = y > COLLAPSE_SCROLL_THRESHOLD;
+      if (shouldCollapse === collapsedRef.current) {
+        return;
+      }
+      collapsedRef.current = shouldCollapse;
+      setCollapsed(shouldCollapse);
+      Animated.timing(collapse, {
+        toValue: shouldCollapse ? 1 : 0,
+        duration: COLLAPSE_ANIM_DURATION,
+        useNativeDriver: false,
+      }).start();
+    },
+    [collapse]
   );
 
   return (
@@ -529,7 +525,7 @@ export default function HomeScreen() {
               ItemSeparatorComponent={ItemSeparator}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
-              onScroll={onScroll}
+              onScroll={handleScroll}
               scrollEventThrottle={16}
               refreshControl={
                 <RefreshControl
