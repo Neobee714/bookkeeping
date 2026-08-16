@@ -66,3 +66,6 @@
   - 下载页 https://app.xyvora.me/#app-bookkeeping（卡片/下载按钮/二维码正常）
   - 注：MCP CLI 需直连 SSH（代理节点到 VPS 异常），通过 APP_MCP_SOCKS_PROXY='' 注入方式发布
 - [ ] 手机上老版手动覆盖安装升级到 v2.0.0（用户操作：从下载页安装一次，之后自动 OTA）
+- [x] 真机反馈网络连接失败 → 根因与修复 ✅ 2026-08-16 15:30
+  - 根因：mobile/src/config.ts 的 API_BASE_URL 仍是本地联调地址 http://127.0.0.1:8000
+  - 修复：改为线上 https://api.bookkeeping.neobee.top（health 验证正常）；版本升至 2.0.1/201 重新构建并发布到 app.xyvora.me（info.json/latest.apk 验证通过，中文 UTF-8 正确）；GitHub 推送 1f41073
