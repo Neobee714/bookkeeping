@@ -21,7 +21,7 @@ import { radius, spacing, typography, useTheme, type ThemeColors } from '../them
 import type { AgentChatRole, AgentToolCallSummary } from '../types';
 
 /**
- * 流金:AI 记账助手(FR-07)。
+ * 小光:AI 记账助手(FR-07)。
  *
  * 对话式记账:用户气泡为渐变底白字,AI 气泡为白卡片;
  * 本地维护历史上下文(每次最多携带最近 20 条),按用户持久化到 AsyncStorage;
@@ -148,7 +148,7 @@ function MessageBubble({
   );
 }
 
-/** 流金:AI 记账助手(FR-07)。 */
+/** 小光:AI 记账助手(FR-07)。 */
 export default function AgentScreen() {
   const colors = useTheme();
   const userId = useAuthStore((s) => s.user?.id);
@@ -246,7 +246,7 @@ export default function AgentScreen() {
       edges={['top']}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>流金</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>小光</Text>
         <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
           AI 记账助手
         </Text>

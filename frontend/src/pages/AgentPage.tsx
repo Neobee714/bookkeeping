@@ -165,10 +165,10 @@ function AgentPage() {
       ]);
     } catch (err) {
       const message = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? '流金暂时不可用'
+        ? err.response?.data?.message ?? '小光暂时不可用'
         : err instanceof Error
           ? err.message
-          : '流金暂时不可用';
+          : '小光暂时不可用';
       setError(message);
     } finally {
       setLoading(false);
@@ -178,7 +178,7 @@ function AgentPage() {
   return (
     <section className="flex h-[calc(100dvh-5.75rem)] min-h-0 flex-col pb-0">
       <h1 className="ios-anim mb-3 mt-2 text-[34px] font-bold tracking-tight text-[#1C1C1E]">
-        流金
+        小光
       </h1>
 
       {!hasConversation && (
@@ -256,7 +256,7 @@ function AgentPage() {
             setInput(event.target.value);
           }}
           rows={1}
-          aria-label="输入给流金的问题"
+          aria-label="输入给小光的问题"
           placeholder="问问最近的开销..."
           className="max-h-28 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-[#1C1C1E] outline-none placeholder:text-[#8E8E93]"
         />

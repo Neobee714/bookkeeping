@@ -61,7 +61,7 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <AuthLayout
       emoji="🧾"
-      title="金流"
+      title="时光"
       subtitle="登录后与 TA 一起管好每一笔"
     >
       <View style={styles.field}>

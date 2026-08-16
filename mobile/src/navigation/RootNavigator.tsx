@@ -32,7 +32,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const TAB_ITEMS: Record<keyof MainTabParamList, { emoji: string; label: string }> = {
   Home: { emoji: '🏠', label: '首页' },
   Stats: { emoji: '📊', label: '图表' },
-  Agent: { emoji: '✨', label: '流金' },
+  Agent: { emoji: '✨', label: '小光' },
   Plan: { emoji: '🎯', label: '规划' },
   Profile: { emoji: '👤', label: '我的' },
 };
