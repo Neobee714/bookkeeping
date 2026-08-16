@@ -69,5 +69,6 @@
 - [x] 后端全量测试通过 ✅ 2026-08-16 17:50（64 passed）
 - [x] 版本号升级 versionCode 210 / 2.1.0 ✅ 2026-08-16 18:10
 - [x] release APK 构建通过（versionCode 210, v2.1.0）✅ 2026-08-16 18:23（app-release.apk 76.7MB，BUILD SUCCESSFUL）
-- [ ] 代码提交 Git
-- [ ] 发布 OTA 并验证
+- [x] 代码提交 Git（含 GitHub 推送）✅ 2026-08-16 18:30（6feb1fd + 8b49bb4 已推 origin/main）
+- [x] 后端上线 v0.4（新接口 + 删圈子迁移）✅ 2026-08-16 19:00（容器重建；alembic head=67f2f7585bb7；7 张圈子表已删；health 200；openapi 含 /auth/password /stats/notes /stats/note-trend）
+- [x] 发布 OTA 并验证 ✅ 2026-08-16 19:40（latest.apk=SHA1 3799db… 与本地一致；info.json v2.1.0；下载页含 2.1.0；发布链路说明：CLI/代理大文件通道不稳，改 GitHub Release 中转 + 服务器下载完成）
