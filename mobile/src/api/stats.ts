@@ -1,4 +1,4 @@
-import type { ApiResponse, MonthlySummary, TrendPoint } from '../types';
+import type { ApiResponse, MonthlySummary, NoteRankItem, TrendPoint } from '../types';
 import client, { unwrap } from './client';
 
 /** 分类默认配色(与 Web 端一致,图表/分类展示用)。 */
@@ -17,6 +17,9 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 type SummaryTarget = 'self' | 'partner';
+
+/** 备注统计的收支类型。 */
+export type NoteType = 'income' | 'expense';
 
 const formatMonth = (value: Date): string => {
   const year = value.getFullYear();
@@ -87,4 +90,31 @@ export const fetchMonthlyTrendSeries = async (options: {
     expense: summary.total_expense,
     balance: summary.balance,
   }));
+};
+
+/** 某月按备注聚合的金额排行(支出/收入,含笔数,金额降序 Top10)。 */
+export const fetchNoteRanking = async (options: {
+  month: string;
+  target: SummaryTarget;
+  type: NoteType;
+}): Promise<NoteRankItem[]> => {
+  const { month, target, type } = options;
+  const response = await client.get<ApiResponse<NoteRankItem[]>>('/stats/notes', {
+    params: { month, target, type },
+  });
+  return unwrap(response.data);
+};
+
+/** 某备注近 N 个月(截止 endMonth)的月度收支趋势。 */
+export const fetchNoteTrend = async (options: {
+  note: string;
+  months: number;
+  endMonth: Date;
+  target: SummaryTarget;
+}): Promise<TrendPoint[]> => {
+  const { note, months, endMonth, target } = options;
+  const response = await client.get<ApiResponse<TrendPoint[]>>('/stats/note-trend', {
+    params: { note, months, end_month: formatMonth(endMonth), target },
+  });
+  return unwrap(response.data);
 };

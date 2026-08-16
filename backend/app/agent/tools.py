@@ -35,6 +35,9 @@ class CategoryBreakdownInput(DateWindowInput):
 
 
 class SearchTransactionsInput(DateWindowInput):
+    type: TransactionType | None = Field(
+        default=None, description="账单类型筛选：income（收入）或 expense（支出）；不传则收支都查"
+    )
     category: str | None = Field(default=None, description="按分类筛选")
     note_keyword: str | None = Field(default=None, description="按备注关键词筛选")
     min_amount: Decimal | None = Field(default=None, ge=0, description="最小金额")
@@ -43,6 +46,9 @@ class SearchTransactionsInput(DateWindowInput):
 
 
 class TopExpensesInput(DateWindowInput):
+    type: TransactionType | None = Field(
+        default=None, description="账单类型筛选：income（收入）或 expense（支出）；不传则收支都查"
+    )
     category: str | None = Field(default=None, description="按分类筛选")
     limit: int = Field(default=10, ge=1, le=100, description="返回数量")
 
@@ -227,7 +233,9 @@ def search_transactions_data(
     max_limit: int,
 ) -> dict[str, Any]:
     filters, start, end, _user_ids = _base_filters(current_user, payload)
-    filters.append(Transaction.type == TransactionType.EXPENSE)
+
+    if payload.type is not None:
+        filters.append(Transaction.type == payload.type)
 
     if payload.category:
         filters.append(Transaction.category == payload.category)
@@ -258,6 +266,7 @@ def search_transactions_data(
         "items": [
             {
                 "owner": _owner_label(transaction.user_id, current_user),
+                "type": transaction.type.value,
                 "amount": _to_float(transaction.amount),
                 "category": transaction.category,
                 "note": transaction.note,
@@ -278,6 +287,7 @@ def top_expenses_data(
         target=payload.target,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        type=payload.type,
         category=payload.category,
         limit=payload.limit,
     )
@@ -369,7 +379,7 @@ def build_agent_tools(
         return category_breakdown_data(db, current_user, CategoryBreakdownInput(**kwargs))
 
     def search_transactions(**kwargs: Any) -> dict[str, Any]:
-        """Search expense transactions by category, note keyword, amount, and date window."""
+        """Search transactions (income or expense) by type, category, note keyword, amount, and date window."""
         return search_transactions_data(
             db,
             current_user,
@@ -378,7 +388,7 @@ def build_agent_tools(
         )
 
     def top_expenses(**kwargs: Any) -> dict[str, Any]:
-        """Return the largest expense transactions for a date window."""
+        """Return the largest transactions for a date window, optionally filtered by type (income or expense)."""
         return top_expenses_data(
             db,
             current_user,

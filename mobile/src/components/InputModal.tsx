@@ -21,6 +21,8 @@ export interface InputModalField {
   maxLength?: number;
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /** 密码类输入:遮蔽明文。 */
+  secureTextEntry?: boolean;
 }
 
 interface Props {
@@ -73,6 +75,7 @@ export default function InputModal({
               maxLength={field.maxLength}
               keyboardType={field.keyboardType}
               autoCapitalize={field.autoCapitalize}
+              secureTextEntry={field.secureTextEntry}
             />
           ))}
           <View style={styles.actions}>

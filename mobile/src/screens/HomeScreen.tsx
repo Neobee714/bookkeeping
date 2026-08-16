@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   FlatList,
   Pressable,
   RefreshControl,
@@ -9,6 +10,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -53,6 +56,13 @@ type Row =
   | { kind: 'header'; id: string; label: string; dayExpense: number }
   | { kind: 'item'; id: string; tx: Transaction };
 
+/** FR-02 吸顶:滚动超过该阈值(px)时结余卡收缩为窄条。 */
+const COLLAPSE_SCROLL_THRESHOLD = 28;
+/** FR-02 吸顶:收缩/展开动画时长(ms)。 */
+const COLLAPSE_ANIM_DURATION = 200;
+/** FR-02 吸顶:收缩后窄条高度(px)。 */
+const COLLAPSED_CARD_HEIGHT = 56;
+
 /**
  * 首页账单流(FR-02):月度汇总卡 + 「我的/伴侣」切换 + 按日期分组的账单列表
  * (FlatList 虚拟化),月份切换、下拉刷新、新增/编辑/删除记账。
@@ -80,6 +90,13 @@ export default function HomeScreen() {
   const [deleting, setDeleting] = useState(false);
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+
+  // FR-02 吸顶:FlatList contentOffset → 原生驱动 scrollY;阈值触发 collapse 0↔1 动画。
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const collapse = useRef(new Animated.Value(0)).current;
+  const collapsedRef = useRef(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [cardFullHeight, setCardFullHeight] = useState<number | null>(null);
 
   const monthKey = getMonthKey(currentMonth);
   const viewKey = `${viewMode}:${monthKey}`;
@@ -131,6 +148,25 @@ export default function HomeScreen() {
   useEffect(() => {
     void loadCategories();
   }, [loadCategories]);
+
+  // FR-02 吸顶:监听滚动偏移,越过阈值时以 200ms 动画收缩/恢复,双向平滑。
+  useEffect(() => {
+    const listenerId = scrollY.addListener(({ value }) => {
+      const shouldCollapse = value > COLLAPSE_SCROLL_THRESHOLD;
+      if (shouldCollapse === collapsedRef.current) {
+        return;
+      }
+      collapsedRef.current = shouldCollapse;
+      setCollapsed(shouldCollapse);
+      Animated.timing(collapse, {
+        toValue: shouldCollapse ? 1 : 0,
+        duration: COLLAPSE_ANIM_DURATION,
+        // 高度/阴影等布局属性无法走原生驱动;滚动事件本身已用 useNativeDriver: true
+        useNativeDriver: false,
+      }).start();
+    });
+    return () => scrollY.removeListener(listenerId);
+  }, [scrollY, collapse]);
 
   // 月份切换 / 视图切换 / 首次加载:进入加载态并拉取数据。
   useEffect(() => {
@@ -295,6 +331,45 @@ export default function HomeScreen() {
   const greeting = user?.nickname ? `Hi, ${user.nickname}` : '';
   const balance = summary?.balance ?? 0;
 
+  // FR-02 吸顶:collapse 0↔1 驱动的高度/透明度/阴影插值(完整卡 → 56px 窄条)。
+  const cardAnim = useMemo(
+    () => ({
+      height: cardFullHeight
+        ? collapse.interpolate({
+            inputRange: [0, 1],
+            outputRange: [cardFullHeight, COLLAPSED_CARD_HEIGHT],
+          })
+        : undefined,
+      fullOpacity: collapse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 0],
+      }),
+      stripOpacity: collapse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+      }),
+      shadowOpacity: collapse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.35, 0.1],
+      }),
+      elevation: collapse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [8, 2],
+      }),
+    }),
+    [collapse, cardFullHeight]
+  );
+
+  // FR-02 吸顶:FlatList 滚动事件 → scrollY(原生驱动,不阻塞滚动)。
+  const onScroll = useMemo(
+    () =>
+      Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        { useNativeDriver: true }
+      ),
+    [scrollY]
+  );
+
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
@@ -310,42 +385,75 @@ export default function HomeScreen() {
           <Text style={[styles.title, { color: colors.textPrimary }]}>金流</Text>
         </View>
 
-        {/* 月度汇总卡(渐变) */}
-        <GradientView style={styles.summaryCard}>
-          <View style={styles.monthRow}>
-            <Pressable
-              onPress={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}
-              style={styles.monthArrow}
-              hitSlop={8}
-            >
-              <Text style={styles.monthArrowText}>‹</Text>
-            </Pressable>
-            <Text style={styles.monthLabel}>{formatMonthLabel(currentMonth)}</Text>
-            <Pressable
-              onPress={() => setCurrentMonth((previous) => shiftMonth(previous, 1))}
-              style={styles.monthArrow}
-              hitSlop={8}
-            >
-              <Text style={styles.monthArrowText}>›</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.balanceLabel}>本月结余</Text>
-          <Text style={styles.balanceAmount}>¥{formatMoney(balance)}</Text>
-          <View style={styles.sumRow}>
-            <View style={styles.sumChip}>
-              <Text style={styles.sumChipLabel}>收入</Text>
-              <Text style={styles.sumChipValue}>
-                ¥{formatMoney(summary?.total_income ?? 0)}
-              </Text>
-            </View>
-            <View style={styles.sumChip}>
-              <Text style={styles.sumChipLabel}>支出</Text>
-              <Text style={styles.sumChipValue}>
-                ¥{formatMoney(summary?.total_expense ?? 0)}
-              </Text>
-            </View>
-          </View>
-        </GradientView>
+        {/* 月度汇总卡(渐变):滚动时收缩为 56px 窄条吸顶(FR-02) */}
+        <Animated.View
+          style={[
+            styles.cardShadow,
+            { shadowOpacity: cardAnim.shadowOpacity, elevation: cardAnim.elevation },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.cardClip,
+              cardAnim.height ? { height: cardAnim.height } : null,
+            ]}
+          >
+            <GradientView style={styles.cardGradient}>
+              {/* 完整卡内容:收缩时整体淡出,并被容器高度裁剪 */}
+              <Animated.View
+                style={[styles.cardFull, { opacity: cardAnim.fullOpacity }]}
+                pointerEvents={collapsed ? 'none' : 'auto'}
+                onLayout={(event) => {
+                  const height = event.nativeEvent.layout.height;
+                  setCardFullHeight((previous) =>
+                    previous === height ? previous : height
+                  );
+                }}
+              >
+                <MonthSwitcher
+                  currentMonth={currentMonth}
+                  onShift={(direction) =>
+                    setCurrentMonth((previous) => shiftMonth(previous, direction))
+                  }
+                  style={styles.monthRow}
+                />
+                <Text style={styles.balanceLabel}>本月结余</Text>
+                <Text style={styles.balanceAmount}>¥{formatMoney(balance)}</Text>
+                <View style={styles.sumRow}>
+                  <View style={styles.sumChip}>
+                    <Text style={styles.sumChipLabel}>收入</Text>
+                    <Text style={styles.sumChipValue}>
+                      ¥{formatMoney(summary?.total_income ?? 0)}
+                    </Text>
+                  </View>
+                  <View style={styles.sumChip}>
+                    <Text style={styles.sumChipLabel}>支出</Text>
+                    <Text style={styles.sumChipValue}>
+                      ¥{formatMoney(summary?.total_expense ?? 0)}
+                    </Text>
+                  </View>
+                </View>
+              </Animated.View>
+
+              {/* 收缩窄条:保留月份切换与「本月结余 ¥金额」,隐藏收支 chips */}
+              <Animated.View
+                style={[styles.collapsedStrip, { opacity: cardAnim.stripOpacity }]}
+                pointerEvents={collapsed ? 'auto' : 'none'}
+              >
+                <MonthSwitcher
+                  currentMonth={currentMonth}
+                  onShift={(direction) =>
+                    setCurrentMonth((previous) => shiftMonth(previous, direction))
+                  }
+                  style={styles.collapsedMonthGroup}
+                />
+                <Text style={styles.collapsedBalance}>
+                  本月结余 ¥{formatMoney(balance)}
+                </Text>
+              </Animated.View>
+            </GradientView>
+          </Animated.View>
+        </Animated.View>
 
         {/* 我的 / 伴侣切换(仅已绑定伴侣时显示) */}
         {showPartnerTab ? (
@@ -421,6 +529,8 @@ export default function HomeScreen() {
               ItemSeparatorComponent={ItemSeparator}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              onScroll={onScroll}
+              scrollEventThrottle={16}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -469,6 +579,40 @@ export default function HomeScreen() {
   );
 }
 
+/**
+ * 月份切换器:‹ 月份 › 左右箭头。
+ * 完整卡与收缩窄条共用,通过 style 区分布局。
+ */
+function MonthSwitcher({
+  currentMonth,
+  onShift,
+  style,
+}: {
+  currentMonth: Date;
+  onShift: (direction: -1 | 1) => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={style}>
+      <Pressable
+        onPress={() => onShift(-1)}
+        style={styles.monthArrow}
+        hitSlop={8}
+      >
+        <Text style={styles.monthArrowText}>‹</Text>
+      </Pressable>
+      <Text style={styles.monthLabel}>{formatMonthLabel(currentMonth)}</Text>
+      <Pressable
+        onPress={() => onShift(1)}
+        style={styles.monthArrow}
+        hitSlop={8}
+      >
+        <Text style={styles.monthArrowText}>›</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function ItemSeparator() {
   return <View style={styles.separator} />;
 }
@@ -493,14 +637,44 @@ const styles = StyleSheet.create({
     fontSize: 26,
     marginTop: 2,
   },
-  summaryCard: {
+  cardShadow: {
     borderRadius: 24,
-    padding: spacing.lg,
     shadowColor: gradient.start,
     shadowOpacity: 0.35,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
+  },
+  cardClip: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  cardGradient: {
+    flex: 1,
+  },
+  cardFull: {
+    padding: spacing.lg,
+  },
+  collapsedStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: COLLAPSED_CARD_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+  },
+  collapsedMonthGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  collapsedBalance: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   monthRow: {
     flexDirection: 'row',

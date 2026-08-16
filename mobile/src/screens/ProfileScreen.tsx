@@ -3,15 +3,24 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { bindPartner, fetchMe, updateProfile } from '../api/auth';
+import {
+  bindPartner,
+  changePassword,
+  fetchMe,
+  updateAvatar,
+  updateProfile,
+} from '../api/auth';
 import { extractErrorMessage } from '../api/client';
 import ConfirmModal from '../components/ConfirmModal';
 import GradientButton from '../components/GradientButton';
@@ -25,7 +34,10 @@ import { checkForUpdate } from '../updater/useUpdateCheck';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
-/** 我的:个人资料(FR-09)+ 分类/圈子/管理后台入口 + 退出登录。 */
+/** 后端头像限制:data URL 总长 ≤200000 字符(≈150KB base64)。 */
+const AVATAR_MAX_CHARS = 200000;
+
+/** 我的:个人资料(FR-10)+ 分类/管理后台入口 + 退出登录。 */
 export default function ProfileScreen({ navigation }: Props) {
   const colors = useTheme();
   const user = useAuthStore((s) => s.user);
@@ -35,6 +47,20 @@ export default function ProfileScreen({ navigation }: Props) {
   const [nicknameEditVisible, setNicknameEditVisible] = useState(false);
   const [nickname, setNickname] = useState('');
   const [savingNickname, setSavingNickname] = useState(false);
+
+  const [usernameEditVisible, setUsernameEditVisible] = useState(false);
+  const [username, setUsername] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+
+  const [passwordEditVisible, setPasswordEditVisible] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const [avatarPreviewVisible, setAvatarPreviewVisible] = useState(false);
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState('');
+  const [avatarDataUrl, setAvatarDataUrl] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [bindVisible, setBindVisible] = useState(false);
   const [partnerCode, setPartnerCode] = useState('');
@@ -67,7 +93,7 @@ export default function ProfileScreen({ navigation }: Props) {
     }
     setSavingNickname(true);
     try {
-      const me = await updateProfile(trimmed);
+      const me = await updateProfile({ nickname: trimmed });
       await updateUser(me);
       setNicknameEditVisible(false);
       Alert.alert('保存成功');
@@ -75,6 +101,106 @@ export default function ProfileScreen({ navigation }: Props) {
       Alert.alert('保存失败', extractErrorMessage(error));
     } finally {
       setSavingNickname(false);
+    }
+  };
+
+  const openEditUsername = () => {
+    setUsername(user?.username ?? '');
+    setUsernameEditVisible(true);
+  };
+
+  const saveUsername = async () => {
+    const trimmed = username.trim();
+    if (!trimmed) {
+      Alert.alert('提示', '用户名不能为空');
+      return;
+    }
+    setSavingUsername(true);
+    try {
+      const me = await updateProfile({ username: trimmed });
+      await updateUser(me);
+      setUsernameEditVisible(false);
+      Alert.alert('保存成功', '下次登录请使用新的用户名');
+    } catch (error) {
+      Alert.alert('保存失败', extractErrorMessage(error));
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const openEditPassword = () => {
+    setOldPassword('');
+    setNewPassword('');
+    setPasswordEditVisible(true);
+  };
+
+  const savePassword = async () => {
+    if (!oldPassword) {
+      Alert.alert('提示', '请输入旧密码');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('提示', '新密码至少 6 位');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const me = await changePassword(oldPassword, newPassword);
+      await updateUser(me);
+      setPasswordEditVisible(false);
+      setOldPassword('');
+      setNewPassword('');
+      Alert.alert('密码修改成功', '下次登录请使用新密码');
+    } catch (error) {
+      Alert.alert('修改失败', extractErrorMessage(error));
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const pickAvatar = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        includeBase64: true,
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.8,
+      });
+      if (result.didCancel || !result.assets?.length) {
+        return;
+      }
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('提示', '无法读取所选图片,请重新选择');
+        return;
+      }
+      const mime =
+        asset.type && asset.type.startsWith('image/') ? asset.type : 'image/jpeg';
+      const dataUrl = `data:${mime};base64,${asset.base64}`;
+      if (dataUrl.length > AVATAR_MAX_CHARS) {
+        Alert.alert('图片过大', '请选择尺寸更小或更清晰的图片');
+        return;
+      }
+      setAvatarDataUrl(dataUrl);
+      setAvatarPreviewUri(asset.uri ?? dataUrl);
+      setAvatarPreviewVisible(true);
+    } catch (error) {
+      Alert.alert('选择失败', extractErrorMessage(error, '无法打开相册,请稍后重试'));
+    }
+  };
+
+  const confirmAvatar = async () => {
+    setUploadingAvatar(true);
+    try {
+      const me = await updateAvatar(avatarDataUrl);
+      await updateUser(me);
+      setAvatarPreviewVisible(false);
+      Alert.alert('头像更新成功');
+    } catch (error) {
+      Alert.alert('上传失败', extractErrorMessage(error));
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -96,12 +222,6 @@ export default function ProfileScreen({ navigation }: Props) {
     } finally {
       setBinding(false);
     }
-  };
-
-  const changeAvatar = () => {
-    // TODO(FR-09): 接入图片选择器(react-native-image-picker)后,将图片转为
-    // "data:image/...;base64,..." 字符串调 authApi.updateAvatar(总长 ≤200000)。
-    Alert.alert('暂未支持', '更换头像需先接入图片选择器,敬请期待。');
   };
 
   const confirmLogout = async () => {
@@ -164,7 +284,19 @@ export default function ProfileScreen({ navigation }: Props) {
             onPress={openEditNickname}
           />
           <Divider colors={colors.border} />
-          <EntryRow emoji="🖼️" label="更换头像" onPress={changeAvatar} />
+          <EntryRow
+            emoji="🆔"
+            label="修改用户名"
+            onPress={openEditUsername}
+          />
+          <Divider colors={colors.border} />
+          <EntryRow
+            emoji="🔑"
+            label="修改密码"
+            onPress={openEditPassword}
+          />
+          <Divider colors={colors.border} />
+          <EntryRow emoji="🖼️" label="更换头像" onPress={() => void pickAvatar()} />
         </View>
 
         {/* 功能入口 */}
@@ -179,12 +311,6 @@ export default function ProfileScreen({ navigation }: Props) {
             emoji="🗂️"
             label="分类管理"
             onPress={() => rootNav?.navigate('Category')}
-          />
-          <Divider colors={colors.border} />
-          <EntryRow
-            emoji="👥"
-            label="双人圈子"
-            onPress={() => rootNav?.navigate('CircleOverview')}
           />
           {user?.is_admin ? (
             <>
@@ -228,6 +354,54 @@ export default function ProfileScreen({ navigation }: Props) {
       />
 
       <InputModal
+        visible={usernameEditVisible}
+        title="修改用户名"
+        fields={[
+          {
+            key: 'username',
+            placeholder: '请输入用户名(3-50 字符)',
+            value: username,
+            onChangeText: setUsername,
+            autoCapitalize: 'none',
+            maxLength: 50,
+          },
+        ]}
+        confirmText="保存"
+        loading={savingUsername}
+        onConfirm={() => void saveUsername()}
+        onCancel={() => setUsernameEditVisible(false)}
+      />
+
+      <InputModal
+        visible={passwordEditVisible}
+        title="修改密码"
+        fields={[
+          {
+            key: 'old_password',
+            placeholder: '请输入旧密码',
+            value: oldPassword,
+            onChangeText: setOldPassword,
+            secureTextEntry: true,
+            autoCapitalize: 'none',
+            maxLength: 128,
+          },
+          {
+            key: 'new_password',
+            placeholder: '请输入新密码(至少 6 位)',
+            value: newPassword,
+            onChangeText: setNewPassword,
+            secureTextEntry: true,
+            autoCapitalize: 'none',
+            maxLength: 128,
+          },
+        ]}
+        confirmText="确认修改"
+        loading={savingPassword}
+        onConfirm={() => void savePassword()}
+        onCancel={() => setPasswordEditVisible(false)}
+      />
+
+      <InputModal
         visible={bindVisible}
         title="绑定伴侣"
         fields={[
@@ -245,6 +419,48 @@ export default function ProfileScreen({ navigation }: Props) {
         onConfirm={() => void submitBind()}
         onCancel={() => setBindVisible(false)}
       />
+
+      {/* 更换头像:相册选图后先预览再上传 */}
+      <Modal
+        visible={avatarPreviewVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarPreviewVisible(false)}
+      >
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.avatarModalCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.avatarModalTitle, { color: colors.textPrimary }]}>
+              更换头像
+            </Text>
+            <Image
+              source={{ uri: avatarPreviewUri }}
+              style={styles.avatarPreview}
+            />
+            <Text style={[styles.avatarModalHint, { color: colors.textSecondary }]}>
+              确认使用这张图片作为头像?
+            </Text>
+            <View style={styles.avatarModalActions}>
+              <Pressable
+                onPress={() => setAvatarPreviewVisible(false)}
+                disabled={uploadingAvatar}
+                style={[styles.cancelButton, { backgroundColor: colors.surface }]}
+              >
+                <Text
+                  style={[styles.cancelText, { color: colors.textSecondary }]}
+                >
+                  取消
+                </Text>
+              </Pressable>
+              <GradientButton
+                title={uploadingAvatar ? '上传中…' : '确认更换'}
+                onPress={() => void confirmAvatar()}
+                disabled={uploadingAvatar}
+                style={styles.confirmButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <ConfirmModal
         visible={logoutVisible}
@@ -410,5 +626,51 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     ...typography.button,
+  },
+  overlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  avatarModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  avatarModalTitle: {
+    ...typography.heading,
+    marginBottom: spacing.lg,
+    alignSelf: 'flex-start',
+  },
+  avatarPreview: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: spacing.lg,
+  },
+  avatarModalHint: {
+    ...typography.body,
+    marginBottom: spacing.lg,
+  },
+  avatarModalActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    width: '100%',
+  },
+  cancelButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    borderRadius: radius.xl,
+  },
+  cancelText: {
+    ...typography.button,
+  },
+  confirmButton: {
+    flex: 1,
   },
 });

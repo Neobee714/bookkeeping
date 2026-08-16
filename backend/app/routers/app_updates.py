@@ -297,7 +297,7 @@ def get_latest_apk(
     if not versions:
         return success_response(data={"has_update": False})
 
-    latest_version = max(versions, key=lambda version: _compare_versions(version, "0.0.0"))
+    latest_version = max(versions, key=lambda version: [int(x) for x in version.split(".")])
     meta = _read_apk_meta(latest_version)
     if not meta:
         return success_response(data={"has_update": False})

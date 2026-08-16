@@ -12,6 +12,9 @@ import {
   View,
 } from 'react-native';
 
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchCategories, type CategoryItem } from '../api/categories';
 import { extractErrorMessage } from '../api/client';
@@ -49,9 +52,22 @@ const quickDate = (offset: number): string => {
   return toDateString(date);
 };
 
+/** YYYY-MM-DD -> 本地时区 Date(避免 new Date('YYYY-MM-DD') 的 UTC 偏移)。 */
+const parseDateStr = (value: string): Date => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return new Date();
+  }
+  return new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+};
+
 /**
- * 记账弹层(FR-02):底部弹出 Modal。
- * 金额大输入 + 收入/支出切换 + 分类宫格(按 type 过滤)+ 日期 + 备注;
+ * 记账弹层:底部弹出 Modal。
+ * 收支切换 + 金额大输入 + 备注 + 日期(原生选择器)+ 分类宫格(按 type 过滤);
  * 编辑时预填,新增/编辑共用。
  */
 export default function AddTransactionSheet({
@@ -70,6 +86,10 @@ export default function AddTransactionSheet({
   const [note, setNote] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  /** 日期选择器:点击日期行后置 true;Android 弹出原生 Dialog,iOS 内嵌 spinner。 */
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState<Date>(() => new Date());
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -94,6 +114,7 @@ export default function AddTransactionSheet({
       setNote('');
     }
     setErrorMessage('');
+    setShowDatePicker(false);
   }, [visible, editingItem]);
 
   const loadCategories = async () => {
@@ -138,6 +159,31 @@ export default function AddTransactionSheet({
 
   const title = editingItem ? '编辑账单' : '新增账单';
   const buttonText = editingItem ? '保存修改' : '确认新增';
+
+  const handleOpenDatePicker = () => {
+    setPickerDate(parseDateStr(dateStr));
+    setShowDatePicker(true);
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      // Android:原生 Dialog 选择/取消后自动关闭,这里同步收起选择器。
+      setShowDatePicker(false);
+      if (event.type === 'set' && date) {
+        setDateStr(toDateString(date));
+      }
+      return;
+    }
+    // iOS:spinner 滚动时只更新暂存值,点「完成」后回填并关闭。
+    if (date) {
+      setPickerDate(date);
+    }
+  };
+
+  const handleIosConfirm = () => {
+    setDateStr(toDateString(pickerDate));
+    setShowDatePicker(false);
+  };
 
   const handleConfirm = async () => {
     const amount = Number.parseFloat(amountInput);
@@ -252,6 +298,56 @@ export default function AddTransactionSheet({
                 />
               </View>
 
+              {/* 备注 */}
+              <Text style={[styles.label, { color: colors.textSecondary }]}>备注(可选)</Text>
+              <TextInput
+                style={[
+                  styles.noteInput,
+                  { backgroundColor: colors.surface, color: colors.textPrimary },
+                ]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="写点备注"
+                placeholderTextColor={colors.textTertiary}
+                maxLength={255}
+              />
+
+              {/* 日期 */}
+              <Text style={[styles.label, { color: colors.textSecondary }]}>日期</Text>
+              <Pressable
+                style={[styles.dateRow, { backgroundColor: colors.surface }]}
+                onPress={handleOpenDatePicker}
+              >
+                <Text style={[styles.dateText, { color: colors.textPrimary }]}>
+                  {dateStr}
+                </Text>
+                <Text style={[styles.dateHint, { color: colors.primary }]}>选择 ›</Text>
+              </Pressable>
+              {showDatePicker && Platform.OS === 'ios' ? (
+                <View style={[styles.pickerBox, { backgroundColor: colors.surface }]}>
+                  <DateTimePicker
+                    value={pickerDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={handleDateChange}
+                  />
+                  <Pressable onPress={handleIosConfirm} style={styles.pickerDone}>
+                    <Text style={[styles.pickerDoneText, { color: colors.primary }]}>
+                      完成
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+              {showDatePicker && Platform.OS === 'android' ? (
+                // Android:选择器以原生 Dialog 弹出(独立于 RN Modal 层级,置于最上层),无需 portal。
+                <DateTimePicker
+                  value={pickerDate}
+                  mode="date"
+                  display="default"
+                  onChange={handleDateChange}
+                />
+              ) : null}
+
               {/* 分类宫格 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>分类</Text>
               {categoriesLoading ? (
@@ -280,12 +376,7 @@ export default function AddTransactionSheet({
                             onPress={() => setCategory(item.name)}
                           >
                             {active ? (
-                              <GradientView
-                                style={[
-                                  styles.catActive,
-                                  { borderColor: colors.primary },
-                                ]}
-                              >
+                              <GradientView style={styles.catActiveFill}>
                                 <Text style={styles.catEmoji}>{item.icon}</Text>
                                 <Text style={styles.catNameActive}>{item.name}</Text>
                               </GradientView>
@@ -309,49 +400,6 @@ export default function AddTransactionSheet({
                   ))}
                 </View>
               )}
-
-              {/* 日期 */}
-              <Text style={[styles.label, { color: colors.textSecondary }]}>日期</Text>
-              <View style={styles.dateRow}>
-                <TextInput
-                  style={[
-                    styles.dateInput,
-                    { backgroundColor: colors.surface, color: colors.textPrimary },
-                  ]}
-                  value={dateStr}
-                  onChangeText={setDateStr}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                />
-                <Pressable
-                  style={[styles.dateChip, { backgroundColor: colors.surface }]}
-                  onPress={() => setDateStr(quickDate(0))}
-                >
-                  <Text style={[styles.dateChipText, { color: colors.primary }]}>今天</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.dateChip, { backgroundColor: colors.surface }]}
-                  onPress={() => setDateStr(quickDate(-1))}
-                >
-                  <Text style={[styles.dateChipText, { color: colors.primary }]}>昨天</Text>
-                </Pressable>
-              </View>
-
-              {/* 备注 */}
-              <Text style={[styles.label, { color: colors.textSecondary }]}>备注(可选)</Text>
-              <TextInput
-                style={[
-                  styles.noteInput,
-                  { backgroundColor: colors.surface, color: colors.textPrimary },
-                ]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="写点备注"
-                placeholderTextColor={colors.textTertiary}
-                maxLength={255}
-              />
 
               {errorMessage ? (
                 <View style={[styles.errorBox, { backgroundColor: colors.surface }]}>
@@ -476,6 +524,44 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     paddingVertical: spacing.sm,
   },
+  noteInput: {
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    fontSize: 14,
+    marginBottom: spacing.lg,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  dateText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dateHint: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  pickerBox: {
+    borderRadius: 14,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+  },
+  pickerDone: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  pickerDoneText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   categoriesState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -505,15 +591,19 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 16,
     gap: 6,
+    overflow: 'hidden',
   },
-  catActive: {
+  catActiveFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 11,
-    borderRadius: 16,
     gap: 6,
-    borderWidth: 1.5,
-    width: '100%',
+    borderRadius: 16,
   },
   catEmoji: {
     fontSize: 24,
@@ -526,35 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  dateInput: {
-    flex: 1,
-    borderRadius: 14,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: 14,
-  },
-  dateChip: {
-    borderRadius: 999,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  dateChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  noteInput: {
-    borderRadius: 14,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: 14,
-    marginBottom: spacing.lg,
   },
   errorBox: {
     borderRadius: 12,

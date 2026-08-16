@@ -16,6 +16,7 @@ from app.agent.tools import (
     CreateTransactionInput,
     SearchTransactionsInput,
     SummarizeExpensesInput,
+    TopExpensesInput,
     build_agent_tools,
     category_breakdown_data,
     compare_expenses_data,
@@ -23,6 +24,7 @@ from app.agent.tools import (
     resolve_target_user_ids,
     search_transactions_data,
     summarize_expenses_data,
+    top_expenses_data,
 )
 from app.core.database import Base
 from app.models.enums import TransactionType
@@ -215,6 +217,77 @@ def test_search_transactions_data_reports_truncated_when_matches_exceed_cap(db: 
 
     assert result["truncated"] is True
     assert len(result["items"]) == 2
+
+
+def test_search_transactions_data_filters_by_income_type(db: Session) -> None:
+    current_user = make_user(1)
+    add_transaction(db, 1, "5000.00", TransactionType.INCOME, "收入", "工资", date(2026, 3, 1))
+    add_transaction(db, 1, "35.00", TransactionType.EXPENSE, "餐饮", "奶茶", date(2026, 3, 2))
+    add_transaction(db, 1, "200.00", TransactionType.INCOME, "收入", "股票收益", date(2026, 3, 3))
+    db.commit()
+
+    result = search_transactions_data(
+        db,
+        current_user,
+        SearchTransactionsInput(
+            target="self",
+            start_date="2026-03-01",
+            end_date="2026-04-01",
+            type=TransactionType.INCOME,
+            limit=10,
+        ),
+        max_limit=20,
+    )
+
+    assert len(result["items"]) == 2
+    assert {item["type"] for item in result["items"]} == {"income"}
+    assert {item["note"] for item in result["items"]} == {"工资", "股票收益"}
+
+
+def test_search_transactions_data_returns_income_and_expense_without_type(db: Session) -> None:
+    current_user = make_user(1)
+    add_transaction(db, 1, "5000.00", TransactionType.INCOME, "收入", "工资", date(2026, 3, 1))
+    add_transaction(db, 1, "35.00", TransactionType.EXPENSE, "餐饮", "奶茶", date(2026, 3, 2))
+    db.commit()
+
+    result = search_transactions_data(
+        db,
+        current_user,
+        SearchTransactionsInput(
+            target="self",
+            start_date="2026-03-01",
+            end_date="2026-04-01",
+            limit=10,
+        ),
+        max_limit=20,
+    )
+
+    assert len(result["items"]) == 2
+    assert {item["type"] for item in result["items"]} == {"income", "expense"}
+
+
+def test_top_expenses_data_filters_by_income_type(db: Session) -> None:
+    current_user = make_user(1)
+    add_transaction(db, 1, "5000.00", TransactionType.INCOME, "收入", "工资", date(2026, 3, 1))
+    add_transaction(db, 1, "300.00", TransactionType.EXPENSE, "餐饮", "大餐", date(2026, 3, 2))
+    add_transaction(db, 1, "2000.00", TransactionType.INCOME, "收入", "股票收益", date(2026, 3, 3))
+    db.commit()
+
+    result = top_expenses_data(
+        db,
+        current_user,
+        TopExpensesInput(
+            target="self",
+            start_date="2026-03-01",
+            end_date="2026-04-01",
+            type=TransactionType.INCOME,
+            limit=10,
+        ),
+        max_limit=20,
+    )
+
+    assert [item["amount"] for item in result["items"]] == [5000.0, 2000.0]
+    assert {item["type"] for item in result["items"]} == {"income"}
 
 
 def test_compare_expenses_data_uses_plan_field_names(db: Session) -> None:

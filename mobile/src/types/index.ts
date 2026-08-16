@@ -1,8 +1,7 @@
 /**
  * 与后端对齐的客户端类型定义。
  *
- * 以 Web 端 `frontend/src/types/index.ts` 为基准平移,并补充圈子
- * (Circle/Post/Rating/Comment/Application)相关类型。
+ * 以 Web 端 `frontend/src/types/index.ts` 为基准平移。
  * 后端字段以 backend/app 的 schema 与 routers 序列化结果为准。
  */
 
@@ -187,6 +186,13 @@ export interface NoteBreakdownEntry {
   count: number;
 }
 
+/** 备注金额排行条目(按备注聚合,含笔数)。 */
+export interface NoteRankItem {
+  note: string;
+  amount: number;
+  count: number;
+}
+
 export interface MonthlySummary {
   month: string;
   total_income: number;
@@ -226,141 +232,4 @@ export interface AgentToolCallSummary {
 export interface AgentChatResponse {
   reply: string;
   tool_calls: AgentToolCallSummary[];
-}
-
-// ---------- 双人圈子 ----------
-
-/** 圈子成员(带用户信息)。 */
-export interface CircleMember {
-  id: number;
-  joined_at: string | null;
-  user: UserSummary;
-}
-
-/** 圈子详情(成员可见的完整结构)。 */
-export interface Circle {
-  id: number;
-  name: string;
-  description: string | null;
-  creator: UserSummary;
-  creator_id: number;
-  is_creator: boolean;
-  member_count: number;
-  members: CircleMember[];
-  created_at: string | null;
-}
-
-export type CircleMemberStatus = 'creator' | 'member' | 'not_member';
-
-/** 圈子概览(列表用,不包含成员明细)。 */
-export interface CircleOverview {
-  id: number;
-  name: string;
-  description: string | null;
-  creator_id: number;
-  member_count: number;
-  my_status: CircleMemberStatus;
-  created_at: string | null;
-}
-
-/** 圈子邀请码。 */
-export interface CircleInviteCode {
-  id: number;
-  circle_id: number;
-  code: string;
-  created_at: string | null;
-}
-
-export type CircleApplicationStatus = 'pending' | 'approved' | 'rejected';
-
-/** 创建圈子申请(管理员审批)。 */
-export interface CircleApplication {
-  id: number;
-  circle_name: string;
-  circle_description: string | null;
-  message: string | null;
-  status: CircleApplicationStatus;
-  created_circle_id: number | null;
-  created_at: string | null;
-  reviewed_at: string | null;
-  user: UserSummary;
-}
-
-/** 圈子帖子(含评分/评论统计与预览)。 */
-export interface CirclePost {
-  id: number;
-  circle_id: number;
-  content: string | null;
-  image: string | null;
-  created_at: string | null;
-  user: UserSummary;
-  average_score: number;
-  rating_count: number;
-  comment_count: number;
-  my_score: number | null;
-  comments_preview: CircleComment[];
-}
-
-/** 帖子评分。 */
-export interface CircleRating {
-  id: number;
-  post_id: number;
-  score: number;
-  created_at: string | null;
-  user: UserSummary;
-}
-
-/** 帖子评论。 */
-export interface CircleComment {
-  id: number;
-  post_id: number;
-  content: string;
-  created_at: string | null;
-  user: UserSummary;
-}
-
-/** 帖子分页结果。 */
-export interface CirclePostPage {
-  items: CirclePost[];
-  page: number;
-  page_size: number;
-  total: number;
-  has_more: boolean;
-}
-
-/** 管理后台中用户所属圈子摘要。 */
-export type JoinedCircle = { id: number; name: string } | null;
-
-// ---------- 圈子相关请求体 ----------
-
-export interface CircleCreatePayload {
-  name: string;
-  description?: string | null;
-}
-
-export interface CircleJoinPayload {
-  code: string;
-}
-
-export interface CirclePostCreatePayload {
-  content?: string | null;
-  image?: string | null;
-}
-
-export interface CircleRatePayload {
-  score: number;
-}
-
-export interface CircleCommentCreatePayload {
-  content: string;
-}
-
-export interface CircleApplicationCreatePayload {
-  circle_name: string;
-  circle_description?: string | null;
-  message?: string | null;
-}
-
-export interface CircleApplicationReviewPayload {
-  action: 'approve' | 'reject';
 }

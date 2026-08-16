@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.date_utils import add_months, month_start, resolve_date_window
+from app.core.date_utils import add_months, month_range, month_start, parse_year_month, resolve_date_window
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.enums import TransactionType
@@ -206,6 +207,131 @@ def trend(
     )
     rows = db.execute(stmt).all()
     for tx_date, tx_type, amount in rows:
+        month_key = tx_date.strftime("%Y-%m")
+        if month_key not in buckets:
+            continue
+        amount_float = _to_float(amount)
+        if tx_type == TransactionType.INCOME:
+            buckets[month_key]["income"] += amount_float
+        elif tx_type == TransactionType.EXPENSE:
+            buckets[month_key]["expense"] += amount_float
+
+    data = [
+        {
+            "month": key,
+            "income": round(buckets[key]["income"], 2),
+            "expense": round(buckets[key]["expense"], 2),
+            "balance": round(buckets[key]["income"] - buckets[key]["expense"], 2),
+        }
+        for key in month_keys
+    ]
+    return success_response(data=data)
+
+
+StatsTarget = Literal["self", "partner"]
+StatsType = Literal["income", "expense"]
+
+
+def _resolve_target_user_id(current_user: User, target: str) -> int:
+    """按 target 解析统计对象:self 查自己,partner 需已绑定且只能查对方。"""
+    if target == "partner":
+        if not current_user.partner_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="尚未绑定伴侣",
+            )
+        return current_user.partner_id
+    return current_user.id
+
+
+@router.get("/notes")
+def note_ranking(
+    month: str | None = Query(default=None, description="YYYY-MM，默认当月"),
+    target: StatsTarget = Query(default="self", description="self=自己, partner=伴侣"),
+    type: StatsType = Query(default="expense", description="income=收入, expense=支出"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """按备注聚合金额排行(含笔数),按金额降序,取前 10。"""
+    user_id = _resolve_target_user_id(current_user, target)
+    try:
+        _, start, end = month_range(month)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="月份参数错误，month 应为 YYYY-MM",
+        ) from exc
+
+    tx_type = TransactionType.INCOME if type == "income" else TransactionType.EXPENSE
+    stmt = (
+        select(
+            Transaction.note,
+            func.coalesce(func.sum(Transaction.amount), Decimal("0")),
+            func.count(Transaction.id),
+        )
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.date >= start,
+            Transaction.date < end,
+            Transaction.type == tx_type,
+        )
+        .group_by(Transaction.note)
+    )
+    rows = db.execute(stmt).all()
+
+    buckets: dict[str, Decimal] = {}
+    counts: dict[str, int] = {}
+    for note_text, amount_sum, count in rows:
+        label = _normalize_note(note_text)
+        buckets[label] = buckets.get(label, Decimal("0")) + amount_sum
+        counts[label] = counts.get(label, 0) + int(count or 0)
+
+    items = [
+        {"note": label, "amount": round(_to_float(amount), 2), "count": counts[label]}
+        for label, amount in sorted(buckets.items(), key=lambda pair: pair[1], reverse=True)
+    ][:10]
+    return success_response(data=items)
+
+
+@router.get("/note-trend")
+def note_trend(
+    note: str = Query(..., description="备注文本(与排行返回的 note 一致)"),
+    months: int = Query(default=6, ge=1, le=24),
+    end_month: str | None = Query(default=None, description="YYYY-MM，默认当月"),
+    target: StatsTarget = Query(default="self", description="self=自己, partner=伴侣"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """某备注近 N 个月(截止 end_month)的月度收入/支出金额序列。"""
+    user_id = _resolve_target_user_id(current_user, target)
+    try:
+        end_month_start = parse_year_month(end_month) if end_month else month_start(date.today())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="月份参数错误，end_month 应为 YYYY-MM",
+        ) from exc
+
+    start_month = add_months(end_month_start, -(months - 1))
+    end_bound = add_months(end_month_start, 1)
+    month_keys = [add_months(start_month, idx).strftime("%Y-%m") for idx in range(months)]
+    buckets: dict[str, dict[str, float]] = {
+        key: {"income": 0.0, "expense": 0.0} for key in month_keys
+    }
+
+    stmt = (
+        select(Transaction.date, Transaction.type, Transaction.amount, Transaction.note)
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.date >= start_month,
+            Transaction.date < end_bound,
+        )
+        .order_by(Transaction.date.asc())
+    )
+    rows = db.execute(stmt).all()
+    for tx_date, tx_type, amount, note_text in rows:
+        if _normalize_note(note_text) != note:
+            continue
         month_key = tx_date.strftime("%Y-%m")
         if month_key not in buckets:
             continue

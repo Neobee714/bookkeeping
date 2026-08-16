@@ -15,9 +15,6 @@ import UpdateModal from '../components/UpdateModal';
 import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import AgentScreen from '../screens/AgentScreen';
 import CategoryScreen from '../screens/CategoryScreen';
-import CircleOverviewScreen from '../screens/circle/CircleOverviewScreen';
-import CirclePostDetailScreen from '../screens/circle/CirclePostDetailScreen';
-import CirclePostsScreen from '../screens/circle/CirclePostsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PlanScreen from '../screens/PlanScreen';
@@ -120,15 +117,12 @@ function AuthStack() {
   );
 }
 
-/** 登录后的栈:Main Tab 容器 + 二级页面(分类管理/圈子/管理后台)。 */
+/** 登录后的栈:Main Tab 容器 + 二级页面(分类管理/管理后台)。 */
 function MainStack() {
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="Main" component={MainTabs} />
       <RootStack.Screen name="Category" component={CategoryScreen} />
-      <RootStack.Screen name="CircleOverview" component={CircleOverviewScreen} />
-      <RootStack.Screen name="CirclePosts" component={CirclePostsScreen} />
-      <RootStack.Screen name="CirclePostDetail" component={CirclePostDetailScreen} />
       <RootStack.Screen name="AdminUsers" component={AdminUsersScreen} />
     </RootStack.Navigator>
   );

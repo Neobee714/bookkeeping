@@ -15,7 +15,10 @@ import {
   CATEGORY_COLORS,
   fetchMonthlySummary,
   fetchMonthlyTrendSeries,
+  fetchNoteRanking,
+  fetchNoteTrend,
   fetchPartnerMonthlySummary,
+  type NoteType,
 } from '../api/stats';
 import EmptyView from '../components/EmptyView';
 import ErrorView from '../components/ErrorView';
@@ -23,7 +26,7 @@ import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
 import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme, type ThemeColors } from '../theme';
-import type { MonthlySummary, TrendPoint } from '../types';
+import type { MonthlySummary, NoteRankItem, TrendPoint } from '../types';
 
 type SummaryTab = 'self' | 'partner';
 
@@ -239,6 +242,22 @@ function TrendChart({ data, colors }: TrendChartProps) {
   );
 }
 
+/** 收入/支出双色图例。 */
+function ChartLegend({ colors }: { colors: ThemeColors }) {
+  return (
+    <View style={styles.legend}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
+        <Text style={[styles.legendText, { color: colors.textSecondary }]}>收入</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
+        <Text style={[styles.legendText, { color: colors.textSecondary }]}>支出</Text>
+      </View>
+    </View>
+  );
+}
+
 /** 图表:统计页(FR-04)。 */
 export default function StatsScreen() {
   const colors = useTheme();
@@ -253,6 +272,12 @@ export default function StatsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const [noteType, setNoteType] = useState<NoteType>('expense');
+  const [noteRanking, setNoteRanking] = useState<NoteRankItem[]>([]);
+  const [selectedNote, setSelectedNote] = useState<string | null>(null);
+  const [noteTrend, setNoteTrend] = useState<TrendPoint[]>([]);
+  const [noteTrendLoading, setNoteTrendLoading] = useState(false);
+  const [noteTrendError, setNoteTrendError] = useState<unknown>(null);
 
   const monthKey = formatMonthKey(currentMonth);
   const requestKey = `${tab}:${monthKey}`;
@@ -260,6 +285,16 @@ export default function StatsScreen() {
   useEffect(() => {
     requestKeyRef.current = requestKey;
   }, [requestKey]);
+
+  const noteTypeRef = useRef(noteType);
+  useEffect(() => {
+    noteTypeRef.current = noteType;
+  }, [noteType]);
+
+  const selectedNoteRef = useRef(selectedNote);
+  useEffect(() => {
+    selectedNoteRef.current = selectedNote;
+  }, [selectedNote]);
 
   const load = useCallback(async () => {
     const key = requestKeyRef.current;
@@ -300,6 +335,64 @@ export default function StatsScreen() {
     void load();
   }, [isFocused, requestKey, reloadTick, load]);
 
+  /** 备注排行:跟随 tab/月份/收支类型,失败不阻断整页(页面级错误由 load 处理)。 */
+  const loadNoteRanking = useCallback(async () => {
+    const key = requestKeyRef.current;
+    const [activeTab, activeMonth] = key.split(':') as [SummaryTab, string];
+    const type = noteTypeRef.current;
+    try {
+      const data = await fetchNoteRanking({ month: activeMonth, target: activeTab, type });
+      if (requestKeyRef.current === key && noteTypeRef.current === type) {
+        setNoteRanking(data);
+      }
+    } catch {
+      // 保持已有排行数据,避免伴侣未绑定等场景下整页抖动
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+    loadNoteRanking();
+  }, [isFocused, requestKey, noteType, reloadTick, loadNoteRanking]);
+
+  /** 单备注月度趋势:点击备注行后加载,跟随 tab/月份重取。 */
+  const loadNoteTrend = useCallback(async () => {
+    const note = selectedNoteRef.current;
+    if (!note) {
+      return;
+    }
+    const key = requestKeyRef.current;
+    const [activeTab, activeMonth] = key.split(':') as [SummaryTab, string];
+    const [year, monthIndex] = activeMonth.split('-').map(Number);
+    const endMonth = new Date(year, monthIndex - 1, 1);
+    setNoteTrendLoading(true);
+    setNoteTrendError(null);
+    try {
+      const data = await fetchNoteTrend({ note, months: 6, endMonth, target: activeTab });
+      if (requestKeyRef.current === key && selectedNoteRef.current === note) {
+        setNoteTrend(data);
+      }
+    } catch (trendError) {
+      if (requestKeyRef.current === key && selectedNoteRef.current === note) {
+        setNoteTrendError(trendError);
+        setNoteTrend([]);
+      }
+    } finally {
+      if (requestKeyRef.current === key && selectedNoteRef.current === note) {
+        setNoteTrendLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused || !selectedNote) {
+      return;
+    }
+    loadNoteTrend();
+  }, [isFocused, requestKey, reloadTick, selectedNote, loadNoteTrend]);
+
   const reload = useCallback(() => setReloadTick((value) => value + 1), []);
 
   const categoryRows = useMemo(() => {
@@ -317,6 +410,21 @@ export default function StatsScreen() {
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
   }, [summary, colors.primary]);
+
+  const noteRows = useMemo(() => {
+    if (noteRanking.length === 0) {
+      return [];
+    }
+    const total = noteRanking.reduce((sum, item) => sum + item.amount, 0);
+    const barColor = noteType === 'expense' ? colors.expense : colors.income;
+    return noteRanking.map((item) => ({
+      note: item.note,
+      amount: item.amount,
+      count: item.count,
+      color: barColor,
+      percent: total > 0 ? Math.round((item.amount / total) * 100) : 0,
+    }));
+  }, [noteRanking, noteType, colors.expense, colors.income]);
 
   const isPartnerUnavailable =
     tab === 'partner' &&
@@ -455,6 +563,136 @@ export default function StatsScreen() {
             </View>
 
             <View style={[styles.card, { backgroundColor: colors.card }]}>
+              {selectedNote ? (
+                <>
+                  <View style={styles.noteTrendHeader}>
+                    <Pressable
+                      onPress={() => setSelectedNote(null)}
+                      hitSlop={8}
+                      style={({ pressed }) => [
+                        styles.backButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Text style={[styles.backText, { color: colors.primary }]}>
+                        ‹ 返回
+                      </Text>
+                    </Pressable>
+                    <Text
+                      style={[styles.noteTrendTitle, { color: colors.textPrimary }]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      备注「{selectedNote}」月度趋势
+                    </Text>
+                  </View>
+                  <Text
+                    style={[styles.cardSubtitle, { color: colors.textSecondary }]}
+                  >
+                    近 6 个月
+                  </Text>
+                  {noteTrendLoading ? (
+                    <View style={styles.emptyWrap}>
+                      <LoadingView text="加载趋势…" />
+                    </View>
+                  ) : noteTrendError ? (
+                    <View style={styles.emptyWrap}>
+                      <ErrorView
+                        title="趋势加载失败"
+                        message={extractErrorMessage(noteTrendError)}
+                        onRetry={reload}
+                      />
+                    </View>
+                  ) : noteTrend.length === 0 ? (
+                    <View style={styles.emptyWrap}>
+                      <EmptyView emoji="📈" title="该备注暂无趋势数据" />
+                    </View>
+                  ) : (
+                    <>
+                      <TrendChart data={noteTrend} colors={colors} />
+                      <ChartLegend colors={colors} />
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                    备注排行
+                  </Text>
+                  <View style={styles.noteTypeControl}>
+                    <SegmentedControl
+                      options={[
+                        { key: 'expense', label: '支出' },
+                        { key: 'income', label: '收入' },
+                      ]}
+                      value={noteType}
+                      onChange={(key) => setNoteType(key as NoteType)}
+                    />
+                  </View>
+                  {noteRanking.length === 0 ? (
+                    <View style={styles.emptyWrap}>
+                      <EmptyView
+                        emoji="🏷️"
+                        title={
+                          noteType === 'expense'
+                            ? '本月暂无支出备注'
+                            : '本月暂无收入备注'
+                        }
+                      />
+                    </View>
+                  ) : (
+                    noteRows.map((item) => (
+                      <Pressable
+                        key={item.note}
+                        onPress={() => setSelectedNote(item.note)}
+                        style={({ pressed }) => [
+                          styles.catRow,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <View style={styles.catHeader}>
+                          <Text
+                            style={[styles.catName, { color: colors.textPrimary }]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {item.note}
+                          </Text>
+                          <Text
+                            style={[styles.catAmount, { color: colors.textPrimary }]}
+                          >
+                            ¥{formatMoney(item.amount)}
+                            <Text
+                              style={[
+                                styles.catPercent,
+                                { color: colors.textTertiary },
+                              ]}
+                            >
+                              {' '}· {item.count} 笔
+                            </Text>
+                          </Text>
+                        </View>
+                        <View
+                          style={[styles.track, { backgroundColor: colors.surface }]}
+                        >
+                          <View
+                            style={[
+                              styles.fill,
+                              {
+                                width: `${item.percent}%`,
+                                backgroundColor: item.color,
+                              },
+                            ]}
+                          />
+                        </View>
+                      </Pressable>
+                    ))
+                  )}
+                </>
+              )}
+            </View>
+
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                 收支趋势
               </Text>
@@ -468,30 +706,7 @@ export default function StatsScreen() {
               ) : (
                 <TrendChart data={trend} colors={colors} />
               )}
-              <View style={styles.legend}>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      { backgroundColor: colors.income },
-                    ]}
-                  />
-                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                    收入
-                  </Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      { backgroundColor: colors.expense },
-                    ]}
-                  />
-                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                    支出
-                  </Text>
-                </View>
-              </View>
+              <ChartLegend colors={colors} />
             </View>
           </>
         ) : null}
@@ -523,6 +738,28 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 12,
     marginBottom: spacing.sm,
+  },
+  noteTypeControl: {
+    marginBottom: spacing.lg,
+  },
+  noteTrendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  backButton: {
+    paddingVertical: 2,
+    paddingRight: 4,
+  },
+  backText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noteTrendTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
   },
   monthRow: {
     flexDirection: 'row',

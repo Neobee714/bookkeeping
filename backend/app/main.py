@@ -16,7 +16,6 @@ from app.routers import (
     auth_router,
     budget_router,
     categories_router,
-    circles_router,
     savings_router,
     stats_router,
     transactions_router,
@@ -93,7 +92,6 @@ app.include_router(transactions_router)
 app.include_router(stats_router)
 app.include_router(budget_router)
 app.include_router(savings_router)
-app.include_router(circles_router, prefix="/api/v1", tags=["circles"])
 app.include_router(app_updates_router)
 
 

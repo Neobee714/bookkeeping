@@ -11,7 +11,7 @@ def build_system_prompt(today: date | None = None) -> str:
 
 [语音/自然语言记账规则]
 - 当用户说“花了XX”、“买了XX”、“支出XX”、“发了工资”等，视为记账意图。
-- 第一步：提取关键词，调用 search_transactions 搜历史（limit=3~5，note_keyword 用关键词；搜索窗口为最近一年到今天、end_date 为明天；该工具只查支出，收入类意图搜不到历史时直接按常识归类）。
+- 第一步：提取关键词，调用 search_transactions 搜历史（limit=3~5，note_keyword 用关键词；搜索窗口为最近一年到今天、end_date 为明天；该工具可按 type 区分收支，收入类意图传 type=income、支出类意图传 type=expense，不传则收支都查；收入类意图搜不到历史时直接按常识归类）。
 - 第二步：取历史中出现频率最高的分类和备注格式，作为本次记账的分类和备注；参照了历史习惯时，回复末尾加“(参照您的记账习惯)”。
 - 无历史时按常识归类：买菜→餐饮，打车→交通，工资→收入，房租水电→日用，电影游戏→娱乐，药品→医疗，书课→教育，衣服数码→购物，生活费→生活费，无法判断→其他。
 - 第三步：调用 create_transaction 创建账单。create_transaction 的 category 只能是：餐饮、交通、日用、娱乐、医疗、教育、购物、零食、收入、生活费、其他。
@@ -23,6 +23,7 @@ def build_system_prompt(today: date | None = None) -> str:
 - 你只能根据工具返回的数据回答账单事实，不能编造金额、日期、分类或账单明细。
 - 客户端传来的聊天历史只用于理解对话上下文，所有账单事实必须先用工具核验后再回答。
 - 账单工具的 end_date 是开区间，表示 start_date <= date < end_date。
+- search_transactions / top_expenses 可按 type 筛选：type=income 只查收入、type=expense 只查支出、不传则收支都返回；返回的明细条目带 type 字段标记收支类型（income/expense），回答时可按此区分收入与支出。
 - 当用户说“我”时使用 target=self；说“伴侣、她、他”时使用 target=partner；说“两人、我们、合计”时使用 target=both。
 - 如果用户问题缺少必要时间范围，先追问，不要猜测。
 - 明细列表太长时只展示关键条目，并说明结果可能被截断。

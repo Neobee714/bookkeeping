@@ -26,6 +26,7 @@ from app.schemas.auth import (
     RefreshRequest,
     RegisterRequest,
     UpdateAvatarRequest,
+    UpdatePasswordRequest,
     UpdateProfileRequest,
 )
 
@@ -274,6 +275,28 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    if payload.username is not None:
+        username = payload.username.strip()
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户名不能为空",
+            )
+        if len(username) < 3 or len(username) > 50:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户名长度需在 3 到 50 个字符之间",
+            )
+        existing = db.scalar(
+            select(User).where(User.username == username, User.id != current_user.id)
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户名已存在",
+            )
+        current_user.username = username
+
     if payload.nickname is not None:
         nickname = payload.nickname.strip()
         if not nickname:
@@ -294,6 +317,28 @@ def update_profile(
     return success_response(
         data=_serialize_user(current_user, partner),
         message="资料更新成功",
+    )
+
+
+@router.put("/password")
+def update_password(
+    payload: UpdatePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if not verify_password(payload.old_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="旧密码错误",
+        )
+
+    current_user.password_hash = get_password_hash(payload.new_password)
+    db.commit()
+    db.refresh(current_user)
+    partner = db.get(User, current_user.partner_id) if current_user.partner_id else None
+    return success_response(
+        data=_serialize_user(current_user, partner),
+        message="密码修改成功",
     )
 
 

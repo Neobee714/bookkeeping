@@ -76,7 +76,7 @@ function LoginPage() {
 
       <div className="ios-glass ios-glass-strong relative z-10 p-6">
         <h1 className="text-[28px] font-bold tracking-tight text-[#1C1C1E]">欢迎回来</h1>
-        <p className="mt-2 text-sm text-[#8E8E93]">登录后进入双人记账</p>
+        <p className="mt-2 text-sm text-[#8E8E93]">登录后进入金流</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block">
