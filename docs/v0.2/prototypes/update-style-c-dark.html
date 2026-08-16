@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>更新弹窗原型 C · 科技深色</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#0b0f1a;display:flex;gap:40px;align-items:flex-start;justify-content:center;padding:40px 20px;flex-wrap:wrap}
+  .phone{width:360px;background:#0f1420;border-radius:36px;border:8px solid #1a2132;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .status{height:28px;background:#0f1420;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-size:11px;color:#5b6b85}
+  .screen{background:radial-gradient(ellipse at 50% 0%,#16203a 0%,#0f1420 70%);min-height:640px;position:relative;display:flex;align-items:center;justify-content:center}
+  .modal{width:88%;background:linear-gradient(180deg,#1b2438,#141c2e);border:1px solid rgba(94,122,255,.35);border-radius:18px;overflow:hidden;box-shadow:0 0 40px rgba(59,89,255,.18),0 14px 40px rgba(0,0,0,.5);animation:pop .3s ease}
+  @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+  .head{display:flex;align-items:center;gap:13px;padding:18px 18px 0}
+  .appicon{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#3b59ff,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 18px rgba(59,89,255,.5)}
+  .head h2{font-size:15px;color:#e8edff;font-weight:600}
+  .head .v{font-size:11px;color:#7c9bff;background:rgba(59,89,255,.15);border:1px solid rgba(94,122,255,.45);padding:1px 9px;border-radius:999px;margin-top:3px;display:inline-block;letter-spacing:.5px}
+  .body{padding:14px 18px 18px}
+  .meta{display:flex;gap:14px;font-size:11.5px;color:#7a8ab0;margin-bottom:10px}
+  .changelog{background:rgba(10,14,26,.6);border:1px solid rgba(94,122,255,.22);border-radius:10px;padding:11px 13px;max-height:110px;overflow-y:auto}
+  .changelog .t{font-size:11px;font-weight:600;color:#8fa5d8;margin-bottom:5px;letter-spacing:1px}
+  .changelog ul{list-style:none}
+  .changelog li{font-size:12px;color:#aeb9d8;line-height:1.9;padding-left:14px;position:relative}
+  .changelog li::before{content:"▸";position:absolute;left:0;color:#3b59ff}
+  .actions{display:flex;gap:8px;margin-top:14px}
+  .btn{flex:1;padding:12px 0;border-radius:10px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;border:none}
+  .btn-primary{background:linear-gradient(135deg,#3b59ff,#7c3aed);color:#fff;box-shadow:0 4px 18px rgba(59,89,255,.45)}
+  .btn-ghost{background:rgba(94,122,255,.12);color:#8fa5d8;border:1px solid rgba(94,122,255,.3)}
+  .force-tip{text-align:center;font-size:11px;color:#ff6b81;font-weight:600;margin-top:9px;letter-spacing:.5px}
+  .perm{width:88%;background:linear-gradient(180deg,#1b2438,#141c2e);border:1px solid rgba(94,122,255,.35);border-radius:16px;padding:17px;box-shadow:0 0 30px rgba(59,89,255,.15)}
+  .perm .row{display:flex;gap:11px;align-items:center}
+  .perm .ic{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#3b59ff,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  .perm h4{font-size:13.5px;color:#e8edff}
+  .perm p{font-size:11.5px;color:#7a8ab0;margin-top:3px;line-height:1.6}
+  .perm .btn{width:100%;margin-top:13px}
+  .label{position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;font-size:11px;color:#5b6b85;font-weight:600}
+  .seg{position:absolute;bottom:18px;left:16px;right:16px;display:flex;gap:8px}
+  .seg button{flex:1;padding:9px 0;border-radius:9px;border:1.5px solid rgba(94,122,255,.4);background:rgba(10,14,26,.6);color:#8fa5d8;font-size:12px;font-weight:600;cursor:pointer}
+  .seg button.on{background:linear-gradient(135deg,#3b59ff,#7c3aed);color:#fff;border:none}
+  .hint{width:340px;color:#7a8ab0;font-size:13px;line-height:1.9;padding-top:6px}
+  .hint b{color:#e8edff}
+</style>
+</head>
+<body>
+
+<div class="hint">
+  <b>原型 C · 科技深色</b><br>
+  深蓝黑底 + 蓝紫霓虹光：适合喜欢沉稳、科技感的用户。<br><br>
+  弹窗分「可选更新」与「强制更新」两种状态，点击下方按钮切换；点「立即更新」查看权限引导卡。
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>📶 🔋</span></div>
+  <div class="screen">
+    <div class="label"><span>App 首页（深色风）</span><span>v2.0.0</span></div>
+    <div class="modal">
+      <div class="head">
+        <div class="appicon">📒</div>
+        <div>
+          <h2 id="titleC">发现新版本</h2>
+          <span class="v">v2.0.0</span>
+        </div>
+      </div>
+      <div class="body">
+        <div class="meta"><span>72.5 MB</span><span>2026-08-16</span></div>
+        <div class="changelog">
+          <div class="t">UPDATE NOTES</div>
+          <ul>
+            <li>全新原生体验，启动更快更流畅</li>
+            <li>支持在线更新，以后升级不用重装</li>
+            <li>修复已知问题，优化界面细节</li>
+          </ul>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="laterC" onclick="alert('稍后：本次启动不再提醒')">稍后</button>
+          <button class="btn btn-primary" onclick="alert('开始下载 → 通知栏进度 → 自动弹出安装')">立即更新</button>
+        </div>
+        <div class="force-tip" id="forceC" style="display:none">此版本为强制更新</div>
+      </div>
+    </div>
+  </div>
+  <div class="seg">
+    <button id="optC" class="on" onclick="setModeC(false)">可选更新</button>
+    <button id="forC" onclick="setModeC(true)">强制更新</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>📶 🔋</span></div>
+  <div class="screen">
+    <div class="label"><span>权限引导</span><span>v2.0.0</span></div>
+    <div class="perm">
+      <div class="row">
+        <div class="ic">🔐</div>
+        <div>
+          <h4>允许安装未知来源应用</h4>
+          <p>更新需要安装新版本，请前往系统设置开启允许，再返回继续更新。</p>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="alert('跳转系统设置')">去开启</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setModeC(force){
+    document.getElementById('optC').className = force ? '' : 'on';
+    document.getElementById('forC').className = force ? 'on' : '';
+    document.getElementById('laterC').style.display = force ? 'none' : '';
+    document.getElementById('forceC').style.display = force ? '' : 'none';
+    document.getElementById('titleC').textContent = force ? '必须更新到新版本' : '发现新版本';
+  }
+</script>
+</body>
+</html>

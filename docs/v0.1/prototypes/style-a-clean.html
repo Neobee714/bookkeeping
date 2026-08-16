@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双人记账 · 风格A · 简约清新 · 高保真原型</title>
+<style>
+/* ============ 全局 ============ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: #1E1E1E;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  color: #1F2937;
+  padding: 48px 16px 72px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ 页面头部 ============ */
+.page-head { text-align: center; max-width: 640px; margin: 0 auto 36px; }
+.page-head .badge {
+  display: inline-block; font-size: 12px; letter-spacing: 2px; color: #A7F3D0;
+  background: rgba(16, 185, 129, .14); border: 1px solid rgba(16, 185, 129, .35);
+  padding: 6px 16px; border-radius: 999px; margin-bottom: 14px;
+}
+.page-head h1 { color: #F3F4F6; font-size: 26px; font-weight: 700; }
+.page-head p { color: #9CA3AF; font-size: 13.5px; margin-top: 8px; line-height: 1.7; }
+.page-head .tokens { margin-top: 14px; }
+.page-head .tokens span {
+  display: inline-block; font-size: 12px; color: #D1D5DB; background: #2A2D33;
+  border: 1px solid #3A3E46; padding: 4px 10px; border-radius: 8px; margin: 0 4px;
+}
+
+/* ============ 手机外框 ============ */
+.phone {
+  width: 375px; margin: 0 auto;
+  background: #0B0D10; border: 1px solid #2E3138;
+  border-radius: 52px; padding: 14px;
+  box-shadow: 0 44px 90px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04);
+}
+.canvas { background: #16181D; border-radius: 40px; overflow: hidden; }
+
+/* ============ 屏幕通用 ============ */
+.screen {
+  width: 100%; height: 812px; position: relative;
+  background: #F6F7F9; overflow: hidden;
+}
+.statusbar {
+  height: 44px; padding: 0 24px; display: flex; align-items: center;
+  justify-content: space-between; position: relative; z-index: 5;
+}
+.sb-time { font-size: 15px; font-weight: 600; letter-spacing: .3px; }
+.sb-icons { display: flex; align-items: center; gap: 4px; }
+.homeindicator {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  width: 134px; height: 5px; border-radius: 999px; background: rgba(17, 24, 39, .92); z-index: 9;
+}
+
+/* ============ 通用控件 ============ */
+.btn-primary {
+  width: 100%; height: 52px; border: none; border-radius: 16px;
+  background: linear-gradient(135deg, #10B981, #0EA08A);
+  color: #FFFFFF; font-size: 16px; font-weight: 600; letter-spacing: 2px;
+  box-shadow: 0 10px 22px rgba(16, 185, 129, .28);
+  cursor: pointer;
+}
+.btn-ghost {
+  width: 100%; height: 52px; border: 1.5px solid #10B981; border-radius: 16px;
+  background: #FFFFFF; color: #059669; font-size: 16px; font-weight: 600; letter-spacing: 2px;
+  cursor: pointer;
+}
+.btn-mini {
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+  padding: 9px 18px; cursor: pointer;
+}
+.btn-mini.solid { background: #10B981; color: #FFF; box-shadow: 0 4px 10px rgba(16,185,129,.25); }
+.btn-mini.ghost { background: transparent; color: #059669; border: 1px solid #A7F3D0; }
+
+/* ============ 底部 Tab ============ */
+.tabbar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 8;
+  background: #FFFFFF; border-top: 1px solid #F1F5F9;
+  display: flex; height: 74px; padding: 6px 12px 0;
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; font-size: 11px; color: #9CA3AF; cursor: pointer;
+}
+.tab-item .t-ico {
+  width: 30px; height: 30px; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-size: 17px; line-height: 1;
+}
+.tab-item.active { color: #059669; font-weight: 600; }
+.tab-item.active .t-ico { background: #D1FAE5; }
+
+/* ============ 屏幕分隔条 ============ */
+.screensep { display: flex; align-items: center; gap: 12px; padding: 22px 16px; }
+.sep-line { flex: 1; height: 1px; background: #2E3239; }
+.sep-pill {
+  font-size: 12px; letter-spacing: 1px; color: #9CA3AF; white-space: nowrap;
+  border: 1px solid #33383F; border-radius: 999px; padding: 5px 14px; background: #1D2026;
+}
+
+/* ============ 组件规格卡 ============ */
+.spec {
+  margin: 0 10px 4px; background: #23262D; border: 1px solid #34383F;
+  border-radius: 18px; padding: 18px 20px 20px;
+}
+.spec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.spec-head .tag {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #065F46;
+  background: #A7F3D0; border-radius: 6px; padding: 3px 8px;
+}
+.spec-head h4 { font-size: 14px; color: #F3F4F6; }
+.spec-block { margin-top: 12px; }
+.spec-block h5 {
+  font-size: 12px; color: #34D399; font-weight: 600; letter-spacing: .5px; margin-bottom: 6px;
+}
+.spec-block ul { list-style: none; }
+.spec-block li {
+  font-size: 12px; color: #A3AAB5; line-height: 1.75; padding-left: 12px; position: relative;
+}
+.spec-block li::before { content: "·"; position: absolute; left: 2px; color: #34D399; }
+.sw {
+  display: inline-block; width: 11px; height: 11px; border-radius: 3px;
+  vertical-align: -1px; margin: 0 4px 0 2px; border: 1px solid rgba(255,255,255,.22);
+}
+.code { font-family: "SF Mono", Consolas, "Courier New", monospace; color: #E5E7EB; }
+
+/* ===================================================== */
+/* 屏 1 · 登录页                                          */
+/* ===================================================== */
+.login { padding: 20px 36px 0; text-align: center; }
+.logo {
+  width: 76px; height: 76px; margin: 44px auto 18px; border-radius: 24px;
+  background: linear-gradient(135deg, #10B981, #34D399);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 14px 30px rgba(16, 185, 129, .35);
+}
+.logo span { font-size: 40px; font-weight: 800; color: #FFFFFF; }
+.appname { font-size: 26px; font-weight: 700; color: #1F2937; }
+.slogan { font-size: 13.5px; color: #9CA3AF; margin-top: 8px; letter-spacing: .5px; }
+.login-form { margin-top: 36px; text-align: left; }
+.field {
+  display: flex; align-items: center; height: 54px; border-radius: 16px;
+  background: #F3F4F6; padding: 0 16px; margin-bottom: 14px;
+}
+.field .f-ico { font-size: 17px; margin-right: 10px; opacity: .75; }
+.field input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-size: 15px; color: #1F2937; height: 100%;
+}
+.field input::placeholder { color: #B4BCC7; }
+.field .eye { border: none; background: transparent; font-size: 18px; cursor: pointer; padding: 6px; }
+.forgot-row { text-align: right; margin: -4px 2px 22px; }
+.forgot-row a { font-size: 13px; color: #10B981; text-decoration: none; }
+.or-line {
+  display: flex; align-items: center; gap: 12px; margin: 24px 0 16px; color: #C3CAD3; font-size: 12.5px;
+}
+.or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: #E7EAF0; }
+.login-note { font-size: 11.5px; color: #B4BCC7; margin-top: 22px; line-height: 1.7; }
+.login-note b { color: #8B93A0; font-weight: 500; }
+
+/* ===================================================== */
+/* 屏 2 · 首页（账单流）                                  */
+/* ===================================================== */
+.home-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px 14px;
+}
+.home-greet p:first-child { font-size: 17px; font-weight: 700; color: #1F2937; }
+.home-greet p:last-child { font-size: 12px; color: #9CA3AF; margin-top: 3px; }
+.add-btn {
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #10B981, #0EA08A); color: #FFF; font-size: 24px;
+  font-weight: 300; line-height: 1; box-shadow: 0 8px 18px rgba(16, 185, 129, .35);
+}
+.home-body { padding: 0 16px; }
+.summary-card {
+  border-radius: 20px; padding: 18px 20px;
+  background: linear-gradient(135deg, #10B981, #34D399);
+  color: #FFFFFF; box-shadow: 0 14px 30px rgba(16, 185, 129, .32);
+}
+.summary-top { display: flex; align-items: center; justify-content: space-between; }
+.summary-top span { font-size: 13px; opacity: .95; }
+.summary-top .tag {
+  font-size: 11px; background: rgba(255, 255, 255, .2); border-radius: 999px;
+  padding: 3px 10px; letter-spacing: .5px;
+}
+.summary-balance { font-size: 30px; font-weight: 700; margin: 10px 0 12px; letter-spacing: .5px; }
+.summary-rows { display: flex; gap: 28px; font-size: 12.5px; opacity: .95; }
+.summary-rows b { font-size: 15px; font-weight: 700; margin-left: 4px; }
+.date-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 16px 2px 10px;
+}
+.date-nav button {
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid #E5E8EE;
+  background: #FFFFFF; color: #6B7280; font-size: 16px; cursor: pointer; line-height: 1;
+}
+.date-nav span { font-size: 15px; font-weight: 600; color: #1F2937; }
+.bill-list { position: relative; overflow: hidden; }
+.bill-date {
+  font-size: 12px; color: #9CA3AF; padding: 10px 4px 8px; display: flex; align-items: center; gap: 8px;
+}
+.bill-date::after { content: ""; flex: 1; height: 1px; background: #EEF1F5; }
+.bill-item {
+  display: flex; align-items: center; gap: 12px;
+  background: #FFFFFF; border-radius: 16px; padding: 9px 14px; margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, .04);
+}
+.cat-icon {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.bill-mid { flex: 1; min-width: 0; }
+.bill-remark { font-size: 14.5px; font-weight: 500; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bill-sub { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.bill-tag {
+  font-size: 10.5px; color: #6B7280; background: #F3F4F6;
+  border-radius: 6px; padding: 2px 7px;
+}
+.bill-who { font-size: 10.5px; color: #B4BCC7; }
+.bill-amount { font-size: 16px; font-weight: 700; flex-shrink: 0; }
+.bill-amount.neg { color: #1F2937; }
+.bill-amount.inc { color: #10B981; }
+.fade-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 34px;
+  background: linear-gradient(rgba(246,247,249,0), #F6F7F9);
+}
+
+/* ===================================================== */
+/* 屏 3 · 记账弹层                                        */
+/* ===================================================== */
+.sheet-bg { position: absolute; inset: 0; opacity: .92; filter: blur(2.5px); }
+.sheet-bg .ghost-card {
+  margin: 80px 20px 0; border-radius: 20px; padding: 16px 18px;
+  background: linear-gradient(135deg, #10B981, #34D399); color: #FFF;
+}
+.sheet-bg .ghost-card .b { font-size: 24px; font-weight: 700; margin-top: 8px; }
+.sheet-bg .ghost-item {
+  margin: 10px 20px 0; background: #FFF; border-radius: 14px; height: 54px; opacity: .9;
+  display: flex; align-items: center; gap: 10px; padding: 0 14px;
+}
+.sheet-bg .ghost-item .g-ico { width: 36px; height: 36px; border-radius: 50%; background: #F1F5F9; }
+.sheet-bg .ghost-item .g-line { flex: 1; height: 10px; border-radius: 6px; background: #F1F5F9; }
+.sheet-bg .ghost-item .g-line.s { width: 60px; flex: none; }
+.dim { position: absolute; inset: 0; background: rgba(17, 24, 39, .48); z-index: 6; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 7;
+  background: #FFFFFF; border-radius: 26px 26px 0 0;
+  padding: 10px 24px 34px; box-shadow: 0 -16px 40px rgba(17, 24, 39, .18);
+}
+.sheet-handle { width: 40px; height: 5px; border-radius: 999px; background: #E2E6EC; margin: 2px auto 6px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 12px; }
+.sheet-head span { font-size: 17px; font-weight: 700; color: #1F2937; }
+.sheet-close { font-size: 18px; color: #9CA3AF; cursor: pointer; }
+.seg {
+  display: flex; background: #F3F4F6; border-radius: 14px; padding: 4px; margin-bottom: 18px;
+}
+.seg-btn {
+  flex: 1; height: 42px; border: none; border-radius: 11px; background: transparent;
+  font-size: 15px; font-weight: 600; color: #9CA3AF; cursor: pointer;
+}
+.seg-btn.active { background: #10B981; color: #FFF; box-shadow: 0 6px 14px rgba(16,185,129,.3); }
+.amount-row { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 6px 0 20px; }
+.amount-row .yen { font-size: 26px; font-weight: 700; color: #1F2937; }
+.amount-row .num { font-size: 44px; font-weight: 700; color: #1F2937; letter-spacing: .5px; }
+.amount-row .unit { font-size: 14px; color: #9CA3AF; }
+.amount-hint { text-align: center; font-size: 11.5px; color: #B4BCC7; margin: -14px 0 14px; }
+.cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 16px; margin-bottom: 18px; }
+.cat-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.cat-cell .c-ico {
+  width: 46px; height: 46px; border-radius: 50%; background: #F3F4F6;
+  display: flex; align-items: center; justify-content: center; font-size: 21px;
+}
+.cat-cell.active .c-ico { background: #D1FAE5; box-shadow: 0 0 0 1.5px #6EE7B7 inset; }
+.cat-cell span { font-size: 12px; color: #6B7280; }
+.cat-cell.active span { color: #059669; font-weight: 600; }
+.sheet-row {
+  display: flex; align-items: center; gap: 10px; height: 50px;
+  background: #F3F4F6; border-radius: 14px; padding: 0 14px; margin-bottom: 10px;
+}
+.sheet-row .r-ico { font-size: 16px; }
+.sheet-row input { flex: 1; border: none; outline: none; background: transparent; font-size: 14.5px; }
+.sheet-row input::placeholder { color: #B4BCC7; }
+.sheet-row .r-text { flex: 1; font-size: 14.5px; color: #1F2937; }
+.sheet-row .r-sub { font-size: 13px; color: #9CA3AF; }
+.sheet-row .chev { color: #C3CAD3; font-size: 16px; }
+.sheet-save { margin-top: 8px; }
+
+/* ===================================================== */
+/* 屏 4 · 统计页                                          */
+/* ===================================================== */
+.stat-head {
+  display: flex; align-items: center; justify-content: space-between; padding: 8px 20px 6px;
+}
+.stat-head .date-nav { margin: 0; }
+.stat-head .date-nav span { font-size: 16px; font-weight: 700; }
+.stat-body { padding: 4px 16px 0; }
+.donut-wrap {
+  background: #FFFFFF; border-radius: 20px; padding: 18px;
+  display: flex; align-items: center; gap: 18px;
+  box-shadow: 0 2px 10px rgba(17, 24, 39, .04); margin-bottom: 12px;
+}
+.donut {
+  width: 140px; height: 140px; border-radius: 50%; position: relative; flex-shrink: 0;
+  background: conic-gradient(from -90deg,
+    #10B981 0% 42%,
+    #34D399 42% 67%,
+    #6366F1 67% 79%,
+    #F59E0B 79% 88%,
+    #EC4899 88% 96%,
+    #94A3B8 96% 100%);
+}
+.donut-center {
+  position: absolute; inset: 20px; background: #FFFFFF; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.donut-center .d-label { font-size: 11px; color: #9CA3AF; }
+.donut-center .d-num { font-size: 17px; font-weight: 700; color: #1F2937; margin: 2px 0; }
+.donut-center .d-sub { font-size: 11px; color: #B4BCC7; }
+.legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.legend-row { display: flex; align-items: center; font-size: 13px; color: #6B7280; gap: 8px; }
+.legend-row .dot { width: 9px; height: 9px; border-radius: 3px; }
+.legend-row b { margin-left: auto; font-size: 14px; color: #1F2937; font-weight: 600; }
+.card {
+  background: #FFFFFF; border-radius: 20px; padding: 16px 18px; margin-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(17, 24, 39, .04);
+}
+.card h3 { font-size: 15px; font-weight: 700; color: #1F2937; margin-bottom: 12px; }
+.cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.cat-row:last-child { margin-bottom: 2px; }
+.cat-row .c-ico { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.cat-row .c-main { flex: 1; min-width: 0; }
+.cat-row .c-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.cat-row .c-top span { font-size: 13px; color: #1F2937; font-weight: 500; }
+.cat-row .c-top b { font-size: 13px; color: #6B7280; font-weight: 500; }
+.cat-row .c-top b i { font-style: normal; color: #9CA3AF; margin-right: 4px; }
+.bar { height: 7px; border-radius: 999px; background: #F1F5F9; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #10B981, #34D399); }
+.trend { margin-bottom: 0; }
+.trend-chart { width: 100%; display: block; }
+.trend-labels { display: flex; justify-content: space-between; margin-top: 6px; }
+.trend-labels span { font-size: 10.5px; color: #9CA3AF; }
+
+/* ===================================================== */
+/* 屏 5 · AI 记账助手                                     */
+/* ===================================================== */
+.chat-head {
+  display: flex; align-items: center; gap: 12px; padding: 10px 20px 12px;
+  background: #FFFFFF; border-bottom: 1px solid #F1F5F9;
+}
+.ai-avatar {
+  width: 42px; height: 42px; border-radius: 50%; background: #D1FAE5;
+  display: flex; align-items: center; justify-content: center; font-size: 21px; flex-shrink: 0;
+}
+.chat-head .t { font-size: 16px; font-weight: 700; color: #1F2937; }
+.chat-head .s { font-size: 11.5px; color: #9CA3AF; margin-top: 2px; }
+.chat-head .more { margin-left: auto; font-size: 20px; color: #9CA3AF; font-weight: 700; }
+.chat-body { padding: 14px 16px 10px; overflow: hidden; }
+.chat-time { text-align: center; font-size: 11px; color: #B4BCC7; margin-bottom: 12px; }
+.msg { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
+.msg .m-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: #D1FAE5; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.msg.user { justify-content: flex-end; }
+.bubble {
+  max-width: 76%; padding: 11px 14px; font-size: 14.5px; line-height: 1.55;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, .06);
+}
+.bubble.ai { background: #FFFFFF; border-radius: 18px 18px 18px 6px; }
+.bubble.user {
+  background: linear-gradient(135deg, #10B981, #0EA08A); color: #FFFFFF;
+  border-radius: 18px 18px 6px 18px;
+}
+.ai-card {
+  margin-top: 10px; background: #F0FDF4; border: 1px solid #A7F3D0;
+  border-radius: 14px; padding: 12px 14px;
+}
+.ai-card .ac-title { font-size: 12.5px; font-weight: 700; color: #059669; margin-bottom: 7px; }
+.ai-card .ac-line { font-size: 12.5px; color: #4B5563; line-height: 1.75; }
+.ai-card .ac-line b { color: #1F2937; }
+.ai-card .ac-actions { display: flex; gap: 10px; margin-top: 10px; }
+.chat-inputbar {
+  position: absolute; left: 0; right: 0; bottom: 74px; z-index: 8;
+  background: #FFFFFF; border-top: 1px solid #F1F5F9;
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+}
+.mic-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none; background: #F3F4F6;
+  font-size: 17px; cursor: pointer; flex-shrink: 0;
+}
+.chat-input {
+  flex: 1; display: flex; align-items: center; background: #F3F4F6;
+  border-radius: 999px; padding: 4px 4px 4px 16px; height: 42px;
+}
+.chat-input input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; }
+.chat-input input::placeholder { color: #B4BCC7; }
+.send-btn {
+  width: 34px; height: 34px; border-radius: 50%; border: none; flex-shrink: 0;
+  background: linear-gradient(135deg, #10B981, #0EA08A); color: #FFF; font-size: 15px;
+  cursor: pointer; box-shadow: 0 4px 10px rgba(16, 185, 129, .3);
+}
+
+/* ============ 页脚 ============ */
+.page-foot { text-align: center; margin-top: 36px; color: #6B7280; font-size: 12.5px; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <span class="badge">风格 A · 简约清新</span>
+  <h1>双人记账 APP · 高保真静态原型</h1>
+  <p>单文件 HTML · 375×812 手机屏 · 共 5 屏纵向排列 · 每屏下方附组件规格<br>双击本文件即可在浏览器中滚动浏览全部屏幕</p>
+  <div class="tokens">
+    <span>主色 #10B981</span><span>背景 #F6F7F9</span><span>圆角 16–20px</span><span>轻阴影</span><span>5 屏 / 5 spec</span>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="canvas">
+
+    <!-- ================= 分隔：第 1 屏 ================= -->
+    <div class="screensep"><div class="sep-line"></div><span class="sep-pill">第 1 屏 · 登录页</span><div class="sep-line"></div></div>
+
+    <!-- ================= 屏 1 · 登录页 ================= -->
+    <div class="screen">
+      <div class="statusbar">
+        <span class="sb-time">9:41</span>
+        <span class="sb-icons">
+          <svg width="66" height="12" viewBox="0 0 66 12"><rect x="0" y="6" width="3" height="6" rx="1" fill="#111827"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#111827"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#111827"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#111827"/><path d="M24 3.5c3.5-3 9-3 12.5 0l-1.2 1.4c-2.8-2.4-7.3-2.4-10.1 0L24 3.5z" fill="#111827"/><path d="M27.2 6.9c2-1.7 5.2-1.7 7.2 0l-1.2 1.3c-1.3-1.1-3.5-1.1-4.8 0l-1.2-1.3z" fill="#111827"/><circle cx="30.8" cy="9.8" r="1.4" fill="#111827"/><rect x="42" y="1.5" width="18" height="9" rx="2.5" fill="none" stroke="#111827" stroke-width="1.2"/><rect x="43.4" y="3" width="13" height="6" rx="1.2" fill="#111827"/><rect x="61.2" y="4" width="1.8" height="4" rx="0.9" fill="#111827"/></svg>
+        </span>
+      </div>
+
+      <div class="login">
+        <div class="logo"><span>双</span></div>
+        <h2 class="appname">双双记账</h2>
+        <p class="slogan">两个人的账，一笔笔算清</p>
+
+        <div class="login-form">
+          <div class="field">
+            <span class="f-ico">👤</span>
+            <input type="text" placeholder="请输入手机号 / 账号" value="">
+          </div>
+          <div class="field">
+            <span class="f-ico">🔒</span>
+            <input type="password" placeholder="请输入密码" value="12345678">
+            <button class="eye" title="显示/隐藏密码">👁</button>
+          </div>
+          <div class="forgot-row"><a href="#">忘记密码？</a></div>
+          <button class="btn-primary">登 录</button>
+          <div class="or-line"><span>还没有账号？</span></div>
+          <button class="btn-ghost">立即注册</button>
+          <p class="login-note">登录即表示同意 <b>《用户协议》</b> 与 <b>《隐私政策》</b><br>本账本支持双人共享，一人记账，两人可见</p>
+        </div>
+      </div>
+
+      <div class="homeindicator"></div>
+    </div>
+
+    <!-- ============ 屏 1 · 组件规格 ============ -->
+    <div class="spec">
+      <div class="spec-head"><span class="tag">SPEC 01</span><h4>登录页 · 组件规格</h4></div>
+
+      <div class="spec-block">
+        <h5>布局结构（顶栏 / 内容区 / 底栏）</h5>
+        <ul>
+          <li>顶栏：状态栏（高 44px，时间 9:41 + 信号/WiFi/电量图标）</li>
+          <li>内容区：纵向居中流式布局 —— Logo（76×76）→ APP 名 → 标语 → 表单（2 输入框 → 忘记密码 → 主按钮 → 分割线 → 注册按钮）→ 协议小字</li>
+          <li>底栏：无 Tab，仅 Home 指示条（134×5px，距底 8px）</li>
+          <li>页面左右边距 36px，区块间距 20–24px，整体呼吸感强</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>配色 Token（十六进制）</h5>
+        <ul>
+          <li>页面背景 <span class="sw" style="background:#F6F7F9"></span><span class="code">#F6F7F9</span>　主色 <span class="sw" style="background:#10B981"></span><span class="code">#10B981</span></li>
+          <li>主色渐变 <span class="sw" style="background:linear-gradient(135deg,#10B981,#34D399)"></span><span class="code">#10B981→#34D399</span>　主色深 <span class="code">#059669</span></li>
+          <li>输入框底 <span class="sw" style="background:#F3F4F6"></span><span class="code">#F3F4F6</span>　卡片/按钮底 <span class="code">#FFFFFF</span></li>
+          <li>文字主 <span class="code">#1F2937</span>　文字次 <span class="code">#6B7280</span>　文字弱 <span class="code">#9CA3AF</span>　占位符 <span class="code">#B4BCC7</span></li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>字体 / 圆角 / 间距</h5>
+        <ul>
+          <li>字号：标题 26px/700（APP 名）· 正文 15px（输入）· 次要 12–13.5px（标语/忘记密码/分割线）· 按钮 16px/600</li>
+          <li>圆角：Logo 24px · 输入框 16px · 主/次按钮 16px · 协议小字无圆角</li>
+          <li>间距：输入框行距 14px · 表单上边距 36px · 分割线上下 24px/16px</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>关键组件样式</h5>
+        <ul>
+          <li>主按钮：渐变绿底白字，高 52px，圆角 16px，阴影 <span class="code">rgba(16,185,129,.28)</span></li>
+          <li>次按钮（注册）：白底绿边（1.5px <span class="code">#10B981</span>）绿字，同尺寸</li>
+          <li>输入框：浅灰底（<span class="code">#F3F4F6</span>）高 54px 圆角 16px，左侧 emoji 图标（👤/🔒），无边框</li>
+          <li>密码可见切换：👁 emoji 按钮，40px 触区，右侧内嵌</li>
+          <li>忘记密码：13px 绿字右对齐；Logo：渐变绿圆角方 + 白色「双」字</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= 分隔：第 2 屏 ================= -->
+    <div class="screensep"><div class="sep-line"></div><span class="sep-pill">第 2 屏 · 首页（账单流）</span><div class="sep-line"></div></div>
+
+    <!-- ================= 屏 2 · 首页 ================= -->
+    <div class="screen">
+      <div class="statusbar">
+        <span class="sb-time">9:41</span>
+        <span class="sb-icons">
+          <svg width="66" height="12" viewBox="0 0 66 12"><rect x="0" y="6" width="3" height="6" rx="1" fill="#111827"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#111827"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#111827"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#111827"/><path d="M24 3.5c3.5-3 9-3 12.5 0l-1.2 1.4c-2.8-2.4-7.3-2.4-10.1 0L24 3.5z" fill="#111827"/><path d="M27.2 6.9c2-1.7 5.2-1.7 7.2 0l-1.2 1.3c-1.3-1.1-3.5-1.1-4.8 0l-1.2-1.3z" fill="#111827"/><circle cx="30.8" cy="9.8" r="1.4" fill="#111827"/><rect x="42" y="1.5" width="18" height="9" rx="2.5" fill="none" stroke="#111827" stroke-width="1.2"/><rect x="43.4" y="3" width="13" height="6" rx="1.2" fill="#111827"/><rect x="61.2" y="4" width="1.8" height="4" rx="0.9" fill="#111827"/></svg>
+        </span>
+      </div>
+
+      <div class="home-head">
+        <div class="home-greet">
+          <p>Hi，小陈 & 小林 👋</p>
+          <p>2025年8月12日 · 星期二</p>
+        </div>
+        <button class="add-btn" title="记一笔">+</button>
+      </div>
+
+      <div class="home-body">
+        <div class="summary-card">
+          <div class="summary-top">
+            <span>本月结余（8月）</span>
+            <span class="tag">家庭账本 · 双人共享</span>
+          </div>
+          <div class="summary-balance">¥ 15,239.50</div>
+          <div class="summary-rows">
+            <div>收入 <b>¥18,500.00</b></div>
+            <div>支出 <b>¥3,260.50</b></div>
+          </div>
+        </div>
+
+        <div class="date-nav">
+          <button>‹</button>
+          <span>2025年8月</span>
+          <button>›</button>
+        </div>
+
+        <div class="bill-list">
+          <div class="bill-date">今天 · 8月12日</div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#FFF1F2">🍜</div>
+            <div class="bill-mid">
+              <p class="bill-remark">早餐 · 豆浆油条</p>
+              <div class="bill-sub"><span class="bill-tag">餐饮</span><span class="bill-who">我</span></div>
+            </div>
+            <p class="bill-amount neg">-18.00</p>
+          </div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#E0F2FE">🚇</div>
+            <div class="bill-mid">
+              <p class="bill-remark">地铁 · 通勤</p>
+              <div class="bill-sub"><span class="bill-tag">交通</span><span class="bill-who">我</span></div>
+            </div>
+            <p class="bill-amount neg">-4.00</p>
+          </div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#FFF1F2">☕</div>
+            <div class="bill-mid">
+              <p class="bill-remark">咖啡 · 和TA的下午茶</p>
+              <div class="bill-sub"><span class="bill-tag">餐饮</span><span class="bill-who">小林</span></div>
+            </div>
+            <p class="bill-amount neg">-25.00</p>
+          </div>
+
+          <div class="bill-date">昨天 · 8月11日</div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#D1FAE5">💰</div>
+            <div class="bill-mid">
+              <p class="bill-remark">工资 · 8月工资</p>
+              <div class="bill-sub"><span class="bill-tag">工资</span><span class="bill-who">我</span></div>
+            </div>
+            <p class="bill-amount inc">+12,000.00</p>
+          </div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#E0F2FE">🚕</div>
+            <div class="bill-mid">
+              <p class="bill-remark">打车 · 去机场</p>
+              <div class="bill-sub"><span class="bill-tag">交通</span><span class="bill-who">小林</span></div>
+            </div>
+            <p class="bill-amount neg">-32.00</p>
+          </div>
+
+          <div class="bill-date">更早 · 8月10日</div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#FFF7ED">🏠</div>
+            <div class="bill-mid">
+              <p class="bill-remark">房租 · 季度房租</p>
+              <div class="bill-sub"><span class="bill-tag">居住</span><span class="bill-who">我</span></div>
+            </div>
+            <p class="bill-amount neg">-3,200.00</p>
+          </div>
+          <div class="bill-item">
+            <div class="cat-icon" style="background:#FEF3C7">💡</div>
+            <div class="bill-mid">
+              <p class="bill-remark">电费 · 8月账单</p>
+              <div class="bill-sub"><span class="bill-tag">居住</span><span class="bill-who">小林</span></div>
+            </div>
+            <p class="bill-amount neg">-156.30</p>
+          </div>
+          <div class="fade-bottom"></div>
+        </div>
+      </div>
+
+      <nav class="tabbar">
+        <div class="tab-item active"><span class="t-ico">🏠</span><span>首页</span></div>
+        <div class="tab-item"><span class="t-ico">📊</span><span>统计</span></div>
+        <div class="tab-item"><span class="t-ico">🤖</span><span>AI记账</span></div>
+        <div class="tab-item"><span class="t-ico">👤</span><span>我的</span></div>
+      </nav>
+      <div class="homeindicator"></div>
+    </div>
+
+    <!-- ============ 屏 2 · 组件规格 ============ -->
+    <div class="spec">
+      <div class="spec-head"><span class="tag">SPEC 02</span><h4>首页（账单流）· 组件规格</h4></div>
+
+      <div class="spec-block">
+        <h5>布局结构</h5>
+        <ul>
+          <li>顶栏：状态栏（44px）→ 问候区（问候语 + 日期小字 + 右上角圆形「+」按钮 42px）</li>
+          <li>内容区：月度汇总卡（渐变）→ 日期选择条 → 账单列表（按日期分组，底部渐隐提示可滚动）</li>
+          <li>底栏：Tab 栏（高 74px，含 Home 指示条）</li>
+          <li>列表行：分类图标（42px 圆）+ 备注 + 类型标签/记账人 + 金额右对齐</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>配色 Token</h5>
+        <ul>
+          <li>页面背景 <span class="sw" style="background:#F6F7F9"></span><span class="code">#F6F7F9</span>　卡片 <span class="code">#FFFFFF</span></li>
+          <li>汇总卡渐变 <span class="sw" style="background:linear-gradient(135deg,#10B981,#34D399)"></span><span class="code">#10B981→#34D399</span>（白字）</li>
+          <li>收入 <span class="sw" style="background:#10B981"></span><span class="code">#10B981</span>　支出 <span class="code">#1F2937</span>　标签底 <span class="code">#F3F4F6</span></li>
+          <li>分类图标柔和底色：餐饮 <span class="code">#FFF1F2</span> · 交通 <span class="code">#E0F2FE</span> · 居住 <span class="code">#FFF7ED</span> · 工资 <span class="code">#D1FAE5</span></li>
+          <li>分割线 <span class="code">#EEF1F5</span>　文字次 <span class="code">#9CA3AF</span></li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>字体 / 圆角 / 间距</h5>
+        <ul>
+          <li>字号：问候 17px/700 · 结余 30px/700 · 备注 14.5px · 金额 16px/700 · 日期/标签 10.5–12px</li>
+          <li>圆角：汇总卡 20px · 列表项 16px · 分类图标 50% · Tab 激活块 12px · 标签 6px</li>
+          <li>间距：页面左右 16px · 卡片内 18–20px · 列表项 8px 行距 · 日期选择条上下 16/10px</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>关键组件样式</h5>
+        <ul>
+          <li>汇总卡：渐变绿底白字，圆角 20px，阴影 <span class="code">rgba(16,185,129,.32)</span>；结余 30px/700，收入/支出双列小字</li>
+          <li>「+」按钮：渐变绿圆形 42px，白字 24px，右上角固定，阴影 <span class="code">rgba(16,185,129,.35)</span></li>
+          <li>日期选择：‹ › 34px 圆形白底灰字按钮 + 中央 15px/600 月份标题</li>
+          <li>列表项：白卡片圆角 16px，轻阴影 <span class="code">rgba(17,24,39,.04)</span>；金额负数为深灰、正数为绿色（<span class="code">+12,000.00</span>）</li>
+          <li>Tab：白底 74px 高，激活项绿底圆角块 + 绿字（<span class="code">#059669</span>），未激活灰字 <span class="code">#9CA3AF</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= 分隔：第 3 屏 ================= -->
+    <div class="screensep"><div class="sep-line"></div><span class="sep-pill">第 3 屏 · 记账弹层</span><div class="sep-line"></div></div>
+
+    <!-- ================= 屏 3 · 记账弹层 ================= -->
+    <div class="screen">
+      <div class="sheet-bg">
+        <div class="ghost-card">
+          <div style="font-size:12px;opacity:.9">本月结余（8月）</div>
+          <div class="b">¥ 15,239.50</div>
+        </div>
+        <div class="ghost-item"><span class="g-ico"></span><span class="g-line"></span><span class="g-line s"></span></div>
+        <div class="ghost-item"><span class="g-ico"></span><span class="g-line"></span><span class="g-line s"></span></div>
+      </div>
+      <div class="dim"></div>
+
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <span>记一笔</span>
+          <span class="sheet-close">✕</span>
+        </div>
+
+        <div class="seg">
+          <button class="seg-btn active">支出</button>
+          <button class="seg-btn">收入</button>
+        </div>
+
+        <div class="amount-row">
+          <span class="yen">¥</span>
+          <span class="num">0.00</span>
+          <span class="unit">元</span>
+        </div>
+        <p class="amount-hint">点击数字输入金额，如 25.00</p>
+
+        <div class="cat-grid">
+          <div class="cat-cell active"><span class="c-ico">🍜</span><span>餐饮</span></div>
+          <div class="cat-cell"><span class="c-ico">🚇</span><span>交通</span></div>
+          <div class="cat-cell"><span class="c-ico">🛍️</span><span>购物</span></div>
+          <div class="cat-cell"><span class="c-ico">🎬</span><span>娱乐</span></div>
+          <div class="cat-cell"><span class="c-ico">🏠</span><span>居住</span></div>
+          <div class="cat-cell"><span class="c-ico">💊</span><span>医疗</span></div>
+          <div class="cat-cell"><span class="c-ico">📚</span><span>教育</span></div>
+          <div class="cat-cell"><span class="c-ico">📦</span><span>其他</span></div>
+        </div>
+
+        <div class="sheet-row">
+          <span class="r-ico">📝</span>
+          <input type="text" placeholder="添加备注：和TA的午餐">
+        </div>
+        <div class="sheet-row">
+          <span class="r-ico">📅</span>
+          <span class="r-text">日期</span>
+          <span class="r-sub">今天 8月12日</span>
+          <span class="chev">›</span>
+        </div>
+
+        <button class="btn-primary sheet-save">保存</button>
+      </div>
+
+      <div class="homeindicator" style="background:rgba(17,24,39,.9)"></div>
+    </div>
+
+    <!-- ============ 屏 3 · 组件规格 ============ -->
+    <div class="spec">
+      <div class="spec-head"><span class="tag">SPEC 03</span><h4>记账弹层 · 组件规格</h4></div>
+
+      <div class="spec-block">
+        <h5>布局结构</h5>
+        <ul>
+          <li>底层：首页模糊残影（blur 2.5px，仅作背景提示）</li>
+          <li>遮罩：全屏 <span class="code">rgba(17,24,39,.48)</span> 压暗背景</li>
+          <li>弹层：底部滑出（高约 640px，仅顶部圆角 26px），纵向：拖拽把手 → 标题栏（记一笔 + ✕）→ 收支分段切换 → 金额区 → 分类宫格（4×2）→ 备注行 → 日期行 → 保存按钮</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>配色 Token</h5>
+        <ul>
+          <li>弹层底 <span class="sw" style="background:#FFFFFF"></span><span class="code">#FFFFFF</span>　遮罩 <span class="code">rgba(17,24,39,.48)</span></li>
+          <li>主色 <span class="sw" style="background:#10B981"></span><span class="code">#10B981</span>　选中浅底 <span class="code">#D1FAE5</span>　选中文字 <span class="code">#059669</span></li>
+          <li>切换器底 <span class="code">#F3F4F6</span>　输入行底 <span class="code">#F3F4F6</span></li>
+          <li>文字主 <span class="code">#1F2937</span>　次要 <span class="code">#6B7280</span>　弱 <span class="code">#9CA3AF</span></li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>字体 / 圆角 / 间距</h5>
+        <ul>
+          <li>字号：标题 17px/700 · 金额 44px/700 · 分类 12px · 备注/日期 14.5px · 保存 16px/600</li>
+          <li>圆角：弹层顶部 26px · 切换器 14px（内块 11px）· 宫格图标 50% · 输入行 14px · 按钮 16px</li>
+          <li>间距：弹层内边距 24px · 宫格行距 16px · 区块间距 18px</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>关键组件样式</h5>
+        <ul>
+          <li>分段切换：灰底（<span class="code">#F3F4F6</span>）圆角 14px，激活段渐变绿底白字 + 阴影 <span class="code">rgba(16,185,129,.3)</span></li>
+          <li>金额区：¥ 26px + 数字 44px/700 居中，下方 11.5px 提示小字</li>
+          <li>分类宫格：4 列 × 2 行，图标 46px 圆；选中项浅绿底 <span class="code">#D1FAE5</span> + 1.5px 内描边 <span class="code">#6EE7B7</span> + 绿字</li>
+          <li>备注/日期行：浅灰底高 50px 圆角 14px，左 emoji、右箭头 ›</li>
+          <li>保存：主按钮样式（渐变绿 52px 高），距底部 34px 留白</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= 分隔：第 4 屏 ================= -->
+    <div class="screensep"><div class="sep-line"></div><span class="sep-pill">第 4 屏 · 统计页</span><div class="sep-line"></div></div>
+
+    <!-- ================= 屏 4 · 统计页 ================= -->
+    <div class="screen">
+      <div class="statusbar">
+        <span class="sb-time">9:41</span>
+        <span class="sb-icons">
+          <svg width="66" height="12" viewBox="0 0 66 12"><rect x="0" y="6" width="3" height="6" rx="1" fill="#111827"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#111827"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#111827"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#111827"/><path d="M24 3.5c3.5-3 9-3 12.5 0l-1.2 1.4c-2.8-2.4-7.3-2.4-10.1 0L24 3.5z" fill="#111827"/><path d="M27.2 6.9c2-1.7 5.2-1.7 7.2 0l-1.2 1.3c-1.3-1.1-3.5-1.1-4.8 0l-1.2-1.3z" fill="#111827"/><circle cx="30.8" cy="9.8" r="1.4" fill="#111827"/><rect x="42" y="1.5" width="18" height="9" rx="2.5" fill="none" stroke="#111827" stroke-width="1.2"/><rect x="43.4" y="3" width="13" height="6" rx="1.2" fill="#111827"/><rect x="61.2" y="4" width="1.8" height="4" rx="0.9" fill="#111827"/></svg>
+        </span>
+      </div>
+
+      <div class="stat-head">
+        <div class="date-nav">
+          <button>‹</button>
+          <span>2025年8月</span>
+          <button>›</button>
+        </div>
+        <span style="font-size:13px;color:#9CA3AF">家庭账本</span>
+      </div>
+
+      <div class="stat-body">
+        <div class="donut-wrap">
+          <div class="donut">
+            <div class="donut-center">
+              <p class="d-label">总支出</p>
+              <p class="d-num">¥3,260.50</p>
+              <p class="d-sub">32 笔</p>
+            </div>
+          </div>
+          <div class="legend">
+            <div class="legend-row"><span class="dot" style="background:#10B981"></span>本月收入<b>¥18,500.00</b></div>
+            <div class="legend-row"><span class="dot" style="background:#34D399"></span>本月支出<b>¥3,260.50</b></div>
+            <div class="legend-row"><span class="dot" style="background:#E5E7EB"></span>结余<b>¥15,239.50</b></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>分类支出占比</h3>
+          <div class="cat-row">
+            <div class="c-ico" style="background:#FFF1F2">🍜</div>
+            <div class="c-main">
+              <div class="c-top"><span>餐饮</span><b><i>42%</i>¥1,369.41</b></div>
+              <div class="bar"><i style="width:42%"></i></div>
+            </div>
+          </div>
+          <div class="cat-row">
+            <div class="c-ico" style="background:#FFF7ED">🏠</div>
+            <div class="c-main">
+              <div class="c-top"><span>居住</span><b><i>25%</i>¥815.13</b></div>
+              <div class="bar"><i style="width:25%;background:linear-gradient(90deg,#34D399,#6EE7B7)"></i></div>
+            </div>
+          </div>
+          <div class="cat-row">
+            <div class="c-ico" style="background:#E0F2FE">🚇</div>
+            <div class="c-main">
+              <div class="c-top"><span>交通</span><b><i>12%</i>¥391.26</b></div>
+              <div class="bar"><i style="width:12%;background:linear-gradient(90deg,#6366F1,#818CF8)"></i></div>
+            </div>
+          </div>
+          <div class="cat-row">
+            <div class="c-ico" style="background:#F5F3FF">🛍️</div>
+            <div class="c-main">
+              <div class="c-top"><span>购物</span><b><i>9%</i>¥293.45</b></div>
+              <div class="bar"><i style="width:9%;background:linear-gradient(90deg,#F59E0B,#FBBF24)"></i></div>
+            </div>
+          </div>
+          <div class="cat-row">
+            <div class="c-ico" style="background:#FDF2F8">🎬</div>
+            <div class="c-main">
+              <div class="c-top"><span>娱乐</span><b><i>8%</i>¥260.84</b></div>
+              <div class="bar"><i style="width:8%;background:linear-gradient(90deg,#EC4899,#F472B6)"></i></div>
+            </div>
+          </div>
+          <div class="cat-row">
+            <div class="c-ico" style="background:#F3F4F6">📦</div>
+            <div class="c-main">
+              <div class="c-top"><span>其他</span><b><i>4%</i>¥130.41</b></div>
+              <div class="bar"><i style="width:4%;background:linear-gradient(90deg,#94A3B8,#CBD5E1)"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card trend">
+          <h3>近 7 日支出趋势</h3>
+          <svg class="trend-chart" viewBox="0 0 340 118" xmlns="http://www.w3.org/2000/svg">
+            <line x1="20" y1="18" x2="320" y2="18" stroke="#F1F5F9" stroke-width="1"/>
+            <line x1="20" y1="54" x2="320" y2="54" stroke="#F1F5F9" stroke-width="1"/>
+            <line x1="20" y1="90" x2="320" y2="90" stroke="#F1F5F9" stroke-width="1"/>
+            <path d="M20,64 L70,46 L120,56 L170,36 L220,51 L270,20 L320,27 L320,110 L20,110 Z"
+                  fill="rgba(16,185,129,.12)" stroke="none"/>
+            <polyline points="20,64 70,46 120,56 170,36 220,51 270,20 320,27"
+                      fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="20" cy="64" r="4" fill="#fff" stroke="#10B981" stroke-width="2.5"/>
+            <circle cx="70" cy="46" r="4" fill="#fff" stroke="#10B981" stroke-width="2.5"/>
+            <circle cx="120" cy="56" r="4" fill="#fff" stroke="#10B981" stroke-width="2.5"/>
+            <circle cx="170" cy="36" r="4" fill="#fff" stroke="#10B981" stroke-width="2.5"/>
+            <circle cx="220" cy="51" r="4" fill="#fff" stroke="#10B981" stroke-width="2.5"/>
+            <circle cx="270" cy="20" r="5" fill="#10B981" stroke="#fff" stroke-width="2"/>
+            <circle cx="320" cy="27" r="4" fill="#fff" stroke="#10B981" stroke-width="2.5"/>
+          </svg>
+          <div class="trend-labels">
+            <span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="tabbar">
+        <div class="tab-item"><span class="t-ico">🏠</span><span>首页</span></div>
+        <div class="tab-item active"><span class="t-ico">📊</span><span>统计</span></div>
+        <div class="tab-item"><span class="t-ico">🤖</span><span>AI记账</span></div>
+        <div class="tab-item"><span class="t-ico">👤</span><span>我的</span></div>
+      </nav>
+      <div class="homeindicator"></div>
+    </div>
+
+    <!-- ============ 屏 4 · 组件规格 ============ -->
+    <div class="spec">
+      <div class="spec-head"><span class="tag">SPEC 04</span><h4>统计页 · 组件规格</h4></div>
+
+      <div class="spec-block">
+        <h5>布局结构</h5>
+        <ul>
+          <li>顶栏：状态栏 → 月份切换条（‹ 2025年8月 › + 右侧账本名）</li>
+          <li>内容区：环形图卡（环形 + 图例）→ 分类支出占比卡（6 行进度条）→ 近 7 日趋势卡（内联 SVG 折线）</li>
+          <li>底栏：Tab 栏（统计项激活）+ Home 指示条</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>配色 Token</h5>
+        <ul>
+          <li>页面背景 <span class="sw" style="background:#F6F7F9"></span><span class="code">#F6F7F9</span>　卡片 <span class="code">#FFFFFF</span></li>
+          <li>环形图主色 <span class="sw" style="background:#10B981"></span><span class="code">#10B981</span>，辅助色带 <span class="code">#34D399 #6366F1 #F59E0B #EC4899 #94A3B8</span></li>
+          <li>进度条轨道 <span class="sw" style="background:#F1F5F9"></span><span class="code">#F1F5F9</span>　文字主 <span class="code">#1F2937</span>　次 <span class="code">#6B7280</span>　弱 <span class="code">#9CA3AF</span></li>
+          <li>折线：描边 <span class="code">#10B981</span> · 面积填充 <span class="code">rgba(16,185,129,.12)</span></li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>字体 / 圆角 / 间距</h5>
+        <ul>
+          <li>字号：卡标题 15px/700 · 环形中心 17px/700 · 分类名/金额 13px · 百分比 13px/500 · 周标签 10.5px</li>
+          <li>圆角：卡片 20px · 进度条 999px · 分类图标 50% · 图例圆点 3px</li>
+          <li>间距：卡片内 16–18px · 分类行距 13px · 卡片间距 12px · 页面左右 16px</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>关键组件样式</h5>
+        <ul>
+          <li>环形图：140px 圆，<span class="code">conic-gradient</span> 按占比分段，中心白色挖空（inset 20px）显示「总支出/金额/笔数」</li>
+          <li>图例：9px 圆角方块 + 13px 文字，金额右对齐加粗</li>
+          <li>分类行：图标 34px 圆 + 名称 + 右侧「百分比 金额」，下方 7px 圆角进度条（渐变填充）</li>
+          <li>趋势折线：内联 SVG（viewBox 340×118），3px 圆角描边 + 12% 透明面积填充 + 白底绿边数据点，峰值点实心高亮</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= 分隔：第 5 屏 ================= -->
+    <div class="screensep"><div class="sep-line"></div><span class="sep-pill">第 5 屏 · AI 记账助手</span><div class="sep-line"></div></div>
+
+    <!-- ================= 屏 5 · AI 记账助手 ================= -->
+    <div class="screen">
+      <div class="statusbar">
+        <span class="sb-time">9:41</span>
+        <span class="sb-icons">
+          <svg width="66" height="12" viewBox="0 0 66 12"><rect x="0" y="6" width="3" height="6" rx="1" fill="#111827"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#111827"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#111827"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#111827"/><path d="M24 3.5c3.5-3 9-3 12.5 0l-1.2 1.4c-2.8-2.4-7.3-2.4-10.1 0L24 3.5z" fill="#111827"/><path d="M27.2 6.9c2-1.7 5.2-1.7 7.2 0l-1.2 1.3c-1.3-1.1-3.5-1.1-4.8 0l-1.2-1.3z" fill="#111827"/><circle cx="30.8" cy="9.8" r="1.4" fill="#111827"/><rect x="42" y="1.5" width="18" height="9" rx="2.5" fill="none" stroke="#111827" stroke-width="1.2"/><rect x="43.4" y="3" width="13" height="6" rx="1.2" fill="#111827"/><rect x="61.2" y="4" width="1.8" height="4" rx="0.9" fill="#111827"/></svg>
+        </span>
+      </div>
+
+      <div class="chat-head">
+        <div class="ai-avatar">🤖</div>
+        <div>
+          <p class="t">AI 记账助手</p>
+          <p class="s">小双 · 在线 · 说句话就能记账</p>
+        </div>
+        <span class="more">⋮</span>
+      </div>
+
+      <div class="chat-body">
+        <p class="chat-time">今天 09:12</p>
+
+        <div class="msg">
+          <div class="m-avatar">🤖</div>
+          <div class="bubble ai">嗨～我是小双 👋 你可以直接跟我说："今天喝了杯咖啡 25 块"，我帮你记下来～</div>
+        </div>
+
+        <div class="msg user">
+          <div class="bubble user">今天早上喝了杯咖啡，25块钱 ☕</div>
+        </div>
+
+        <div class="msg">
+          <div class="m-avatar">🤖</div>
+          <div class="bubble ai">好嘞，这就帮你记上 ✨</div>
+        </div>
+
+        <div class="msg">
+          <div class="m-avatar">🤖</div>
+          <div class="bubble ai">
+            <div class="ai-card">
+              <p class="ac-title">🧾 记账确认</p>
+              <p class="ac-line"><b>已为您记一笔：咖啡 25 元</b></p>
+              <p class="ac-line">分类：餐饮 · 账户：默认</p>
+              <p class="ac-line">时间：今天 08:30 · 记在：家庭账本</p>
+              <div class="ac-actions">
+                <button class="btn-mini solid">查看账单</button>
+                <button class="btn-mini ghost">撤销</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="bubble user">再帮我记一笔打车费，32块钱 🚕</div>
+        </div>
+
+        <div class="msg">
+          <div class="m-avatar">🤖</div>
+          <div class="bubble ai">收到 ✅ 已记：<b>打车 32 元</b>（交通），记在家庭账本～</div>
+        </div>
+      </div>
+
+      <div class="chat-inputbar">
+        <button class="mic-btn">🎤</button>
+        <div class="chat-input">
+          <input type="text" placeholder="和我说说这笔账…">
+          <button class="send-btn">➤</button>
+        </div>
+      </div>
+
+      <nav class="tabbar">
+        <div class="tab-item"><span class="t-ico">🏠</span><span>首页</span></div>
+        <div class="tab-item"><span class="t-ico">📊</span><span>统计</span></div>
+        <div class="tab-item active"><span class="t-ico">🤖</span><span>AI记账</span></div>
+        <div class="tab-item"><span class="t-ico">👤</span><span>我的</span></div>
+      </nav>
+      <div class="homeindicator"></div>
+    </div>
+
+    <!-- ============ 屏 5 · 组件规格 ============ -->
+    <div class="spec">
+      <div class="spec-head"><span class="tag">SPEC 05</span><h4>AI 记账助手页 · 组件规格</h4></div>
+
+      <div class="spec-block">
+        <h5>布局结构</h5>
+        <ul>
+          <li>顶栏：状态栏 → 聊天头部（AI 头像 + 名称/在线状态 + 更多 ⋮）</li>
+          <li>内容区：消息流（居中时间戳 → AI 气泡左对齐带头像 → 用户气泡右对齐）→ 记账确认卡片内嵌于 AI 气泡</li>
+          <li>底栏：输入栏（话筒 + 圆角输入框 + 发送钮）→ Tab 栏（AI记账激活）→ Home 指示条</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>配色 Token</h5>
+        <ul>
+          <li>页面背景 <span class="sw" style="background:#F6F7F9"></span><span class="code">#F6F7F9</span>　头部/输入栏 <span class="code">#FFFFFF</span></li>
+          <li>AI 气泡 <span class="sw" style="background:#FFFFFF"></span><span class="code">#FFFFFF</span>　用户气泡渐变 <span class="code">#10B981→#0EA08A</span>（白字）</li>
+          <li>确认卡底 <span class="sw" style="background:#F0FDF4"></span><span class="code">#F0FDF4</span>　边框 <span class="code">#A7F3D0</span>　标题 <span class="code">#059669</span></li>
+          <li>输入框底 <span class="code">#F3F4F6</span>　时间戳 <span class="code">#B4BCC7</span>　文字主 <span class="code">#1F2937</span>　次 <span class="code">#6B7280</span></li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>字体 / 圆角 / 间距</h5>
+        <ul>
+          <li>字号：标题 16px/700 · 消息 14.5px · 确认卡 12.5px · 按钮 13px/600 · 时间戳 11px</li>
+          <li>圆角：AI 气泡 18px（左下 6px）· 用户气泡 18px（右下 6px）· 确认卡 14px · 输入框 999px · 发送钮 50%</li>
+          <li>间距：气泡行距 10px · 消息区内边距 16px · 头像 32px · 气泡最大宽 76%</li>
+        </ul>
+      </div>
+
+      <div class="spec-block">
+        <h5>关键组件样式</h5>
+        <ul>
+          <li>AI 头像：浅绿圆（<span class="code">#D1FAE5</span>）32–42px + 🤖 emoji</li>
+          <li>气泡：白底（AI）/ 渐变绿白字（用户），轻阴影 <span class="code">rgba(17,24,39,.06)</span>，头部侧小圆角指向说话人</li>
+          <li>记账确认卡：浅绿底 + 绿边框，内含「已为您记一笔：咖啡 25 元」、分类/账户/时间明细，底部主按钮（查看账单）+ 次按钮（撤销）</li>
+          <li>输入栏：白底上边框，圆角输入框 42px 高，右侧 34px 渐变绿圆形发送钮 ➤</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="page-foot">双人记账 · 风格 A · 简约清新 · 高保真静态原型<br>生成于 2025 · 单文件 HTML，无任何外部依赖，可离线双击打开</p>
+
+</body>
+</html>

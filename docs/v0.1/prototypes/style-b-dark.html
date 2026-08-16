@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双人记账 · 高保真原型 · 风格 B:商务深色</title>
+<style>
+  /* ========== 全局 token(风格 B:商务深色) ========== */
+  :root{
+    --bg:#0E1116;          /* 屏幕背景(近黑蓝灰) */
+    --bg2:#12161D;         /* 规格面板背景 */
+    --card:#161B22;        /* 卡片背景(低饱和深灰) */
+    --card2:#141A22;       /* 弹层 / 输入条背景 */
+    --line:#262D38;        /* 边框 */
+    --gold:#F0B429;        /* 主色:琥珀金 */
+    --gold2:#D99A1B;
+    --gold-soft:rgba(240,180,41,.12);
+    --green:#34D399;       /* 收入 */
+    --green-soft:rgba(52,211,153,.12);
+    --red:#F87171;         /* 支出 */
+    --red-soft:rgba(248,113,113,.12);
+    --t1:#E8EDF4;          /* 文字主 */
+    --t2:#9AA5B1;          /* 文字次 */
+    --t3:#5C6670;          /* 文字弱 */
+    --r-card:12px;
+    --r-ctl:10px;
+    --r-chip:8px;
+    --r-pill:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{background:#1E1E1E;color:var(--t1);}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:36px 12px 60px;
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+
+  /* ========== 页面头尾 ========== */
+  .page-head{max-width:399px;margin:0 auto 28px;text-align:center;}
+  .ph-badge{
+    display:inline-block;font-size:12px;font-weight:700;letter-spacing:1px;color:#1A1205;
+    background:linear-gradient(180deg,#FFC94D,#F0B429);border-radius:6px;padding:4px 12px;margin-bottom:14px;
+    box-shadow:0 6px 18px rgba(240,180,41,.28);
+  }
+  .page-head h1{font-size:22px;font-weight:800;letter-spacing:1px;}
+  .page-head p{font-size:12px;color:#8A93A0;margin-top:8px;line-height:1.7;}
+  .page-foot{max-width:399px;margin:32px auto 0;text-align:center;font-size:11px;color:#5C6670;line-height:1.8;}
+
+  /* ========== 手机 mockup ========== */
+  .device{
+    width:399px;margin:0 auto;background:#0A0C10;border-radius:46px;padding:12px;
+    box-shadow:0 40px 90px rgba(0,0,0,.65),0 0 0 1px #2A2F38,inset 0 0 0 1px #1C212B;
+  }
+  .screen{width:375px;border-radius:34px;overflow:hidden;background:var(--bg);}
+  .screen-block{
+    width:375px;height:812px;position:relative;display:flex;flex-direction:column;
+    overflow:hidden;background:var(--bg);
+  }
+  /* 每屏之间的分隔条 */
+  .screen-sep{
+    height:54px;display:flex;align-items:center;justify-content:center;gap:8px;
+    background:#0B0E13;border-top:1px solid #1C222C;border-bottom:1px solid #1C222C;
+    color:#5C6670;font-size:11px;letter-spacing:1px;
+  }
+  .screen-sep::before,.screen-sep::after{content:"";width:26px;height:1px;background:#262D38;}
+
+  /* ========== 组件规格标注 ========== */
+  .spec{
+    background:var(--bg2);border-top:1px solid #262D38;padding:14px 16px 18px;
+    font-size:12px;line-height:1.65;color:#B7C0CC;
+  }
+  .spec-title{font-size:13px;font-weight:800;color:var(--gold);margin-bottom:8px;letter-spacing:.5px;}
+  .spec-sec{font-size:11px;font-weight:700;color:#8A93A0;margin:10px 0 3px;letter-spacing:1px;}
+  .spec ul{margin:0;padding-left:14px;}
+  .spec li{margin:2px 0;}
+  .spec b{color:#E8EDF4;font-weight:700;}
+  .sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:baseline;margin:0 3px 0 6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+
+  /* ========== 状态栏 ========== */
+  .statusbar{
+    height:26px;flex:0 0 26px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;font-size:12px;font-weight:600;color:var(--t1);
+  }
+  .statusbar .sb-r{font-size:11px;color:var(--t2);font-weight:500;}
+
+  /* ========== 通用组件 ========== */
+  .topbar{height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;}
+  .tb-title{font-size:18px;font-weight:800;}
+  .tb-sub{font-size:10px;color:var(--t3);font-weight:500;}
+  .btn-add{
+    width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#FFC94D,#F0B429);color:#1A1205;font-size:22px;font-weight:600;line-height:1;
+    box-shadow:0 6px 16px rgba(240,180,41,.35);
+  }
+  .input{
+    width:100%;height:48px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-ctl);
+    padding:0 14px;color:var(--t1);font-size:15px;outline:none;
+  }
+  .input::placeholder{color:var(--t3);}
+  .lbl{display:block;font-size:13px;color:var(--t2);margin:0 0 6px 2px;}
+  .btn-gold{
+    width:100%;height:48px;border:none;border-radius:var(--r-ctl);cursor:pointer;
+    background:linear-gradient(180deg,#FFC94D,#F0B429);color:#1A1205;font-size:15px;font-weight:700;letter-spacing:2px;
+    box-shadow:0 8px 24px rgba(240,180,41,.22);
+  }
+  .btn-ghost{
+    width:100%;height:48px;border:1px solid var(--line);border-radius:var(--r-ctl);cursor:pointer;
+    background:transparent;color:var(--t1);font-size:15px;font-weight:600;
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);}
+  .chip{
+    display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 12px;border-radius:var(--r-pill);
+    border:1px solid var(--line);color:var(--t2);font-size:12px;background:#10141B;
+  }
+  .chip.gold{border-color:var(--gold);color:var(--gold);background:var(--gold-soft);font-weight:600;}
+  .nav{
+    height:54px;flex:0 0 54px;display:flex;border-top:1px solid var(--line);background:#10141B;
+    padding-bottom:4px;
+  }
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+  .nav-item .ni-ic{font-size:19px;line-height:1;filter:grayscale(1) opacity(.55);}
+  .nav-item .ni-lb{font-size:10px;color:var(--t3);}
+  .nav-item.on .ni-ic{filter:none;}
+  .nav-item.on .ni-lb{color:var(--gold);font-weight:700;}
+  .nav-item.on::before{content:"";position:absolute;margin-top:-37px;width:22px;height:2.5px;border-radius:2px;background:var(--gold);}
+  .nav-item{position:relative;}
+
+  /* ========== 屏幕 1:登录页 ========== */
+  .s1-bg{background:radial-gradient(130% 55% at 50% 0%,#1B2029 0%,#0E1116 60%);}
+  .logo{
+    width:64px;height:64px;border-radius:16px;margin:0 auto 14px;
+    background:linear-gradient(160deg,#FFC94D,#E0A31F);color:#171007;font-size:28px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 12px 32px rgba(240,180,41,.32);
+  }
+  .s1-hero{text-align:center;padding:64px 24px 36px;}
+  .s1-hero h2{font-size:24px;font-weight:800;letter-spacing:1px;}
+  .s1-hero p{font-size:13px;color:var(--t2);margin-top:8px;}
+  .s1-form{flex:1;display:flex;flex-direction:column;padding:0 20px;}
+  .s1-row{display:flex;align-items:center;justify-content:space-between;margin:12px 2px 20px;}
+  .check{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);cursor:pointer;}
+  .check i{
+    width:16px;height:16px;border-radius:4px;background:var(--gold);color:#1A1205;
+    display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-style:normal;font-weight:800;
+  }
+  .link{font-size:12px;color:var(--gold);cursor:pointer;}
+  .divider{display:flex;align-items:center;gap:10px;color:var(--t3);font-size:12px;margin:22px 0 16px;}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+  .s1-foot{margin-top:auto;padding:20px;text-align:center;font-size:11px;color:var(--t3);line-height:1.8;}
+
+  /* ========== 屏幕 2:首页(账单流) ========== */
+  .daterow{height:36px;flex:0 0 36px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;}
+  .month-nav{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;}
+  .month-nav button{
+    width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#10141B;color:var(--t2);
+    font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .summary{
+    margin:0 16px 12px;padding:14px 16px;border-radius:var(--r-card);
+    background:linear-gradient(160deg,#1A2130 0%,#10141C 100%);
+    border:1px solid #2A3240;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .sum-top{display:flex;align-items:baseline;justify-content:space-between;}
+  .sum-lbl{font-size:12px;color:var(--t2);}
+  .sum-big{font-size:28px;font-weight:800;color:var(--gold);margin-top:2px;}
+  .sum-cmp{font-size:10px;color:var(--green);background:var(--green-soft);padding:2px 8px;border-radius:999px;}
+  .sum-cols{display:flex;margin-top:12px;border-top:1px dashed #2A3240;padding-top:10px;}
+  .sum-col{flex:1;}
+  .sum-col + .sum-col{border-left:1px solid #262D38;padding-left:14px;}
+  .sum-col .v{font-size:15px;font-weight:700;margin-top:2px;}
+  .sum-col .inc{color:var(--green);}
+  .sum-col .exp{color:var(--red);}
+  .sum-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:10px;}
+  .pbar{height:4px;border-radius:2px;background:#1E2630;margin-top:6px;overflow:hidden;}
+  .pbar i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#D99A1B,#F0B429);}
+  .filter{height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;}
+  .seg{display:inline-flex;background:#10141B;border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;}
+  .seg button{
+    border:none;background:transparent;color:var(--t2);font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer;
+  }
+  .seg button.on{background:var(--gold);color:#1A1205;font-weight:700;}
+  .bill-area{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .ghead{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;height:26px;flex:0 0 26px;font-size:12px;color:var(--t2);
+  }
+  .ghead b{font-weight:600;color:var(--t1);}
+  .bill-row{
+    height:58px;flex:0 0 58px;display:flex;align-items:center;gap:12px;padding:0 16px;
+    border-bottom:1px solid rgba(38,45,56,.55);
+  }
+  .cat-ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 40px;}
+  .ci-gold{background:var(--gold-soft);}
+  .ci-green{background:var(--green-soft);}
+  .ci-red{background:var(--red-soft);}
+  .ci-blue{background:rgba(56,189,248,.12);}
+  .bill-main{flex:1;min-width:0;}
+  .bill-name{font-size:14px;font-weight:600;color:var(--t1);}
+  .bill-note{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bill-right{text-align:right;flex:0 0 auto;}
+  .amount{font-size:15px;font-weight:700;}
+  .amount.minus{color:var(--t1);}
+  .amount.plus{color:var(--green);}
+  .tag{
+    display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;margin-top:4px;
+    background:#1E2630;color:var(--t2);
+  }
+  .tag.inc{background:var(--green-soft);color:var(--green);}
+
+  /* ========== 屏幕 3:记账弹层 ========== */
+  .sc3-bg{position:absolute;inset:0;}
+  .sc3-bg .dim{opacity:.5;}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:2;}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:3;
+    background:var(--card2);border-top:1px solid #2A3240;border-radius:18px 18px 0 0;
+    padding:10px 16px 18px;box-shadow:0 -14px 44px rgba(0,0,0,.55);
+  }
+  .handle{width:36px;height:4px;border-radius:2px;background:#2E3642;margin:0 auto 10px;}
+  .sheet-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .sheet-title h3{font-size:16px;font-weight:800;}
+  .sheet-title .ops{display:flex;align-items:center;gap:8px;}
+  .ic-close{width:28px;height:28px;border-radius:50%;background:#0E131A;border:1px solid var(--line);color:var(--t2);display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .amount-box{text-align:center;padding:10px 0 12px;}
+  .amount-big{font-size:34px;font-weight:800;color:var(--t1);letter-spacing:.5px;}
+  .amount-big .cur{display:inline-block;width:2px;height:34px;background:var(--gold);vertical-align:-4px;margin-left:2px;animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  .amount-sub{font-size:11px;color:var(--t3);margin-top:6px;}
+  .ie-toggle{display:flex;background:#0E131A;border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;margin-bottom:14px;}
+  .ie-toggle button{flex:1;height:34px;border:none;border-radius:8px;background:transparent;color:var(--t2);font-size:14px;font-weight:600;cursor:pointer;}
+  .ie-toggle button.on.exp{background:var(--red-soft);color:var(--red);}
+  .ie-toggle button.on.inc{background:var(--green-soft);color:var(--green);}
+  .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+  .cat-cell{
+    height:58px;border-radius:10px;border:1px solid var(--line);background:#0E131A;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;
+  }
+  .cat-cell .ci{font-size:20px;line-height:1;}
+  .cat-cell .cn{font-size:11px;color:var(--t2);}
+  .cat-cell.sel{border-color:var(--gold);background:var(--gold-soft);}
+  .cat-cell.sel .cn{color:var(--gold);font-weight:700;}
+  .note-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .note-row .input{height:42px;font-size:14px;}
+  .note-row .n-ic{font-size:16px;}
+  .sync-row{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 14px;}
+  .sync-lb{font-size:13px;color:var(--t2);}
+  .switch{width:44px;height:26px;border-radius:13px;background:var(--gold);position:relative;flex:0 0 44px;}
+  .switch::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+
+  /* ========== 屏幕 4:统计页 ========== */
+  .stat-strip{display:flex;margin:0 16px 12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:12px 0;}
+  .stat-cell{flex:1;text-align:center;}
+  .stat-cell + .stat-cell{border-left:1px solid #262D38;}
+  .stat-cell .lb{font-size:11px;color:var(--t3);}
+  .stat-cell .vl{font-size:14px;font-weight:700;margin-top:4px;}
+  .chart-card{margin:0 16px 12px;padding:12px 14px;}
+  .cc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cc-head h4{font-size:14px;font-weight:700;}
+  .legend{display:flex;gap:12px;font-size:10px;color:var(--t2);}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+  .bars{display:flex;align-items:flex-end;height:118px;gap:8px;}
+  .bar-col{flex:1;display:flex;gap:3px;align-items:flex-end;justify-content:center;height:100%;}
+  .bar{width:9px;border-radius:3px 3px 0 0;}
+  .bar.inc{background:rgba(240,180,41,.8);}
+  .bar.exp{background:rgba(248,113,113,.55);}
+  .bar.inc.cur{background:var(--gold);}
+  .bar.exp.cur{background:var(--red);}
+  .bars-x{display:flex;gap:8px;margin-top:6px;}
+  .bars-x span{flex:1;text-align:center;font-size:9px;color:var(--t3);}
+  .bars-x span.cur{color:var(--gold);font-weight:700;}
+  .pct-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(38,45,56,.5);}
+  .pct-row:last-child{border-bottom:none;}
+  .pct-ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 28px;}
+  .pct-main{flex:1;min-width:0;}
+  .pct-top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;}
+  .pct-top .nm{color:var(--t1);font-weight:600;}
+  .pct-top .vl{color:var(--t2);}
+  .pct-top .pc{color:var(--gold);font-weight:700;}
+  .track{height:6px;border-radius:3px;background:#1E2630;overflow:hidden;}
+  .track i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#D99A1B,#F0B429);}
+
+  /* ========== 屏幕 5:AI 记账助手 ========== */
+  .ai-dot{width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;box-shadow:0 0 6px rgba(52,211,153,.8);vertical-align:1px;}
+  .ai-chips{display:flex;gap:8px;padding:0 16px 10px;overflow:hidden;}
+  .ai-chips .chip{height:30px;font-size:12px;border-radius:15px;}
+  .chat{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:12px 16px 8px;}
+  .ts{text-align:center;font-size:10px;color:var(--t3);}
+  .bubble{max-width:80%;padding:10px 12px;font-size:14px;line-height:1.6;word-break:break-word;}
+  .bubble.ai{background:#161D27;border:1px solid #222B38;border-radius:12px 12px 12px 4px;color:var(--t1);align-self:flex-start;}
+  .bubble.me{background:linear-gradient(180deg,#FFC94D,#F0B429);color:#1A1205;border-radius:12px 12px 4px 12px;align-self:flex-end;font-weight:500;}
+  .confirm-card{background:#0E131A;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:8px;}
+  .cf-row{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px dashed #222B38;}
+  .cf-row:last-of-type{border-bottom:none;}
+  .cf-ck{width:18px;height:18px;border-radius:5px;background:var(--gold);color:#1A1205;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 18px;}
+  .cf-name{flex:1;font-size:13px;}
+  .cf-name small{display:block;color:var(--t3);font-size:10px;}
+  .cf-amt{font-size:13px;font-weight:700;}
+  .cf-amt.minus{color:var(--t1);}
+  .cf-foot{display:flex;align-items:center;justify-content:space-between;padding-top:8px;gap:8px;}
+  .cf-total{font-size:13px;color:var(--t2);}
+  .cf-total b{color:var(--t1);font-size:15px;font-weight:800;}
+  .cf-btns{display:flex;gap:8px;}
+  .cf-btn{border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+  .cf-btn.ok{background:var(--gold);color:#1A1205;}
+  .cf-btn.gh{background:#161D27;border:1px solid var(--line);color:var(--t2);}
+  .chat-input{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--card2);border-top:1px solid var(--line);flex:0 0 auto;}
+  .chat-input .input{height:40px;border-radius:20px;background:#0E131A;font-size:13px;flex:1;}
+  .mic{
+    width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#0E131A;
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 40px;
+  }
+  .send{
+    width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;flex:0 0 40px;
+    background:linear-gradient(180deg,#FFC94D,#F0B429);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px rgba(240,180,41,.3);
+  }
+  .send svg{width:17px;height:17px;fill:#1A1205;}
+</style>
+</head>
+<body>
+
+<!-- ==================== 页面头 ==================== -->
+<div class="page-head">
+  <div class="ph-badge">风格 B · 商务深色</div>
+  <h1>双人记账 App · 高保真静态原型</h1>
+  <p>5 屏纵向排列 · 屏幕 375×812 · 主色 琥珀金 #F0B429<br>双击本文件用浏览器打开即可浏览 ↓ 滚动查看全部</p>
+</div>
+
+<!-- ==================== 手机 mockup ==================== -->
+<div class="device">
+<div class="screen">
+
+  <!-- ========== 屏幕 1 / 5:登录页 ========== -->
+  <div class="screen-block s1-bg">
+    <div class="statusbar"><span class="num">9:41</span><span class="sb-r">📶 5G&nbsp;&nbsp;🔋 92%</span></div>
+    <div class="s1-hero">
+      <div class="logo">双</div>
+      <h2>双人记账</h2>
+      <p>两个人的账,一本清 · 支持 AI 语音记账</p>
+    </div>
+    <div class="s1-form">
+      <label class="lbl">账号</label>
+      <input class="input" type="text" placeholder="手机号 / 邮箱">
+      <div style="height:16px"></div>
+      <label class="lbl">密码</label>
+      <input class="input" type="password" placeholder="请输入密码">
+      <div class="s1-row">
+        <span class="check"><i>✓</i>记住我</span>
+        <span class="link">忘记密码?</span>
+      </div>
+      <button class="btn-gold">登 录</button>
+      <div class="divider">还没有账号?</div>
+      <button class="btn-ghost">注册新账号</button>
+    </div>
+    <div class="s1-foot">登录即代表同意《用户协议》与《隐私政策》<br>© 2025 双人记账 · 让每一笔都有交代</div>
+  </div>
+
+  <div class="screen-sep">屏幕 1 / 5 · 登录页</div>
+
+  <div class="spec">
+    <div class="spec-title">📐 组件规格 · 屏幕 1/5 · 登录页</div>
+    <div class="spec-sec">布局结构</div>
+    <ul><li>顶栏:无(全屏内容区);内容区:logo 区 → 账号/密码表单 → 主按钮(登录) → 次按钮(注册);底栏:协议文字。无 Tab 栏,垂直单列流。</li></ul>
+    <div class="spec-sec">配色 token</div>
+    <ul><li><i class="sw" style="background:#0E1116"></i>背景 #0E1116(顶部长夜蓝灰渐变)<i class="sw" style="background:#F0B429"></i>主色 #F0B429<i class="sw" style="background:#34D399"></i>辅助 #34D399<i class="sw" style="background:#E8EDF4"></i>文字 #E8EDF4 / #9AA5B1 / #5C6670<i class="sw" style="background:#262D38"></i>边框 #262D38</li></ul>
+    <div class="spec-sec">字体 / 圆角 / 间距</div>
+    <ul><li>标题 24px/800 · 正文 15px · 次要 13px · 弱 11px;圆角:输入框/按钮 10px、logo 16px;间距:表单元素 16px、区块 24px、页边距 20px。</li></ul>
+    <div class="spec-sec">关键组件</div>
+    <ul>
+      <li><b>输入框:</b>高 48px,底 #161B22,边框 1px #262D38,圆角 10px,聚焦边框 #F0B429。</li>
+      <li><b>主按钮(登录):</b>高 48px,渐变 #FFC94D→#F0B429,文字 #1A1205 15px/700,圆角 10px,金色投影 0 8px 24px。</li>
+      <li><b>次按钮(注册):</b>高 48px,透明底,边框 1px #262D38,文字 #E8EDF4,圆角 10px。</li>
+      <li><b>Logo:</b>64×64,圆角 16px,金色渐变,字 28px/800;复选/链接 12px,分割线 1px #262D38。</li>
+      <li>卡片 / Tab / 列表项 / 气泡:本屏不使用。</li>
+    </ul>
+  </div>
+
+  <div class="screen-sep">屏幕 2 / 5 · 首页(账单流)</div>
+
+  <!-- ========== 屏幕 2 / 5:首页 ========== -->
+  <div class="screen-block">
+    <div class="statusbar"><span class="num">9:41</span><span class="sb-r">📶 5G&nbsp;&nbsp;🔋 92%</span></div>
+    <div class="topbar">
+      <div>
+        <div class="tb-title">7 月账单</div>
+        <div class="tb-sub">与 TA 共同记账 · 第 213 天</div>
+      </div>
+      <div class="btn-add">+</div>
+    </div>
+    <div class="daterow">
+      <div class="month-nav">
+        <button>‹</button><span>2025年7月</span><button>›</button>
+      </div>
+      <span class="chip gold">📅 今天</span>
+    </div>
+    <div class="summary">
+      <div class="sum-top">
+        <div><div class="sum-lbl">本月结余</div><div class="sum-big num">¥3,246.50</div></div>
+        <span class="sum-cmp">▲ 12.4%</span>
+      </div>
+      <div class="sum-cols">
+        <div class="sum-col"><div class="sum-lbl">收入</div><div class="v inc num">↑ ¥18,900.00</div></div>
+        <div class="sum-col"><div class="sum-lbl">支出</div><div class="v exp num">↓ ¥15,653.50</div></div>
+      </div>
+      <div class="sum-foot"><span>支出占收入 82.8%</span><span>你 ¥1,860 / TA ¥1,386</span></div>
+      <div class="pbar"><i style="width:82.8%"></i></div>
+    </div>
+    <div class="filter">
+      <div class="seg"><button class="on">全部</button><button>支出</button><button>收入</button></div>
+      <span style="font-size:11px;color:var(--t3)">共 42 笔</span>
+    </div>
+    <div class="bill-area">
+      <div class="ghead"><b>7月8日 · 周二 · 今天</b><span>支出 ¥34.50</span></div>
+      <div class="bill-row">
+        <div class="cat-ic ci-gold">🥪</div>
+        <div class="bill-main"><div class="bill-name">早餐</div><div class="bill-note">公司楼下便利店 · 肉包+豆浆</div></div>
+        <div class="bill-right"><div class="amount minus num">-18.00</div><span class="tag">餐饮</span></div>
+      </div>
+      <div class="bill-row">
+        <div class="cat-ic ci-blue">🚇</div>
+        <div class="bill-main"><div class="bill-name">地铁</div><div class="bill-note">2 号线通勤</div></div>
+        <div class="bill-right"><div class="amount minus num">-4.00</div><span class="tag">交通</span></div>
+      </div>
+      <div class="bill-row">
+        <div class="cat-ic ci-gold">☕</div>
+        <div class="bill-main"><div class="bill-name">咖啡</div><div class="bill-note">瑞幸 · 冰美式</div></div>
+        <div class="bill-right"><div class="amount minus num">-12.50</div><span class="tag">餐饮</span></div>
+      </div>
+      <div class="ghead"><b>7月7日 · 周一</b><span>净收入 ¥8,628.00</span></div>
+      <div class="bill-row">
+        <div class="cat-ic ci-green">💼</div>
+        <div class="bill-main"><div class="bill-name">工资</div><div class="bill-note">6 月工资到账 · 招商银行</div></div>
+        <div class="bill-right"><div class="amount plus num">+12,000.00</div><span class="tag inc">收入</span></div>
+      </div>
+      <div class="bill-row">
+        <div class="cat-ic ci-red">🏠</div>
+        <div class="bill-main"><div class="bill-name">房租</div><div class="bill-note">7 月房租 · 共同承担</div></div>
+        <div class="bill-right"><div class="amount minus num">-3,500.00</div><span class="tag">居住</span></div>
+      </div>
+      <div class="bill-row">
+        <div class="cat-ic ci-green">💰</div>
+        <div class="bill-main"><div class="bill-name">报销</div><div class="bill-note">出差打车报销</div></div>
+        <div class="bill-right"><div class="amount plus num">+128.00</div><span class="tag inc">收入</span></div>
+      </div>
+      <div class="ghead"><b>7月6日 · 周日</b><span>支出 ¥345.50</span></div>
+      <div class="bill-row">
+        <div class="cat-ic ci-blue">🎬</div>
+        <div class="bill-main"><div class="bill-name">电影</div><div class="bill-note">双人电影票 · 7 号厅</div></div>
+        <div class="bill-right"><div class="amount minus num">-88.00</div><span class="tag">娱乐</span></div>
+      </div>
+      <div class="bill-row">
+        <div class="cat-ic ci-gold">🍲</div>
+        <div class="bill-main"><div class="bill-name">聚餐</div><div class="bill-note">周末下馆子 · 火锅</div></div>
+        <div class="bill-right"><div class="amount minus num">-236.00</div><span class="tag">餐饮</span></div>
+      </div>
+      <div class="bill-row">
+        <div class="cat-ic ci-blue">🚕</div>
+        <div class="bill-main"><div class="bill-name">打车</div><div class="bill-note">晚归打车回家</div></div>
+        <div class="bill-right"><div class="amount minus num">-21.50</div><span class="tag">交通</span></div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-item on"><span class="ni-ic">🏠</span><span class="ni-lb">首页</span></div>
+      <div class="nav-item"><span class="ni-ic">📊</span><span class="ni-lb">统计</span></div>
+      <div class="nav-item"><span class="ni-ic">🤖</span><span class="ni-lb">AI 助手</span></div>
+      <div class="nav-item"><span class="ni-ic">👤</span><span class="ni-lb">我的</span></div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-title">📐 组件规格 · 屏幕 2/5 · 首页(账单流)</div>
+    <div class="spec-sec">布局结构</div>
+    <ul><li>顶栏(标题+右上角 "+" 按钮)→ 日期选择行 → 收支汇总卡 → 筛选行 → 账单分组列表(滚动区)→ 底栏 Tab。层级:header / content(scroll) / tabbar。</li></ul>
+    <div class="spec-sec">配色 token</div>
+    <ul><li><i class="sw" style="background:#0E1116"></i>背景 #0E1116<i class="sw" style="background:#161B22"></i>卡片 #161B22<i class="sw" style="background:#F0B429"></i>主色 #F0B429(结余/强调)<i class="sw" style="background:#34D399"></i>收入 #34D399<i class="sw" style="background:#F87171"></i>支出 #F87171<i class="sw" style="background:#E8EDF4"></i>文字 #E8EDF4 / #9AA5B1 / #5C6670<i class="sw" style="background:#262D38"></i>边框 #262D38</li></ul>
+    <div class="spec-sec">字体 / 圆角 / 间距</div>
+    <ul><li>汇总大数字 28px/800 · 金额 15px/700 · 名称 14px · 备注/标签 11-10px;圆角:汇总卡 12px、图标 10px、标签 6px、Tab 顶部指示 2px;间距:卡片内边距 16px、行距 12px、页边距 16px。</li></ul>
+    <div class="spec-sec">关键组件</div>
+    <ul>
+      <li><b>汇总卡:</b>渐变 #1A2130→#10141C,边框 1px #2A3240,圆角 12px,内边距 14px 16px;结余大数字金色,收支带 +/- 与颜色,支出占比进度条 4px。</li>
+      <li><b>主按钮("+"新增):</b>34×34 圆形,金色渐变,白字 "+",金色投影;日期行:左右箭头按钮 22×22 + 月份文字 + "今天"金色芯片。</li>
+      <li><b>次按钮/筛选:</b>分段控件(全部/支出/收入),选中金色底 #1A1205 字。</li>
+      <li><b>输入框:</b>本屏不使用(记账入口在弹层)。</li>
+      <li><b>Tab(底栏):</b>高 54px,4 项(首页/统计/AI 助手/我的),选中金色+顶部 2px 指示条,未选中灰化 10px 标签。</li>
+      <li><b>列表项:</b>高 58px,分类图标 40×40 圆角 10px 低饱和底色,右侧金额(支出白/收入绿)+ 类型标签(10px 圆角 6px)。</li>
+      <li>气泡:本屏不使用。</li>
+    </ul>
+  </div>
+
+  <div class="screen-sep">屏幕 3 / 5 · 记账弹层</div>
+
+  <!-- ========== 屏幕 3 / 5:记账弹层 ========== -->
+  <div class="screen-block">
+    <div class="sc3-bg">
+      <div class="statusbar"><span class="num">9:41</span><span class="sb-r">📶 5G&nbsp;&nbsp;🔋 92%</span></div>
+      <div class="topbar dim">
+        <div>
+          <div class="tb-title">7 月账单</div>
+          <div class="tb-sub">与 TA 共同记账 · 第 213 天</div>
+        </div>
+        <div class="btn-add">+</div>
+      </div>
+      <div class="summary dim">
+        <div class="sum-top">
+          <div><div class="sum-lbl">本月结余</div><div class="sum-big num">¥3,246.50</div></div>
+          <span class="sum-cmp">▲ 12.4%</span>
+        </div>
+        <div class="sum-cols">
+          <div class="sum-col"><div class="sum-lbl">收入</div><div class="v inc num">↑ ¥18,900.00</div></div>
+          <div class="sum-col"><div class="sum-lbl">支出</div><div class="v exp num">↓ ¥15,653.50</div></div>
+        </div>
+      </div>
+      <div class="bill-row dim">
+        <div class="cat-ic ci-gold">🥪</div>
+        <div class="bill-main"><div class="bill-name">早餐</div><div class="bill-note">公司楼下便利店</div></div>
+        <div class="bill-right"><div class="amount minus num">-18.00</div><span class="tag">餐饮</span></div>
+      </div>
+      <div class="bill-row dim">
+        <div class="cat-ic ci-blue">🚇</div>
+        <div class="bill-main"><div class="bill-name">地铁</div><div class="bill-note">2 号线通勤</div></div>
+        <div class="bill-right"><div class="amount minus num">-4.00</div><span class="tag">交通</span></div>
+      </div>
+    </div>
+    <div class="overlay"></div>
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="sheet-title">
+        <h3>记一笔</h3>
+        <div class="ops">
+          <span class="chip">📅 7月8日 ▾</span>
+          <span class="ic-close">✕</span>
+        </div>
+      </div>
+      <div class="amount-box">
+        <div class="amount-big num">¥ 86.50<span class="cur"></span></div>
+        <div class="amount-sub">支出 · 餐饮 · 0.1 秒可完成</div>
+      </div>
+      <div class="ie-toggle">
+        <button class="on exp">支出</button>
+        <button class="inc">收入</button>
+      </div>
+      <div class="cat-grid">
+        <div class="cat-cell sel"><span class="ci">🍚</span><span class="cn">餐饮</span></div>
+        <div class="cat-cell"><span class="ci">🚇</span><span class="cn">交通</span></div>
+        <div class="cat-cell"><span class="ci">🛒</span><span class="cn">购物</span></div>
+        <div class="cat-cell"><span class="ci">🏠</span><span class="cn">居住</span></div>
+        <div class="cat-cell"><span class="ci">🎮</span><span class="cn">娱乐</span></div>
+        <div class="cat-cell"><span class="ci">💊</span><span class="cn">医疗</span></div>
+        <div class="cat-cell"><span class="ci">🎓</span><span class="cn">教育</span></div>
+        <div class="cat-cell"><span class="ci">📦</span><span class="cn">其他</span></div>
+      </div>
+      <div class="note-row">
+        <span class="n-ic">📝</span>
+        <input class="input" type="text" placeholder="添加备注(可选)">
+      </div>
+      <div class="sync-row">
+        <span class="sync-lb">🤝 记入共同账本,同步给 TA</span>
+        <span class="switch"></span>
+      </div>
+      <button class="btn-gold">保 存</button>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-title">📐 组件规格 · 屏幕 3/5 · 记账弹层</div>
+    <div class="spec-sec">布局结构</div>
+    <ul><li>底层:首页内容(半透明置灰 dim 处理)→ 遮罩 rgba(0,0,0,.55) → 底部弹层(圆角 18px 顶部,占屏约 58%)。弹层内自上而下:拖拽手柄 → 标题行(日期芯片+关闭)→ 金额大数字 → 收支切换 → 分类宫格 → 备注 → 共同账本开关 → 保存按钮。</li></ul>
+    <div class="spec-sec">配色 token</div>
+    <ul><li><i class="sw" style="background:#141A22"></i>弹层 #141A22<i class="sw" style="background:#0E131A"></i>宫格/输入 #0E131A<i class="sw" style="background:#F0B429"></i>主色 #F0B429(选中/开关)<i class="sw" style="background:#F87171"></i>支出 #F87171<i class="sw" style="background:#34D399"></i>收入 #34D399<i class="sw" style="background:#E8EDF4"></i>文字 #E8EDF4 / #9AA5B1 / #5C6670<i class="sw" style="background:#262D38"></i>边框 #262D38 · 遮罩 rgba(0,0,0,.55)</li></ul>
+    <div class="spec-sec">字体 / 圆角 / 间距</div>
+    <ul><li>标题 16px/800 · 金额 34px/800(等宽数字) · 分类名 11px · 备注 14px;圆角:弹层顶 18px、切换/宫格 10px、芯片 8px、开关 13px;间距:宫格 gap 10px、表单元素 12-14px、弹层内边距 16px。</li></ul>
+    <div class="spec-sec">关键组件</div>
+    <ul>
+      <li><b>金额输入:</b>34px/800 大数字 + 金色闪烁光标,下方小字提示收支场景。</li>
+      <li><b>主/次按钮:</b>保存=金色渐变 48px;切换=胶囊分段(支出红/收入绿选中态,底色 12% 透明)。</li>
+      <li><b>输入框:</b>备注 42px,圆角 10px,底 #0E131A;日期为芯片样式。</li>
+      <li><b>分类宫格:</b>4 列 × 2 行,格子 58px 高,选中项金色边框 + 金色文字;Tab/列表项/气泡:本屏不使用(背景为首页复用)。</li>
+      <li><b>开关:</b>44×26 圆角胶囊,开启态金色 + 白色圆点;手柄 36×4 用于拖动提示。</li>
+    </ul>
+  </div>
+
+  <div class="screen-sep">屏幕 4 / 5 · 统计页</div>
+
+  <!-- ========== 屏幕 4 / 5:统计页 ========== -->
+  <div class="screen-block">
+    <div class="statusbar"><span class="num">9:41</span><span class="sb-r">📶 5G&nbsp;&nbsp;🔋 92%</span></div>
+    <div class="topbar">
+      <div class="tb-title">统计</div>
+      <span class="chip">2025年7月 ▾</span>
+    </div>
+    <div class="stat-strip">
+      <div class="stat-cell"><div class="lb">收入</div><div class="vl num" style="color:var(--green)">¥18,900.00</div></div>
+      <div class="stat-cell"><div class="lb">支出</div><div class="vl num" style="color:var(--red)">¥15,653.50</div></div>
+      <div class="stat-cell"><div class="lb">结余</div><div class="vl num" style="color:var(--gold)">¥3,246.50</div></div>
+    </div>
+    <div class="card chart-card">
+      <div class="cc-head">
+        <h4>近 7 个月收支(千元)</h4>
+        <div class="legend"><span><i style="background:#F0B429"></i>收入</span><span><i style="background:rgba(248,113,113,.8)"></i>支出</span></div>
+      </div>
+      <div class="bars">
+        <div class="bar-col"><div class="bar exp" style="height:108px"></div><div class="bar inc" style="height:96px"></div></div>
+        <div class="bar-col"><div class="bar exp" style="height:96px"></div><div class="bar inc" style="height:90px"></div></div>
+        <div class="bar-col"><div class="bar exp" style="height:90px"></div><div class="bar inc" style="height:108px"></div></div>
+        <div class="bar-col"><div class="bar exp" style="height:84px"></div><div class="bar inc" style="height:102px"></div></div>
+        <div class="bar-col"><div class="bar exp" style="height:96px"></div><div class="bar inc" style="height:120px"></div></div>
+        <div class="bar-col"><div class="bar exp" style="height:102px"></div><div class="bar inc" style="height:114px"></div></div>
+        <div class="bar-col"><div class="bar exp cur" style="height:94px"></div><div class="bar inc cur" style="height:113px"></div></div>
+      </div>
+      <div class="bars-x"><span>1月</span><span>2月</span><span>3月</span><span>4月</span><span>5月</span><span>6月</span><span class="cur">7月</span></div>
+    </div>
+    <div class="card chart-card">
+      <div class="cc-head">
+        <h4>分类支出占比</h4>
+        <span style="font-size:10px;color:var(--t3)">合计 ¥15,653.50</span>
+      </div>
+      <div class="pct-row">
+        <div class="pct-ic" style="background:var(--gold-soft)">🍚</div>
+        <div class="pct-main">
+          <div class="pct-top"><span class="nm">餐饮</span><span class="vl num">¥4,478.00</span><span class="pc">28.6%</span></div>
+          <div class="track"><i style="width:28.6%"></i></div>
+        </div>
+      </div>
+      <div class="pct-row">
+        <div class="pct-ic" style="background:var(--red-soft)">🏠</div>
+        <div class="pct-main">
+          <div class="pct-top"><span class="nm">居住</span><span class="vl num">¥3,500.00</span><span class="pc">22.4%</span></div>
+          <div class="track"><i style="width:22.4%"></i></div>
+        </div>
+      </div>
+      <div class="pct-row">
+        <div class="pct-ic" style="background:rgba(56,189,248,.12)">🛒</div>
+        <div class="pct-main">
+          <div class="pct-top"><span class="nm">购物</span><span class="vl num">¥2,880.00</span><span class="pc">18.4%</span></div>
+          <div class="track"><i style="width:18.4%"></i></div>
+        </div>
+      </div>
+      <div class="pct-row">
+        <div class="pct-ic" style="background:rgba(56,189,248,.12)">🚇</div>
+        <div class="pct-main">
+          <div class="pct-top"><span class="nm">交通</span><span class="vl num">¥1,240.00</span><span class="pc">7.9%</span></div>
+          <div class="track"><i style="width:7.9%"></i></div>
+        </div>
+      </div>
+      <div class="pct-row">
+        <div class="pct-ic" style="background:var(--gold-soft)">🎮</div>
+        <div class="pct-main">
+          <div class="pct-top"><span class="nm">娱乐</span><span class="vl num">¥860.00</span><span class="pc">5.5%</span></div>
+          <div class="track"><i style="width:5.5%"></i></div>
+        </div>
+      </div>
+      <div class="pct-row">
+        <div class="pct-ic" style="background:#262D38">📦</div>
+        <div class="pct-main">
+          <div class="pct-top"><span class="nm">其他</span><span class="vl num">¥2,695.50</span><span class="pc">17.2%</span></div>
+          <div class="track"><i style="width:17.2%"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="cc-head">
+        <h4>近 7 天支出趋势(元)</h4>
+        <span style="font-size:10px;color:var(--t3)">峰值 ¥345.00 · 7月6日</span>
+      </div>
+      <svg viewBox="0 0 320 124" style="width:100%;display:block">
+        <defs>
+          <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#F0B429" stop-opacity=".22"/>
+            <stop offset="1" stop-color="#F0B429" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="4" y1="27" x2="316" y2="27" stroke="#262D38" stroke-width="1" stroke-dasharray="3 4"/>
+        <line x1="4" y1="66" x2="316" y2="66" stroke="#262D38" stroke-width="1" stroke-dasharray="3 4"/>
+        <line x1="4" y1="112" x2="316" y2="112" stroke="#2E3642" stroke-width="1"/>
+        <text x="4" y="31" font-size="9" fill="#5C6670">¥300</text>
+        <text x="4" y="70" font-size="9" fill="#5C6670">¥200</text>
+        <path d="M10,112 L10,92 60,105 110,83 160,109 210,10 260,33 310,110 L310,112 Z" fill="url(#tg)"/>
+        <polyline points="10,92 60,105 110,83 160,109 210,10 260,33 310,110" fill="none" stroke="#F0B429" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="10" cy="92" r="3" fill="#F0B429" stroke="#0E1116" stroke-width="2"/>
+        <circle cx="60" cy="105" r="3" fill="#F0B429" stroke="#0E1116" stroke-width="2"/>
+        <circle cx="110" cy="83" r="3" fill="#F0B429" stroke="#0E1116" stroke-width="2"/>
+        <circle cx="160" cy="109" r="3" fill="#F0B429" stroke="#0E1116" stroke-width="2"/>
+        <circle cx="210" cy="10" r="3" fill="#F0B429" stroke="#0E1116" stroke-width="2"/>
+        <circle cx="260" cy="33" r="3" fill="#F0B429" stroke="#0E1116" stroke-width="2"/>
+        <circle cx="310" cy="110" r="3.5" fill="#FFC94D" stroke="#0E1116" stroke-width="2"/>
+        <text x="10" y="123" font-size="9" fill="#5C6670" text-anchor="middle">7/2</text>
+        <text x="60" y="123" font-size="9" fill="#5C6670" text-anchor="middle">7/3</text>
+        <text x="110" y="123" font-size="9" fill="#5C6670" text-anchor="middle">7/4</text>
+        <text x="160" y="123" font-size="9" fill="#5C6670" text-anchor="middle">7/5</text>
+        <text x="210" y="123" font-size="9" fill="#5C6670" text-anchor="middle">7/6</text>
+        <text x="260" y="123" font-size="9" fill="#5C6670" text-anchor="middle">7/7</text>
+        <text x="310" y="123" font-size="9" fill="#F0B429" text-anchor="middle" font-weight="700">7/8</text>
+      </svg>
+    </div>
+    <div class="nav" style="margin-top:auto">
+      <div class="nav-item"><span class="ni-ic">🏠</span><span class="ni-lb">首页</span></div>
+      <div class="nav-item on"><span class="ni-ic">📊</span><span class="ni-lb">统计</span></div>
+      <div class="nav-item"><span class="ni-ic">🤖</span><span class="ni-lb">AI 助手</span></div>
+      <div class="nav-item"><span class="ni-ic">👤</span><span class="ni-lb">我的</span></div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-title">📐 组件规格 · 屏幕 4/5 · 统计页</div>
+    <div class="spec-sec">布局结构</div>
+    <ul><li>顶栏(标题+月份芯片)→ 收支速览条(3 格)→ 收支柱状图卡 → 分类占比卡 → 趋势折线卡 → 底栏 Tab。层级:header / content(scroll) / tabbar。</li></ul>
+    <div class="spec-sec">配色 token</div>
+    <ul><li><i class="sw" style="background:#0E1116"></i>背景 #0E1116<i class="sw" style="background:#161B22"></i>卡片 #161B22<i class="sw" style="background:#F0B429"></i>主色 #F0B429(收入柱/进度条/折线/今日)<i class="sw" style="background:#F87171"></i>支出 #F87171(支出柱)<i class="sw" style="background:#34D399"></i>辅助 #34D399<i class="sw" style="background:#E8EDF4"></i>文字 #E8EDF4 / #9AA5B1 / #5C6670<i class="sw" style="background:#262D38"></i>边框 #262D38 / 轨道 #1E2630</li></ul>
+    <div class="spec-sec">字体 / 圆角 / 间距</div>
+    <ul><li>图表标题 14px/700 · 数值 14px/700(等宽数字) · 轴标签/图例 9-10px;圆角:卡片 12px、柱顶 3px、进度条 3px;间距:卡片内边距 12px 14px、卡片间隙 12px、行距 9px。</li></ul>
+    <div class="spec-sec">关键组件</div>
+    <ul>
+      <li><b>卡片:</b>底 #161B22,边框 1px #262D38,圆角 12px;速览条 3 列,列间 1px 分隔线。</li>
+      <li><b>柱状图:</b>纯 div 实现,双柱(收入金/支出红),当前月高亮,月标签 9px 金色强调。</li>
+      <li><b>进度条:</b>轨道 6px 圆角 3px #1E2630,填充金色渐变,宽度=占比%;占比行含 28px 图标块 + 名称/金额/百分比。</li>
+      <li><b>趋势折线:</b>内联 SVG,2px 金色折线 + 渐变面积填充 + 数据点(白描边)+ 虚线参考线(¥300/¥200)+ 日期轴。</li>
+      <li><b>Tab / 列表项 / 气泡 / 输入框:</b>Tab 同屏 2 样式;其余本屏不使用。</li>
+    </ul>
+  </div>
+
+  <div class="screen-sep">屏幕 5 / 5 · AI 记账助手</div>
+
+  <!-- ========== 屏幕 5 / 5:AI 记账助手 ========== -->
+  <div class="screen-block">
+    <div class="statusbar"><span class="num">9:41</span><span class="sb-r">📶 5G&nbsp;&nbsp;🔋 92%</span></div>
+    <div class="topbar">
+      <div>
+        <div class="tb-title"><span class="ai-dot"></span>记账助手</div>
+        <div class="tb-sub" style="color:var(--green)">在线 · 已接入 AI 记账模型</div>
+      </div>
+      <span style="font-size:20px;color:var(--t2)">⋮</span>
+    </div>
+    <div class="ai-chips">
+      <span class="chip">🧾 拍单识别</span>
+      <span class="chip">🎤 语音记账</span>
+      <span class="chip">✍️ 一句话记账</span>
+    </div>
+    <div class="chat">
+      <div class="ts">今天 20:12</div>
+      <div class="bubble ai">晚上好!我是记账助手 🤖<br>把今天的开销发给我,一句话就能帮你记一笔。</div>
+      <div class="ts">20:14</div>
+      <div class="bubble me num">晚饭外卖 45,早上地铁 4 块</div>
+      <div class="bubble ai">收到 ✅ 我识别到 <b style="color:#F0B429">2 笔</b>开销,请确认:
+        <div class="confirm-card">
+          <div class="cf-row">
+            <span class="cf-ck">✓</span>
+            <span class="cf-name">外卖 · 晚餐<small>餐饮</small></span>
+            <span class="cf-amt minus num">¥45.00</span>
+          </div>
+          <div class="cf-row">
+            <span class="cf-ck">✓</span>
+            <span class="cf-name">地铁 · 通勤<small>交通</small></span>
+            <span class="cf-amt minus num">¥4.00</span>
+          </div>
+          <div class="cf-foot">
+            <span class="cf-total">合计 <b class="num">¥49.00</b></span>
+            <span class="cf-btns"><button class="cf-btn gh">修改</button><button class="cf-btn ok">确认记账</button></span>
+          </div>
+        </div>
+      </div>
+      <div class="ts">20:15</div>
+      <div class="bubble ai">已记入「共同账本」🎉 今天累计支出 <b style="color:#F0B429" class="num">¥83.50</b>,本周支出略超预算 8%,记得留意~</div>
+    </div>
+    <div class="chat-input">
+      <input class="input" type="text" placeholder="描述一笔开销,如:早餐 12 元">
+      <span class="mic">🎤</span>
+      <button class="send"><svg viewBox="0 0 24 24"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z"/></svg></button>
+    </div>
+    <div class="nav">
+      <div class="nav-item"><span class="ni-ic">🏠</span><span class="ni-lb">首页</span></div>
+      <div class="nav-item"><span class="ni-ic">📊</span><span class="ni-lb">统计</span></div>
+      <div class="nav-item on"><span class="ni-ic">🤖</span><span class="ni-lb">AI 助手</span></div>
+      <div class="nav-item"><span class="ni-ic">👤</span><span class="ni-lb">我的</span></div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <div class="spec-title">📐 组件规格 · 屏幕 5/5 · AI 记账助手</div>
+    <div class="spec-sec">布局结构</div>
+    <ul><li>顶栏(在线状态标题+更多)→ AI 能力芯片行 → 聊天记录区(滚动,消息靠底部)→ 底部输入条 → 底栏 Tab。层级:header / chat(scroll) / input / tabbar。</li></ul>
+    <div class="spec-sec">配色 token</div>
+    <ul><li><i class="sw" style="background:#0E1116"></i>背景 #0E1116<i class="sw" style="background:#161D27"></i>AI 气泡 #161D27<i class="sw" style="background:#F0B429"></i>用户气泡 #F0B429(文字 #1A1205)<i class="sw" style="background:#141A22"></i>输入条 #141A22<i class="sw" style="background:#0E131A"></i>确认卡片 #0E131A<i class="sw" style="background:#34D399"></i>在线状态 #34D399<i class="sw" style="background:#E8EDF4"></i>文字 #E8EDF4 / #9AA5B1 / #5C6670<i class="sw" style="background:#262D38"></i>边框 #262D38</li></ul>
+    <div class="spec-sec">字体 / 圆角 / 间距</div>
+    <ul><li>气泡正文 14px/1.6 · 卡片金额 15px/800 · 时间戳/芯片 10-12px;圆角:气泡 12px(指向角 4px)、确认卡片 10px、输入框胶囊 20px、芯片 15px;间距:气泡间 12px、聊天内边距 16px、输入条 10px 12px。</li></ul>
+    <div class="spec-sec">关键组件</div>
+    <ul>
+      <li><b>气泡:</b>AI=左对齐,底 #161D27 边框 #222B38,圆角 12 12 12 4;用户=右对齐,金色渐变,文字 #1A1205,圆角 12 12 4 12,最大宽 80%。</li>
+      <li><b>确认卡片:</b>内嵌于 AI 气泡,底 #0E131A 边框 #262D38 圆角 10px;行:金色勾选框 18px + 名称/子分类 + 金额;底部合计 + 「修改」(幽灵)/「确认记账」(金色)按钮。</li>
+      <li><b>输入框 + 发送:</b>胶囊输入(圆角 20px)+ 麦克风 40px 圆 + 金色发送按钮 40px 圆(SVG 箭头)。</li>
+      <li><b>Tab:</b>同屏 2/4,当前为 AI 助手高亮;卡片/列表项:确认卡片即卡片形态。</li>
+    </ul>
+  </div>
+
+</div>
+</div>
+
+<div class="page-foot">
+  双人记账 · 高保真原型 · 风格 B:商务深色<br>
+  主色 琥珀金 #F0B429 · 背景 #0E1116 · 屏幕 375×812 · 单文件无外部依赖
+</div>
+
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>更新弹窗原型 A · 活力渐变（与 App 一致）</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#2a2438;display:flex;gap:40px;align-items:flex-start;justify-content:center;padding:40px 20px;flex-wrap:wrap}
+  .phone{width:360px;background:#f7f5ff;border-radius:36px;border:8px solid #1c1626;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .status{height:28px;background:#f7f5ff;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-size:11px;color:#6b7280}
+  .screen{background:linear-gradient(160deg,#f7f5ff 0%,#f0ecff 100%);min-height:640px;position:relative;display:flex;align-items:center;justify-content:center}
+  /* ===== 弹窗 ===== */
+  .modal{width:88%;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 16px 50px rgba(107,60,255,.28);animation:pop .3s ease}
+  @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+  .hero{background:linear-gradient(135deg,#8b5cf6,#ec4899);padding:22px 20px 26px;text-align:center;position:relative}
+  .hero .appicon{width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px;border:1.5px solid rgba(255,255,255,.5)}
+  .hero h2{color:#fff;font-size:18px;font-weight:700}
+  .hero p{color:rgba(255,255,255,.9);font-size:12px;margin-top:4px}
+  .badge{display:inline-block;background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:600;padding:2px 10px;border-radius:999px;margin-top:8px;border:1px solid rgba(255,255,255,.4)}
+  .body{padding:18px 20px 20px}
+  .size-row{display:flex;align-items:center;gap:8px;color:#8b5cf6;font-size:12px;font-weight:600;margin-bottom:12px}
+  .size-row .dot{width:6px;height:6px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#ec4899)}
+  .changelog{background:#faf7ff;border:1px solid #efe9ff;border-radius:14px;padding:12px 14px;max-height:120px;overflow-y:auto}
+  .changelog .t{font-size:12px;font-weight:700;color:#4c1d95;margin-bottom:6px}
+  .changelog ul{list-style:none}
+  .changelog li{font-size:12.5px;color:#4b5563;line-height:1.9;padding-left:16px;position:relative}
+  .changelog li::before{content:"✦";position:absolute;left:0;color:#a855f7;font-size:10px;top:2px}
+  .actions{display:flex;gap:10px;margin-top:16px}
+  .btn{flex:1;padding:12px 0;border-radius:14px;font-size:14px;font-weight:700;text-align:center;cursor:pointer;border:none}
+  .btn-primary{background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;box-shadow:0 6px 18px rgba(139,92,246,.4)}
+  .btn-ghost{background:#f3f0ff;color:#8b5cf6}
+  .force-tip{text-align:center;font-size:11px;color:#ec4899;font-weight:600;margin-top:10px}
+  /* ===== 权限引导卡 ===== */
+  .perm{width:88%;background:#fff;border-radius:20px;padding:18px;box-shadow:0 12px 36px rgba(107,60,255,.25)}
+  .perm .row{display:flex;gap:12px;align-items:center}
+  .perm .ic{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+  .perm h4{font-size:14px;color:#1f2937}
+  .perm p{font-size:12px;color:#6b7280;margin-top:3px;line-height:1.6}
+  .perm .btn{width:100%;margin-top:14px}
+  .label{position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;font-size:11px;color:#7c6f9e;font-weight:600}
+  .seg{position:absolute;bottom:18px;left:16px;right:16px;display:flex;gap:8px}
+  .seg button{flex:1;padding:9px 0;border-radius:10px;border:1.5px solid #d8ccff;background:#fff;color:#8b5cf6;font-size:12px;font-weight:700;cursor:pointer}
+  .seg button.on{background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:none}
+  .hint{width:340px;color:#c4b8e8;font-size:13px;line-height:1.9;padding-top:6px}
+  .hint b{color:#fff}
+</style>
+</head>
+<body>
+
+<div class="hint">
+  <b>原型 A · 活力渐变</b><br>
+  与 App 现有风格完全一致：紫粉渐变标题区 + 白色大圆角弹窗 + 渐变主按钮。<br><br>
+  弹窗分「可选更新」（有稍后按钮）与「强制更新」（无稍后、不可关闭）两种状态，点击下方切换按钮查看；点「立即更新」查看权限引导卡。
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>📶 🔋</span></div>
+  <div class="screen">
+    <div class="label"><span>App 首页（渐变风格）</span><span>v2.0.0</span></div>
+
+    <!-- 弹窗 -->
+    <div class="modal" id="modal">
+      <div class="hero">
+        <div class="appicon">📒</div>
+        <h2 id="title">发现新版本</h2>
+        <p>金流记账 · 全新体验</p>
+        <span class="badge">v2.0.0</span>
+      </div>
+      <div class="body">
+        <div class="size-row"><span class="dot"></span>新版本大小：72.5 MB</div>
+        <div class="changelog">
+          <div class="t">更新内容</div>
+          <ul>
+            <li>全新原生体验，启动更快更流畅</li>
+            <li>支持在线更新，以后升级不用重装</li>
+            <li>修复已知问题，优化界面细节</li>
+          </ul>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="laterBtn" onclick="showPerm()">稍后</button>
+          <button class="btn btn-primary" onclick="showPerm()">立即更新</button>
+        </div>
+        <div class="force-tip" id="forceTip" style="display:none">⚠ 此版本为强制更新，更新后方可继续使用</div>
+      </div>
+    </div>
+  </div>
+  <div class="seg">
+    <button id="optBtn" class="on" onclick="setMode(false)">可选更新</button>
+    <button id="forBtn" onclick="setMode(true)">强制更新</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="status"><span>9:41</span><span>📶 🔋</span></div>
+  <div class="screen">
+    <div class="label"><span>权限引导</span><span>v2.0.0</span></div>
+    <div class="perm">
+      <div class="row">
+        <div class="ic">🔐</div>
+        <div>
+          <h4>需要允许安装应用</h4>
+          <p>更新需要安装新的 APK 文件，请先允许「安装未知来源应用」，然后返回继续。</p>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="alert('将跳转到系统设置页')">去开启</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setMode(force){
+    document.getElementById('optBtn').className = force ? '' : 'on';
+    document.getElementById('forBtn').className = force ? 'on' : '';
+    document.getElementById('laterBtn').style.display = force ? 'none' : '';
+    document.getElementById('forceTip').style.display = force ? '' : 'none';
+    document.getElementById('title').textContent = force ? '必须更新到新版本' : '发现新版本';
+  }
+  function showPerm(){ /* 本原型中权限引导卡在右侧手机 */ }
+</script>
+</body>
+</html>

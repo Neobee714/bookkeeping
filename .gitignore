@@ -26,5 +26,20 @@ __pycache__/
 # Build artifacts
 frontend/dist-bundle-*.zip
 
+# React Native (mobile/)
+mobile/node_modules/
+mobile/.gradle/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/local.properties
+mobile/*.log
+mobile/.env
+mobile/ios/Pods/
+mobile/vendor/
+
+# Release keystore (sensitive)
+/keystore/
+
 # Local temp scripts (root only; frontend/scripts must be tracked)
 /scripts/
