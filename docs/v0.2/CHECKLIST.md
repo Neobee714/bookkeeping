@@ -58,5 +58,11 @@
 
 ## 后续事项（本地完成后，不在本版本验收内）
 
-- [ ] VPS 发布 bookkeeping v2.0.0 到 app.xyvora.me（用户用 MCP deploy_app 或协助）
-- [ ] 手机上老版手动覆盖安装升级到 v2.0.0
+- [x] 代码推送到 GitHub ✅ 2026-08-16 14:35（main 分支 8d0e324..dad267c；注：全局 .gitconfig 的 http.proxy 指向 SOCKS5 端口导致 git TLS 失败,禁用代理后直连推送成功）
+- [x] VPS 自动部署确认 ✅ 2026-08-16 15:05（cron 每 5 分钟跑 /root/neobee-stack/deploy.sh：git pull + docker compose 重建 bookkeeping-backend；已自动拉取 dad267c 并重建后端容器）
+- [x] bookkeeping v2.0.0 发布到 app.xyvora.me ✅ 2026-08-16 15:10
+  - apkUrl https://app.xyvora.me/bookkeeping/latest.apk（HTTP 200，72.5MB）
+  - info.json（version 2.0.0 / force false / 中文 UTF-8 正确）
+  - 下载页 https://app.xyvora.me/#app-bookkeeping（卡片/下载按钮/二维码正常）
+  - 注：MCP CLI 需直连 SSH（代理节点到 VPS 异常），通过 APP_MCP_SOCKS_PROXY='' 注入方式发布
+- [ ] 手机上老版手动覆盖安装升级到 v2.0.0（用户操作：从下载页安装一次，之后自动 OTA）
