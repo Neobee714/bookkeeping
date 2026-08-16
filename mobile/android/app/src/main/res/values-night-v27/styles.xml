@@ -1,0 +1,10 @@
+<resources>
+
+    <!-- API 27+ 深色:深色窗口背景 + 挖孔延伸(shortEdges)。 -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:windowBackground">@color/bg_window_dark</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+</resources>

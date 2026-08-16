@@ -1,0 +1,8 @@
+<resources>
+
+    <!-- 窗口背景色(与 mobile/src/theme/colors.ts 的 background 对齐)。
+         edge-to-edge 下状态栏/挖孔区域透明,直接露出窗口背景,这里替代默认白色。 -->
+    <color name="bg_window_light">#F7F5FF</color>
+    <color name="bg_window_dark">#171322</color>
+
+</resources>

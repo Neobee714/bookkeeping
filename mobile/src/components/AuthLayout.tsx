@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -26,6 +27,9 @@ interface Props {
 /**
  * 认证页外壳:全屏「活力渐变」背景 + Logo + 标题 + 表单滚动区。
  * 登录 / 注册共用,保证两页视觉一致(见 prototype 01 登录页)。
+ *
+ * 沉浸式结构:渐变作为最底层铺满整个屏幕(含状态栏/挖孔区域),
+ * 内部用 SafeAreaView 让内容避让状态栏与底部,保证可读。
  */
 export default function AuthLayout({
   emoji,
@@ -35,8 +39,11 @@ export default function AuthLayout({
   contentStyle,
 }: Props) {
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <GradientView style={styles.background}>
+    <GradientView style={styles.background}>
+      {/* 登录/注册页顶部为渐变:状态栏图标固定白色。
+          AuthLayout 卸载后 RN StatusBar 自动恢复 App 层的主题色配置。 */}
+      <StatusBar barStyle="light-content" />
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -55,8 +62,8 @@ export default function AuthLayout({
             <View style={[styles.form, contentStyle]}>{children}</View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </GradientView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </GradientView>
   );
 }
 

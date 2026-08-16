@@ -4,6 +4,9 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!-- edge-to-edge 下状态栏/挖孔区域透明,窗口背景作为兜底(浅色;深色见 values-night)。
+             注意:样式跨配置不合并,values-night / values-v27 / values-night-v27 均需完整声明。 -->
+        <item name="android:windowBackground">@color/bg_window_light</item>
     </style>
 
 </resources>
