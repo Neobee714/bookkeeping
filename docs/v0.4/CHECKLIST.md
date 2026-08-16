@@ -72,3 +72,4 @@
 - [x] 代码提交 Git（含 GitHub 推送）✅ 2026-08-16 18:30（6feb1fd + 8b49bb4 已推 origin/main）
 - [x] 后端上线 v0.4（新接口 + 删圈子迁移）✅ 2026-08-16 19:00（容器重建；alembic head=67f2f7585bb7；7 张圈子表已删；health 200；openapi 含 /auth/password /stats/notes /stats/note-trend）
 - [x] 发布 OTA 并验证 ✅ 2026-08-16 19:40（latest.apk=SHA1 3799db… 与本地一致；info.json v2.1.0；下载页含 2.1.0；发布链路说明：CLI/代理大文件通道不稳，改 GitHub Release 中转 + 服务器下载完成）
+- [x] 修复「检查更新失败」✅ 2026-08-16 20:15（根因：CLI update-metadata 的 SFTP 写流把 info.json 截断为 0 字节；已用 SSH 命令重写 435 字节并验证公网 200/version=2.1.0/CF 缓存命中 65ms。教训：发布写 info.json 不用 CLI，用 SSH 命令）
