@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date as DateValue
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -34,3 +35,38 @@ class TransactionUpdateRequest(BaseModel):
         ):
             raise ValueError("至少提供一个需要更新的字段")
         return self
+
+
+class QuickNoteCandidate(BaseModel):
+    note: str
+    count: int
+    last_used: DateValue | None
+
+
+class QuickInputsResponse(BaseModel):
+    last_date: DateValue | None
+    pinned: list[QuickNoteCandidate]
+    by_category: dict[str, list[QuickNoteCandidate]]
+
+
+class NotePresetRequest(BaseModel):
+    note: str = Field(min_length=1, max_length=255)
+    kind: Literal["pinned", "hidden"]
+
+    @model_validator(mode="after")
+    def normalize_note(self) -> "NotePresetRequest":
+        normalized = self.note.strip()
+        if not normalized:
+            raise ValueError("备注不能为空")
+        self.note = normalized
+        return self
+
+
+class NotePresetResponse(BaseModel):
+    note: str
+    kind: Literal["pinned", "hidden"]
+
+
+class NotePresetDeleteResponse(BaseModel):
+    note: str
+    deleted: bool

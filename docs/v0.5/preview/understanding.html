@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>需求理解确认 · 记账快捷输入（同上次日期 / 常用备注）v0.5</title>
+<style>
+  :root{--fg:#1f2328;--muted:#6b7280;--line:#d0d7de;--bg:#f6f8fa}
+  *{box-sizing:border-box}
+  body{margin:0;padding:32px;font:15px/1.6 system-ui,"Segoe UI","Microsoft YaHei",sans-serif;color:var(--fg);background:#fff}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+  section{margin:0 0 28px}
+  h2{font-size:15px;margin:0 0 10px;padding-left:8px;border-left:3px solid #57606a}
+  .say{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:16px 18px;font-size:17px}
+  .say b{color:#0969da}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{background:var(--bg);font-weight:600}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .step{border:1px dashed #8c959f;border-radius:6px;padding:8px 12px;background:#fafbfc;font-size:14px}
+  .arrow{color:var(--muted)}
+  .cols{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+  .phone{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+  .phone-top{background:var(--bg);border-bottom:1px solid var(--line);padding:8px 12px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+  .sheet{padding:12px;display:grid;gap:8px}
+  .row{display:flex;gap:6px;align-items:center}
+  .seg{border:1px dashed #8c959f;border-radius:999px;padding:4px 16px;font-size:12px;color:var(--muted);background:#fafbfc}
+  .seg.on{background:#e6e0ff;border-color:#8b5cf6;color:#4c1d95;font-weight:700}
+  .box{border:1px dashed #8c959f;border-radius:8px;padding:8px 10px;color:var(--muted);font-size:12px;background:#fafbfc}
+  .box.amount{font-size:22px;font-weight:800;color:#8b5cf6}
+  .label{font-size:11px;color:var(--muted);margin-top:4px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid #b9a7f7;background:#f4f0ff;color:#4c1d95;border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap}
+  .chip.star{border-style:solid;border-color:#8b5cf6;font-weight:700}
+  .chip.ghost{border:1px dashed #8c959f;background:#fafbfc;color:var(--muted)}
+  .chip.date{background:#f4f0ff;border-color:#8b5cf6;color:#4c1d95;font-weight:700}
+  .tip{font-size:12px;color:var(--muted);border-left:2px solid var(--line);padding-left:8px}
+  ul{margin:6px 0;padding-left:20px}
+  li{margin:2px 0}
+  .q{border:1px solid var(--line);border-left:3px solid #bf8700;border-radius:6px;padding:10px 14px;margin-bottom:8px}
+  .q b{font-size:14px}
+  .opt{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:6px 6px 0 0;font-size:13px;color:var(--muted)}
+  .opt.rec{border-color:#8b5cf6;color:#4c1d95;background:#f4f0ff;font-weight:600}
+  code{background:var(--bg);padding:1px 4px;border-radius:4px;font-size:13px}
+  .badge{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted);margin-left:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>需求理解确认</h1>
+  <div class="sub">记账快捷输入（同上次日期 / 常用备注）· v0.5 · 生成于 2026-10-07 23:18 · 这是理解草图，不是成品，也不代表最终视觉风格</div>
+
+  <section>
+    <h2>一句话理解</h2>
+    <div class="say">我理解你要的是：<b>在「新增账单」弹层里加两个快捷：① 日期行旁边一个「同上次 08-15」chip，点一下就把日期设成上一笔记账的日期；② 备注输入框下面一排常用备注 chip，点一下填入备注（候选＝我手动收藏的 + 系统按历史频率自动推荐的）。</b></div>
+  </section>
+
+  <section>
+    <h2>目标用户与场景</h2>
+    <ul>
+      <li><b>谁</b>：你自己（单人用 App 记账，伴侣各自记自己的账）。</li>
+      <li><b>什么时候用</b>：补记昨天的账、连续几笔都是同一天；备注反复是「早餐 / 地铁 / 买菜」那几个。</li>
+      <li><b>解决什么问题</b>：现在每开一次弹层日期都是「今天」，补记要手动翻日历；备注要一个字一个字重新打。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>核心流程</h2>
+    <div class="flow">
+      <div class="step">1. 点 ＋ 打开新增账单</div><span class="arrow">→</span>
+      <div class="step">2. 输金额</div><span class="arrow">→</span>
+      <div class="step">3. 备注：点常用 chip 填入（或手打）</div><span class="arrow">→</span>
+      <div class="step">4. 日期：点「同上次 08-15」（或点日期行正常选）</div><span class="arrow">→</span>
+      <div class="step">5. 选分类 → 确认新增</div>
+    </div>
+    <div class="tip" style="margin-top:10px">第 3、4 步都是「一次点击即完成」，不再需要翻日历 / 重新打字。两步都可跳过，不点就走原来的流程。</div>
+  </section>
+
+  <section>
+    <h2>界面草图（新增账单弹层 · 线框）</h2>
+    <div class="cols">
+      <div class="phone">
+        <div class="phone-top"><span>新增账单</span><span>关闭</span></div>
+        <div class="sheet">
+          <div class="row"><span class="seg on">支出</span><span class="seg">收入</span></div>
+
+          <div class="label">金额</div>
+          <div class="box amount">¥ 0.00</div>
+
+          <div class="label">备注（可选）</div>
+          <div class="box">写点备注 <span style="float:right">＋收藏</span></div>
+          <div class="chips">
+            <span class="chip star">★ 早餐</span>
+            <span class="chip star">★ 地铁</span>
+            <span class="chip">买菜</span>
+            <span class="chip">咖啡</span>
+            <span class="chip ghost">› 横向可滑</span>
+          </div>
+          <div class="tip">点击 = 填入备注框；长按 = 收藏 / 移出常用</div>
+
+          <div class="label">日期</div>
+          <div class="row">
+            <div class="box" style="flex:1">2026-10-07</div>
+            <span class="chip date">同上次 10-06</span>
+          </div>
+          <div class="tip">chip 在最右侧、日期行的同一行；不点它＝完全保持现在的行为</div>
+
+          <div class="label">分类</div>
+          <div class="box">🍜 餐饮 ｜ 🚌 交通 ｜ 🛒 购物 ｜ …</div>
+
+          <div class="box" style="text-align:center;border-style:solid;background:#efe9ff;border-color:#8b5cf6;color:#4c1d95;font-weight:700">确认新增</div>
+        </div>
+      </div>
+
+      <div>
+        <h2 style="margin-top:0">两处新增的细节规则</h2>
+        <table>
+          <tr><th>位置</th><th>规则</th></tr>
+          <tr>
+            <td><b>「同上次 HH-MM-DD」chip</b></td>
+            <td>
+              ① 值 = <b>我最近录入的那一笔账单的「日期」</b>（按录入时间取最新一条，不限月份）；<br>
+              ② 只显示日期数字（例「同上次 10-06」），不写「昨天 / 前天」；<br>
+              ③ 点一下 → 日期框变成该日期，chip 变为选中态；随后仍可点日期行用日历改；<br>
+              ④ 没有任何历史账单时，chip 不显示；<br>
+              ⑤ 编辑一笔旧账单时同样显示，可一键改成上次日期；<br>
+              ⑥ <b>不会自动套用</b>——新开弹层默认日期仍是今天。
+            </td>
+          </tr>
+          <tr>
+            <td><b>常用备注 chips</b></td>
+            <td>
+              ① 候选 ＝ 我手动收藏的（★，排最前）+ 系统自动推荐的高频备注（去重、排除已移出的）；<br>
+              ② 自动推荐口径：最近 <b>90 天</b>内出现 <b>≥2 次</b>、且<b>属于当前所选分类</b>的备注，按 出现次数↓、最近使用↓ 排序（★收藏的不受分类过滤，始终显示）；<br>
+              ③ 最多显示 <b>8</b> 个，超出不显示（一行横向可滑动）；<br>
+              ④ 点击 = 覆盖填入备注框（先清空再填）；<br>
+              ⑤ 长按 = 弹出选项「收藏到常用 / 从常用移出」；<br>
+              ⑥ 备注框右侧「＋收藏」：把当前输入的文字加入常用（输入为空或已在列表中时不可用）；<br>
+              ⑦ 空备注不进入候选。
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>关键数据字段</h2>
+    <table>
+      <tr><th>字段</th><th>含义</th><th>来源</th></tr>
+      <tr><td><code>last_date</code></td><td>我最近录入的那笔账单的日期（YYYY-MM-DD）</td><td>账单表按录入时间倒序取第一条</td></tr>
+      <tr><td><code>note</code></td><td>备注文本（≤255 字）</td><td>现有账单表字段，不改</td></tr>
+      <tr><td><code>source</code></td><td>该候选是「我收藏的」还是「系统推荐的」</td><td>收藏记录表 / 频率统计</td></tr>
+      <tr><td><code>count</code></td><td>最近 90 天该备注出现的次数</td><td>统计得出（仅用于排序）</td></tr>
+      <tr><td><code>kind</code></td><td>收藏记录的类型：收藏 / 移出（移出的不再被推荐）</td><td>新增的收藏记录表</td></tr>
+    </table>
+    <div class="tip" style="margin-top:8px">账单本身的字段（金额 / 类型 / 分类 / 日期 / 备注）<b>一个都不改</b>；新增的只有「常用备注收藏记录」这一份数据。</div>
+  </section>
+
+  <section>
+    <h2>我的假设（如果不对请直接说）</h2>
+    <ul>
+      <li>「上一次」= <b>我最近录入的那一笔</b>（按录入时间，不限月份），取其账单日期。</li>
+      <li>常用备注 <b>跟账号绑定、存在服务器</b>，两个账号 <b>各自独立、互不共享</b>（你收藏的不会出现在伴侣的选择里）。</li>
+      <li>chip 只「填入」，<b>不会自动提交</b>，也 <b>不会自动改分类 / 金额</b>。</li>
+      <li>新增弹层的默认日期仍是 <b>今天</b>，你不点 chip 就完全和现在一样。</li>
+      <li>本次只改 <b>App（mobile）</b>，Web 端（Capacitor 残留壳）不动。</li>
+      <li>视觉沿用现在的「活力渐变」风格（紫 → 粉），chip 用现在的圆角胶囊样式，不新做一套风格。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>暂不做</h2>
+    <ul>
+      <li>常用金额 / 常用分类 / 常用收支组合的一键快捷键（本次只做「日期」和「备注」两项）。</li>
+      <li>备注输入时的模糊下拉联想（先做成可见 chip，若不好用下个版本再加）。</li>
+      <li>独立的「常用备注设置页」（管理入口先放在弹层里的长按菜单）。</li>
+      <li>Web 端同步、伴侣间共享常用备注、常用备注云端导入导出。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>待你确认（3 条 · <span style="color:#1a7f37">已于 2026-10-07 23:37 确认</span>）</h2>
+    <div class="q">
+      <b>Q1：「上一次」到底指哪一笔？</b><br>
+      <span class="opt rec">A. 我最近录入的那一笔（按录入时间）✅ 已选</span>
+      <span class="opt">B. 当前月份列表里日期最近的那一笔</span>
+      <span class="opt">C. 固定就是昨天</span>
+      <div class="tip" style="margin-top:6px">差别：若我最近录的是「补记上月 20 号」的一笔，A 会给 20 号，B/C 会给别的值。</div>
+    </div>
+    <div class="q">
+      <b>Q2：手动收藏的常用备注要不要和伴侣共享？</b><br>
+      <span class="opt rec">A. 各自独立，互不可见 ✅ 已选</span>
+      <span class="opt">B. 两人共享一份（谁收藏了另一个也能看到）</span>
+    </div>
+    <div class="q">
+      <b>Q3：自动推荐的备注要不要跟着「收支 / 分类」过滤？</b><br>
+      <span class="opt">A. 不区分，全量按使用频率推荐（最简单）</span>
+      <span class="opt rec">B. 按当前分类过滤 ✅ 已选</span>
+      <span class="opt">C. 按当前收支过滤（支出只推支出备注）</span>
+      <div class="tip" style="margin-top:6px">已选 B：选「餐饮」只推历史上记在餐饮类的常用备注；★收藏的始终显示、不受分类影响。切换分类时 chip 列表实时跟着变。</div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

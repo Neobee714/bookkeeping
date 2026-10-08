@@ -120,6 +120,30 @@ export interface TransactionUpdatePayload {
   date?: string;
 }
 
+// ---------- 记账快捷输入 ----------
+
+/** 备注预设记录的类别:手动收藏 / 不再推荐。 */
+export type NotePresetKind = 'pinned' | 'hidden';
+
+/** 快捷输入候选备注(后端按备注聚合的结果)。 */
+export interface QuickNoteCandidate {
+  note: string;
+  /** 统计窗口内的出现次数(收藏项可为 0)。 */
+  count: number;
+  /** 统计窗口内最近一次使用日期(YYYY-MM-DD);无记录为 null。 */
+  last_used: string | null;
+}
+
+/** GET /transactions/quick-inputs 的 data。 */
+export interface QuickInputs {
+  /** 当前用户最近录入的一笔账单日期(YYYY-MM-DD);无账单为 null。 */
+  last_date: string | null;
+  /** 手动收藏的备注,按收藏时间倒序。 */
+  pinned: QuickNoteCandidate[];
+  /** 各分类下自动推荐的高频备注,按 出现次数↓ / 最近使用↓ 排序。 */
+  by_category: Record<string, QuickNoteCandidate[]>;
+}
+
 // ---------- 预算 ----------
 
 export interface Budget {

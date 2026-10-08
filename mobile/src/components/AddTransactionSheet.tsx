@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,9 +19,21 @@ import DateTimePicker, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchCategories, type CategoryItem } from '../api/categories';
 import { extractErrorMessage } from '../api/client';
+import {
+  fetchQuickInputs,
+  removeNotePreset,
+  setNotePreset,
+} from '../api/quickInputs';
 import { radius, spacing, typography, useTheme } from '../theme';
-import type { Transaction, TransactionCreatePayload, TransactionType } from '../types';
+import type {
+  QuickInputs,
+  QuickNoteCandidate,
+  Transaction,
+  TransactionCreatePayload,
+  TransactionType,
+} from '../types';
 import { isValidDateString, toDateString } from '../utils/format';
+import { buildNoteChips, type QuickNoteChip } from '../utils/quickNoteChips';
 import GradientButton from './GradientButton';
 import GradientView from './GradientView';
 
@@ -65,10 +78,28 @@ const parseDateStr = (value: string): Date => {
   );
 };
 
+/** YYYY-MM-DD -> MM-DD(「同上次」chip 文案)。 */
+const formatMonthDay = (value: string): string => value.slice(5);
+
+/** 校验快捷输入接口结构,异常时按「本次不可用」处理(静默降级,不渲染 chip 区)。 */
+const normalizeQuickInputs = (
+  data: QuickInputs | null | undefined,
+): QuickInputs | null => {
+  if (!data || !Array.isArray(data.pinned)) {
+    return null;
+  }
+  if (typeof data.by_category !== 'object' || data.by_category === null) {
+    return null;
+  }
+  return data;
+};
+
 /**
  * 记账弹层:底部弹出 Modal。
  * 收支切换 + 金额大输入 + 备注 + 日期(原生选择器)+ 分类宫格(按 type 过滤);
  * 编辑时预填,新增/编辑共用。
+ * v0.5 新增:日期行「同上次 MM-DD」chip、备注「＋收藏」、备注 chips 行;
+ * 快捷数据接口失败时静默降级,完全不影响记账主流程。
  */
 export default function AddTransactionSheet({
   visible,
@@ -95,6 +126,9 @@ export default function AddTransactionSheet({
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState('');
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+
+  /** 快捷输入数据(最近一笔日期 + 收藏备注 + 各分类高频备注);null = 不可用(不渲染 chip 区)。 */
+  const [quickInputs, setQuickInputs] = useState<QuickInputs | null>(null);
 
   useEffect(() => {
     if (!visible) {
@@ -137,6 +171,30 @@ export default function AddTransactionSheet({
     }
   }, [visible, categoriesLoaded, categoriesLoading]);
 
+  // 每次打开弹层拉一次快捷数据(切分类只在本地过滤,不重复请求)。
+  // 失败或结构异常一律静默降级:quickInputs 保持 null,不渲染 chip 区、不影响记账。
+  useEffect(() => {
+    if (!visible) {
+      setQuickInputs(null);
+      return;
+    }
+    let cancelled = false;
+    fetchQuickInputs()
+      .then((data) => {
+        if (!cancelled) {
+          setQuickInputs(normalizeQuickInputs(data));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQuickInputs(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
   const activeCategories = useMemo(
     () => categories.filter((c) => c.type === type),
     [categories, type],
@@ -159,6 +217,112 @@ export default function AddTransactionSheet({
 
   const title = editingItem ? '编辑账单' : '新增账单';
   const buttonText = editingItem ? '保存修改' : '确认新增';
+
+  /** 「同上次」chip 的日期:后端返回且格式合法时才渲染。 */
+  const lastDate =
+    quickInputs?.last_date && isValidDateString(quickInputs.last_date)
+      ? quickInputs.last_date
+      : null;
+  const lastDateActive = lastDate !== null && dateStr === lastDate;
+
+  /** 备注 chips:★ 收藏在最前(保持后端顺序)+ 当前分类推荐(去重后),整体截断 8 个。 */
+  const noteChips = useMemo(
+    () =>
+      buildNoteChips({
+        pinned: quickInputs?.pinned,
+        byCategory: quickInputs?.by_category,
+        category,
+      }),
+    [quickInputs, category],
+  );
+
+  const trimmedNote = note.trim();
+  const pinnedNotes = useMemo(
+    () => new Set((quickInputs?.pinned ?? []).map((item) => item.note)),
+    [quickInputs],
+  );
+  const canPinNote = trimmedNote.length > 0 && !pinnedNotes.has(trimmedNote);
+
+  const updatePinned = (
+    updater: (list: QuickNoteCandidate[]) => QuickNoteCandidate[],
+  ) => {
+    setQuickInputs((prev) =>
+      prev ? { ...prev, pinned: updater(prev.pinned) } : prev,
+    );
+  };
+
+  const handleUseLastDate = () => {
+    if (lastDate) {
+      setDateStr(lastDate);
+    }
+  };
+
+  /** 「＋收藏」:成功后本地乐观更新(新收藏排最前,与后端 created_at 倒序一致)。 */
+  const handlePinNote = async () => {
+    if (!canPinNote) {
+      return;
+    }
+    const target = trimmedNote;
+    try {
+      await setNotePreset(target, 'pinned');
+      updatePinned((list) => [
+        { note: target, count: 0, last_used: null },
+        ...list,
+      ]);
+    } catch (error) {
+      // 用户主动点击触发的失败要给提示,否则会被误认为按钮失灵;
+      // 失败时不做任何本地变更(与服务端保持一致)。
+      Alert.alert('操作失败', extractErrorMessage(error, '收藏失败,请重试'));
+    }
+  };
+
+  /** 取消收藏:从 ★ 组移除(该备注若仍在自动推荐里,会回到推荐组)。 */
+  const handleUnpinNote = async (target: string) => {
+    try {
+      await removeNotePreset(target);
+      updatePinned((list) => list.filter((item) => item.note !== target));
+    } catch (error) {
+      Alert.alert('操作失败', extractErrorMessage(error, '取消收藏失败,请重试'));
+    }
+  };
+
+  /** 不再推荐:本地把所有分类里的该备注一并移除(隐藏记录本身是全局的)。 */
+  const handleHideNote = async (target: string) => {
+    try {
+      await setNotePreset(target, 'hidden');
+      setQuickInputs((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const byCategory: Record<string, QuickNoteCandidate[]> = {};
+        for (const [key, list] of Object.entries(prev.by_category)) {
+          byCategory[key] = list.filter((item) => item.note !== target);
+        }
+        return { ...prev, by_category: byCategory };
+      });
+    } catch (error) {
+      Alert.alert('操作失败', extractErrorMessage(error, '操作失败,请重试'));
+    }
+  };
+
+  /** 长按 chip:★ 收藏 → 取消收藏;自动推荐 → 不再推荐。 */
+  const handleChipLongPress = (chip: QuickNoteChip) => {
+    const isPinnedChip = chip.source === 'pinned';
+    Alert.alert(chip.note, undefined, [
+      {
+        text: isPinnedChip ? '取消收藏' : '不再推荐',
+        onPress: () => {
+          if (isPinnedChip) {
+            // 两个处理器内部都自行兜住异常,不会抛到 Alert 回调外。
+            handleUnpinNote(chip.note);
+          } else {
+            handleHideNote(chip.note);
+          }
+        },
+      },
+      { text: '取消', style: 'cancel' },
+    ]);
+  };
 
   const handleOpenDatePicker = () => {
     setPickerDate(parseDateStr(dateStr));
@@ -300,17 +464,82 @@ export default function AddTransactionSheet({
 
               {/* 备注 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>备注(可选)</Text>
-              <TextInput
-                style={[
-                  styles.noteInput,
-                  { backgroundColor: colors.surface, color: colors.textPrimary },
-                ]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="写点备注"
-                placeholderTextColor={colors.textTertiary}
-                maxLength={255}
-              />
+              <View style={[styles.noteRow, { backgroundColor: colors.surface }]}>
+                <TextInput
+                  style={[styles.noteInput, { color: colors.textPrimary }]}
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="写点备注"
+                  placeholderTextColor={colors.textTertiary}
+                  maxLength={255}
+                />
+                <Pressable
+                  onPress={handlePinNote}
+                  disabled={!canPinNote}
+                  hitSlop={8}
+                >
+                  <Text
+                    style={[
+                      styles.pinText,
+                      {
+                        color: canPinNote
+                          ? colors.primary
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
+                    ＋收藏
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* 常用备注 chips(★ 收藏 + 当前分类推荐);无候选时不渲染该行 */}
+              {noteChips.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.chipRow}
+                  contentContainerStyle={styles.chipRowContent}
+                >
+                  {noteChips.map((chip) => {
+                    const isPinnedChip = chip.source === 'pinned';
+                    return (
+                      <Pressable
+                        key={`${chip.source}:${chip.note}`}
+                        style={[
+                          styles.noteChip,
+                          isPinnedChip
+                            ? {
+                                backgroundColor: colors.card,
+                                borderColor: colors.primary,
+                              }
+                            : [
+                                styles.noteChipAuto,
+                                { backgroundColor: colors.chipSoftBg },
+                              ],
+                        ]}
+                        onPress={() => setNote(chip.note)}
+                        onLongPress={() => handleChipLongPress(chip)}
+                      >
+                        <Text
+                          style={[
+                            styles.noteChipText,
+                            isPinnedChip ? styles.noteChipTextPinned : null,
+                            {
+                              color: isPinnedChip
+                                ? colors.primary
+                                : colors.chipSoftText,
+                            },
+                          ]}
+                        >
+                          {isPinnedChip ? `★ ${chip.note}` : chip.note}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
 
               {/* 日期 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>日期</Text>
@@ -321,7 +550,40 @@ export default function AddTransactionSheet({
                 <Text style={[styles.dateText, { color: colors.textPrimary }]}>
                   {dateStr}
                 </Text>
-                <Text style={[styles.dateHint, { color: colors.primary }]}>选择 ›</Text>
+                <View style={styles.dateRight}>
+                  <Text style={[styles.dateHint, { color: colors.primary }]}>选择 ›</Text>
+                  {/* 「同上次」chip:无历史账单(last_date 为空)或接口失败时不渲染 */}
+                  {lastDate ? (
+                    lastDateActive ? (
+                      <Pressable onPress={handleUseLastDate} hitSlop={6}>
+                        <GradientView style={styles.dateChip}>
+                          <Text style={styles.dateChipTextActive}>
+                            {`✓ 同上次 ${formatMonthDay(lastDate)}`}
+                          </Text>
+                        </GradientView>
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        style={[
+                          styles.dateChip,
+                          styles.dateChipIdle,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.primary,
+                          },
+                        ]}
+                        onPress={handleUseLastDate}
+                        hitSlop={6}
+                      >
+                        <Text
+                          style={[styles.dateChipText, { color: colors.primary }]}
+                        >
+                          {`同上次 ${formatMonthDay(lastDate)}`}
+                        </Text>
+                      </Pressable>
+                    )
+                  ) : null}
+                </View>
               </Pressable>
               {showDatePicker && Platform.OS === 'ios' ? (
                 <View style={[styles.pickerBox, { backgroundColor: colors.surface }]}>
@@ -524,12 +786,46 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     paddingVertical: spacing.sm,
   },
-  noteInput: {
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     borderRadius: 14,
     paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  noteInput: {
+    flex: 1,
     paddingVertical: spacing.md,
     fontSize: 14,
+  },
+  pinText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chipRow: {
     marginBottom: spacing.lg,
+  },
+  chipRowContent: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  noteChip: {
+    borderRadius: 999,
+    borderWidth: 1.5,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+  },
+  /** 自动推荐 chip:无描边(浅紫底随主题变化,由内联样式给出)。 */
+  noteChipAuto: {
+    borderColor: 'transparent',
+  },
+  noteChipText: {
+    fontSize: 12,
+  },
+  /** ★ 收藏 chip:文字加粗(颜色随主题变化,由内联样式给出)。 */
+  noteChipTextPinned: {
+    fontWeight: '700',
   },
   dateRow: {
     flexDirection: 'row',
@@ -544,9 +840,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  dateRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   dateHint: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  dateChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  dateChipIdle: {
+    borderWidth: 1.5,
+  },
+  dateChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  dateChipTextActive: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   pickerBox: {
     borderRadius: 14,

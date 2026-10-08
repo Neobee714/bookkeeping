@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>组件风格选择 · 记账快捷输入 v0.5</title>
+<style>
+  :root{--fg:#1f2328;--muted:#6b7280;--line:#e3e0ee;--purple:#8B5CF6;--pink:#EC4899;--bg:#F7F5FF}
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;font:15px/1.6 system-ui,"Segoe UI","Microsoft YaHei",sans-serif;color:var(--fg);background:#fff}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+  h2{font-size:15px;margin:26px 0 6px;padding-left:8px;border-left:3px solid #57606a}
+  .note{font-size:13px;color:var(--muted);margin:0 0 12px}
+  .variants{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+  .card{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 2px 10px rgba(80,60,140,.06)}
+  .card-head{padding:10px 14px;background:#faf8ff;border-bottom:1px solid var(--line);font-weight:700;font-size:14px}
+  .card-head span{font-weight:400;color:var(--muted);font-size:12px;display:block;margin-top:2px}
+  .sheet{padding:14px;background:#fff}
+  .grow{background:linear-gradient(90deg,var(--purple),var(--pink));border-radius:12px;padding:12px;color:#fff;font-weight:700;text-align:center;font-size:14px;margin-top:12px}
+  .lbl{font-size:11px;color:var(--muted);margin:10px 0 5px}
+  .toggle{display:inline-flex;background:#F3F1FA;border-radius:999px;padding:3px}
+  .toggle span{font-size:12px;padding:4px 20px;border-radius:999px;color:var(--muted)}
+  .toggle .on{background:linear-gradient(90deg,var(--purple),var(--pink));color:#fff;font-weight:700}
+  .amount{border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:26px;font-weight:800;color:var(--purple)}
+  .inputrow{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+  .inputrow .ph{color:#9ca3af;font-size:13px;flex:1}
+  .fav{font-size:12px;font-weight:700;color:var(--purple)}
+  .fav.off{color:#c7c7d1}
+  .daterow{display:flex;align-items:center;gap:8px}
+  .datebox{flex:1;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+  .chip{white-space:nowrap;border-radius:999px;font-size:12px;padding:4px 11px}
+
+  /* 变体 A：轻柔描边 */
+  .A .chip.pin{background:#fff;border:1.5px solid var(--purple);color:#5b21b6;font-weight:700}
+  .A .chip.auto{background:#F4F0FF;border:1.5px solid #F4F0FF;color:#6d5f9a}
+  .A .datechip{background:#fff;border:1.5px solid var(--purple);color:var(--purple);font-weight:700;padding:6px 12px}
+  /* 变体 B：实心渐变收藏 */
+  .B .chip.pin{background:linear-gradient(90deg,var(--purple),var(--pink));color:#fff;font-weight:700;border:0}
+  .B .chip.auto{background:#F3F1FA;color:#6b7280;border:0}
+  .B .datechip{background:#F4F0FF;color:#5b21b6;font-weight:700;padding:6px 12px;border:0}
+  /* 变体 C：分组标签 */
+  .C .chip.pin{background:#fff;border:1.5px solid #E9E3FF;color:#5b21b6;font-weight:700}
+  .C .chip.auto{background:#fff;border:1.5px solid var(--line);color:#4b5563}
+  .C .datechip{background:linear-gradient(90deg,var(--purple),var(--pink));color:#fff;font-weight:700;padding:6px 12px;border:0}
+  .grouplabel{font-size:10px;color:#9aa0ae;align-self:center;padding:0 2px}
+  .glow{border-radius:10px;padding:6px 8px;background:#FBF9FF;border:1px dashed #e6e0ff}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+  th{background:#faf8ff;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>组件风格选择（3 个变体）</h1>
+  <div class="sub">金流 v0.5 · 记账快捷输入 · 生成于 2026-10-07 23:47 · 只比 chip 的样式，页面其它部分沿用现有风格，不会变</div>
+
+  <h2>三个变体（同一位置、不同表现）</h2>
+  <p class="note">同一屏里对比：★ = 我收藏的备注，浅色 = 系统按当前分类推荐的，右侧 = 日期行上的「同上次」chip（下图为未选中态）。</p>
+
+  <div class="variants">
+    <div class="card A">
+      <div class="card-head">变体 A · 轻柔描边<span>★ 收藏 = 白底紫描边；推荐 = 浅紫底无描边</span></div>
+      <div class="sheet">
+        <div class="toggle"><span class="on">支出</span><span>收入</span></div>
+        <div class="lbl">金额</div><div class="amount">¥ 0.00</div>
+        <div class="lbl">备注（可选）</div>
+        <div class="inputrow"><span class="ph">写点备注</span><span class="fav">＋收藏</span></div>
+        <div style="height:8px"></div>
+        <div class="chips">
+          <span class="chip pin">★ 早餐</span><span class="chip pin">★ 地铁</span>
+          <span class="chip auto">买菜</span><span class="chip auto">咖啡</span>
+        </div>
+        <div class="lbl">日期</div>
+        <div class="daterow"><div class="datebox">2026-10-07</div><span class="chip datechip">同上次 10-06</span></div>
+        <div class="grow">确认新增</div>
+      </div>
+    </div>
+
+    <div class="card B">
+      <div class="card-head">变体 B · 实心渐变收藏<span>★ 收藏 = 渐变填充白字；推荐 = 灰底</span></div>
+      <div class="sheet">
+        <div class="toggle"><span class="on">支出</span><span>收入</span></div>
+        <div class="lbl">金额</div><div class="amount">¥ 0.00</div>
+        <div class="lbl">备注（可选）</div>
+        <div class="inputrow"><span class="ph">写点备注</span><span class="fav">＋收藏</span></div>
+        <div style="height:8px"></div>
+        <div class="chips">
+          <span class="chip pin">★ 早餐</span><span class="chip pin">★ 地铁</span>
+          <span class="chip auto">买菜</span><span class="chip auto">咖啡</span>
+        </div>
+        <div class="lbl">日期</div>
+        <div class="daterow"><div class="datebox">2026-10-07</div><span class="chip datechip">同上次 10-06</span></div>
+        <div class="grow">确认新增</div>
+      </div>
+    </div>
+
+    <div class="card C">
+      <div class="card-head">变体 C · 分组标签<span>先说清哪些是收藏、哪些是推荐</span></div>
+      <div class="sheet">
+        <div class="toggle"><span class="on">支出</span><span>收入</span></div>
+        <div class="lbl">金额</div><div class="amount">¥ 0.00</div>
+        <div class="lbl">备注（可选）</div>
+        <div class="inputrow"><span class="ph">写点备注</span><span class="fav">＋收藏</span></div>
+        <div style="height:8px"></div>
+        <div class="chips">
+          <span class="grouplabel">常用</span>
+          <span class="chip pin">★ 早餐</span><span class="chip pin">★ 地铁</span>
+          <span class="grouplabel">本类</span>
+          <span class="chip auto">买菜</span><span class="chip auto">咖啡</span>
+        </div>
+        <div class="lbl">日期</div>
+        <div class="daterow"><div class="datebox">2026-10-07</div><span class="chip datechip">同上次 10-06</span></div>
+        <div class="grow">确认新增</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>「同上次」chip 的两个状态</h2>
+  <p class="note">点一下之后日期变成 10-06，chip 切到选中态（表示「当前日期就是这个」）。</p>
+  <div style="display:flex;gap:26px;flex-wrap:wrap">
+    <div style="border:1px solid var(--line);border-radius:14px;padding:14px;width:330px">
+      <div class="lbl" style="margin-top:0">未选中（日期 ≠ 上次日期）</div>
+      <div class="daterow"><div class="datebox">2026-10-07</div><span class="chip datechip" style="background:#fff;border:1.5px solid #8B5CF6;color:#8B5CF6">同上次 10-06</span></div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:14px;padding:14px;width:330px">
+      <div class="lbl" style="margin-top:0">选中（日期 = 上次日期）</div>
+      <div class="daterow"><div class="datebox">2026-10-06</div><span class="chip datechip" style="background:linear-gradient(90deg,#8B5CF6,#EC4899);color:#fff">✓ 同上次 10-06</span></div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:14px;padding:14px;width:330px">
+      <div class="lbl" style="margin-top:0">无历史账单 / 接口失败 → 隐藏</div>
+      <div class="daterow"><div class="datebox">2026-10-07</div></div>
+    </div>
+  </div>
+
+  <h2>长按 chip 时弹出（用系统弹窗，不新增界面）</h2>
+  <div style="border:1px solid var(--line);border-radius:14px;padding:14px;max-width:420px;background:#fafafa">
+    <div style="font-weight:700;font-size:14px;margin-bottom:6px">备注「早餐」</div>
+    <div style="border-top:1px solid var(--line);padding:8px 0;color:#5b21b6">取消收藏</div>
+    <div style="border-top:1px solid var(--line);padding:8px 0;color:#5b21b6">不再推荐</div>
+    <div style="border-top:1px solid var(--line);padding:8px 0;color:#6b7280">取消</div>
+  </div>
+
+  <h2>三个变体的差别一览</h2>
+  <table>
+    <tr><th></th><th>A 轻柔描边</th><th>B 实心渐变收藏</th><th>C 分组标签</th></tr>
+    <tr><td>收藏/推荐的区分度</td><td>中（靠描边）</td><td>高（渐变最抢眼）</td><td>高（有文字标签）</td></tr>
+    <tr><td>与现有风格一致度</td><td>最高（克制）</td><td>高（渐变本来就是主色）</td><td>中（多一行小字）</td></tr>
+    <tr><td>占用横向空间</td><td>小</td><td>小</td><td>略大（两个标签）</td></tr>
+    <tr><td>风险</td><td>收藏的 chips 不够醒目</td><td>渐变抢走「确认新增」按钮的注意力</td><td>窄屏上能看到的备注变少</td></tr>
+  </table>
+</div>
+</body>
+</html>

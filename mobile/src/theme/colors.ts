@@ -37,6 +37,10 @@ export interface ThemeColors {
   expense: string;
   /** 边框/分隔线。 */
   border: string;
+  /** 淡紫 chip 背景(自动推荐的常用备注)。 */
+  chipSoftBg: string;
+  /** 淡紫 chip 文字(自动推荐的常用备注)。 */
+  chipSoftText: string;
   /** 弹窗遮罩。 */
   overlay: string;
   /** 底部 Tab 背景。 */
@@ -57,6 +61,8 @@ export const lightColors: ThemeColors = {
   income: '#16A34A',
   expense: '#EF4444',
   border: '#EDE9F5',
+  chipSoftBg: '#F4F0FF',
+  chipSoftText: '#6D5F9A',
   overlay: 'rgba(20, 16, 36, 0.45)',
   tabBarBg: '#FFFFFF',
   tabInactive: '#9A93A8',
@@ -74,6 +80,9 @@ export const darkColors: ThemeColors = {
   income: '#4ADE80',
   expense: '#F87171',
   border: '#352D4A',
+  // 深色下用提亮的紫灰底 + 浅紫字(浅色主题的 #F4F0FF / #6D5F9A 在深色底上不可读)。
+  chipSoftBg: '#453A66',
+  chipSoftText: '#C9BEF0',
   overlay: 'rgba(0, 0, 0, 0.6)',
   tabBarBg: '#201A2E',
   tabInactive: '#8E86A2',

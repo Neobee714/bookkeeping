@@ -1,12 +1,12 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import csv
 import io
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -14,11 +14,22 @@ from app.core.date_utils import resolve_date_window
 from app.core.response import success_response
 from app.core.security import get_current_user
 from app.models.enums import CategoryEnum, TransactionType
+from app.models.note_preset import UserNotePreset
 from app.models.transaction import Transaction
 from app.models.user import User
-from app.schemas.transaction import TransactionCreateRequest, TransactionUpdateRequest
+from app.schemas.transaction import (
+    NotePresetDeleteResponse,
+    NotePresetRequest,
+    NotePresetResponse,
+    QuickInputsResponse,
+    TransactionCreateRequest,
+    TransactionUpdateRequest,
+)
 
 router = APIRouter(prefix='/transactions', tags=['transactions'])
+
+NOTE_PRESET_PINNED = 'pinned'
+NOTE_PRESET_HIDDEN = 'hidden'
 
 
 SHARK_CATEGORY_MAP: dict[str, CategoryEnum] = {
@@ -227,6 +238,169 @@ async def import_transactions(
     finally:
         text_stream.detach()
         await file.close()
+
+
+def _note_usage_in_window(
+    db: Session,
+    user_id: int,
+    window_start: date,
+    window_end: date,
+) -> dict[str, tuple[int, date]]:
+    """返回 {备注: (最近 days 天内使用次数, 最近使用日期)}，仅统计非空备注。"""
+    stmt = (
+        select(
+            func.trim(Transaction.note),
+            func.count(),
+            func.max(Transaction.date),
+        )
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.note.is_not(None),
+            func.trim(Transaction.note) != '',
+            Transaction.date >= window_start,
+            Transaction.date <= window_end,
+        )
+        .group_by(func.trim(Transaction.note))
+    )
+    return {
+        note: (count, last_used)
+        for note, count, last_used in db.execute(stmt).all()
+    }
+
+
+@router.get('/quick-inputs')
+def get_quick_inputs(
+    days: int = Query(default=90, ge=1, le=365),
+    per_category: int = Query(default=6, ge=1, le=20),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    today = date.today()
+    # 窗口 = [today-(days-1), today]，含今天共 days 个自然日
+    window_start = today - timedelta(days=days - 1)
+
+    last_item = db.scalars(
+        select(Transaction)
+        .where(Transaction.user_id == current_user.id)
+        .order_by(Transaction.created_at.desc(), Transaction.id.desc())
+        .limit(1)
+    ).first()
+
+    preset_rows = db.execute(
+        select(UserNotePreset.note, UserNotePreset.kind)
+        .where(UserNotePreset.user_id == current_user.id)
+        .order_by(UserNotePreset.created_at.desc(), UserNotePreset.id.desc())
+    ).all()
+    usage = _note_usage_in_window(
+        db=db,
+        user_id=current_user.id,
+        window_start=window_start,
+        window_end=today,
+    )
+
+    pinned: list[dict] = []
+    excluded_notes: set[str] = set()
+    for note, kind in preset_rows:
+        excluded_notes.add(note)
+        if kind != NOTE_PRESET_PINNED:
+            continue
+        count, last_used = usage.get(note, (0, None))
+        pinned.append(
+            {'note': note, 'count': count, 'last_used': last_used.isoformat() if last_used else None}
+        )
+
+    grouped = db.execute(
+        select(
+            func.trim(Transaction.category),
+            func.trim(Transaction.note),
+            func.count(),
+            func.max(Transaction.date),
+        )
+        .where(
+            Transaction.user_id == current_user.id,
+            Transaction.note.is_not(None),
+            func.trim(Transaction.note) != '',
+            Transaction.date >= window_start,
+            Transaction.date <= today,
+        )
+        .group_by(func.trim(Transaction.category), func.trim(Transaction.note))
+        .having(func.count() >= 2)
+    ).all()
+
+    by_category: dict[str, list[tuple[int, date, str]]] = {}
+    for category, note, count, last_used in grouped:
+        if note in excluded_notes:
+            continue
+        by_category.setdefault(category, []).append((count, last_used, note))
+
+    serialized_categories: dict[str, list[dict]] = {}
+    for category, entries in by_category.items():
+        entries.sort(key=lambda entry: (-entry[0], -entry[1].toordinal(), entry[2]))
+        serialized_categories[category] = [
+            {'note': note, 'count': count, 'last_used': last_used.isoformat()}
+            for count, last_used, note in entries[:per_category]
+        ]
+
+    data = QuickInputsResponse(
+        last_date=last_item.date if last_item else None,
+        pinned=pinned,
+        by_category=serialized_categories,
+    )
+    return success_response(data=data.model_dump(mode='json'))
+
+
+@router.post('/note-presets')
+def upsert_note_preset(
+    payload: NotePresetRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    item = db.scalars(
+        select(UserNotePreset).where(
+            UserNotePreset.user_id == current_user.id,
+            UserNotePreset.note == payload.note,
+        )
+    ).first()
+
+    if item is None:
+        item = UserNotePreset(user_id=current_user.id, note=payload.note, kind=payload.kind)
+        db.add(item)
+    else:
+        item.kind = payload.kind
+
+    db.commit()
+    db.refresh(item)
+    data = NotePresetResponse(note=item.note, kind=item.kind)
+    return success_response(data=data.model_dump(mode='json'), message='保存成功')
+
+
+@router.delete('/note-presets')
+def delete_note_preset(
+    note: str = Query(min_length=1, max_length=255),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    normalized = note.strip()
+    if not normalized:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='备注不能为空',
+        )
+
+    item = db.scalars(
+        select(UserNotePreset).where(
+            UserNotePreset.user_id == current_user.id,
+            UserNotePreset.note == normalized,
+        )
+    ).first()
+
+    deleted = item is not None
+    if item is not None:
+        db.delete(item)
+        db.commit()
+
+    data = NotePresetDeleteResponse(note=normalized, deleted=deleted)
+    return success_response(data=data.model_dump(mode='json'))
 
 
 @router.put('/{transaction_id}')
