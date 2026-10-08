@@ -140,6 +140,17 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh [--purge]
 
 > 说明：首次自动部署耗时较长属预期（服务器重建镜像）。后续仅改前端/文档的提交会明显更快；只改文档的提交不触发任何重建。
 
+**「按变更目录」判定验证（只改 docs/ 的提交，生产实测）**：提交 `5ca0a7b`（仅 `docs/v0.6/*.md`）被处理为：
+
+```
+[16:05:03] 变更判定：backend=否  frontend=否  nginx=否  ci=否
+[16:05:03] 只记录不动作（mobile/、docs/ 等）： docs/v0.6/CHECKLIST.md docs/v0.6/DEPLOY-RELEASE.md
+[16:05:03] 本轮不需要部署（不涉及 backend/ frontend/ deploy/nginx.conf）
+[16:05:03] 完成：无需部署，5ca0a7b 已标记为已处理（未重启任何服务）
+```
+
+后端容器 `StartedAt` 前后完全一致（`2026-10-08T08:02:50Z`），线上 `/health` 仍 200 —— **零抖动** ✅
+
 ### 推送方式说明（本机无法直连 GitHub）
 
 本机（Windows 与 WSL）**直连 GitHub 超时**，用户代理仅监听 `127.0.0.1:10808`（WSL 为 NAT 模式，无法访问宿主机回环）。实际采用：
