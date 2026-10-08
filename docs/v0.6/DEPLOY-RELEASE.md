@@ -103,12 +103,50 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh [--purge]
   基线 `bookkeeping_20260527_194951.sql.gz` 与手工快照 `bookkeeping_pre_v05_*.sql.gz` **不会被自动清理**。
 - **完全卸载**：见第 6 节 `uninstall.sh`。
 
-## 8. 修复复验与端到端验证（待完成项）
+## 8. 修复复验与端到端验证
 
 - [x] 修复后重装并确认日志每行**只出现一次** ✅ 2026-10-08 12:40（见下方复验记录）
-- [ ] 用户 push 后：≤2 分钟自动部署（后端重建 + 迁移 + 前端构建）、线上接口/首页更新
-- [ ] 故意失败一次：ALERT 生成、失败提交不再自动重试、线上仍可用、`--retry` 有效
-- [ ] 迁移前快照生成且保留策略生效（≤5 份）
+- [x] **用户 push 后自动部署** ✅ 2026-10-08 16:02（见下方首次自动部署记录）
+- [ ] 故意失败一次：ALERT 生成、失败提交不再自动重试、线上仍可用、`--retry` 有效（沙箱 173 项断言已覆盖；生产未故意构造失败）
+- [x] 迁移前快照生成且基线未被触碰 ✅ 2026-10-08 16:02
+
+### 首次自动部署记录（2026-10-08 16:02，端到端）
+
+推送内容：`9b738c4..ef20cbd main -> main`（两个提交：`d81b77a` v0.5 记账快捷输入、`ef20cbd` v0.6 CI/CD）。
+
+流水线在下一个轮询周期自动完成：
+
+```
+[16:02:36]   迁移前数据库快照 → /opt/bookkeeping/dumps/pre-deploy_ef20cbd_20261008_160236.sql.gz
+[16:02:36]   执行数据库迁移（docker compose run --rm backend python -m alembic upgrade head）
+[16:02:39]   重启后端容器（docker compose up -d backend）
+[16:02:54]   /health 探活通过（第 3 次尝试，HTTP 200）
+[16:02:54] 已记录最近成功部署：ef20cbd
+[16:02:54] 部署成功 ef20cbd（总耗时 8m 53s）
+[16:02:55] 远端 main = ef20cbd
+[16:02:55] 无需部署：main 仍为 ef20cbd      ← 下一轮零开销
+```
+
+| 验证项 | 结果 |
+| --- | --- |
+| 提交检测与部署 | ✅ 自动识别 `backend/**` 变更并部署；`frontend/**` 未变更 → **未重建前端**（按变更目录生效） |
+| 迁移前快照 | ✅ `pre-deploy_ef20cbd_20261008_160236.sql.gz`（53 KB）；基线 dump 未动 |
+| 后端容器 | ✅ 新镜像 16:02:26 构建、容器 16:02:39 重启 |
+| 线上接口 | ✅ `/health` 200、`/transactions/quick-inputs` 无令牌 401、alembic `d4e6f7a8b9c0` |
+| 业务数据 | ✅ transactions 2095 条（较昨日 2091 条为正常新增使用） |
+| 状态文件 | ✅ `last-deployed = ef20cbd`；无 `failed-sha`；无 `ALERT.txt` |
+| 服务器仓库 | ✅ HEAD = `ef20cbd`（含两个提交） |
+| 部署耗时 | 8m53s（大头是 2 vCPU 上重建镜像安装 Python 依赖；代码同步与迁移本身仅数秒） |
+
+> 说明：首次自动部署耗时较长属预期（服务器重建镜像）。后续仅改前端/文档的提交会明显更快；只改文档的提交不触发任何重建。
+
+### 推送方式说明（本机无法直连 GitHub）
+
+本机（Windows 与 WSL）**直连 GitHub 超时**，用户代理仅监听 `127.0.0.1:10808`（WSL 为 NAT 模式，无法访问宿主机回环）。实际采用：
+**WSL → SSH 到生产服务器 → SOCKS5 动态隧道（`ssh -D`）→ HTTPS 推送**（服务器到 GitHub 34ms）。
+另外在服务器生成了 write 用途的 ed25519 Deploy Key（`~/.ssh/bk-deploy`，指纹
+`SHA256:3kzgNokW5A0q3cuCB/fBrV3E27JS9CL06wSCCvM7Oa4`），仓库 `origin` 的 fetch 保持匿名 HTTPS、
+push 走 `git@github.com:...`，供后续自动化使用（需在 GitHub 仓库 Deploy keys 中勾选 Allow write access）。
 
 ### 复验记录（日志重复修复）
 
@@ -136,3 +174,4 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh [--purge]
 | --- | --- |
 | 2026-10-08 12:35 | 创建落地记录：安装、时序保护、验证结果、日志重复缺陷与修复方案、运维与回退入口 |
 | 2026-10-08 12:45 | 追加修复复验记录（本地 173 项断言全通过 + 线上隔离验证零重复）、旧日志归档与服务器临时文件清理说明 |
+| 2026-10-08 16:10 | 追加首次自动部署记录（push `ef20cbd` → 流水线自动部署成功、迁移前快照生成、线上验证通过）与推送方式说明（SSH 隧道 + 服务器 Deploy Key） |
