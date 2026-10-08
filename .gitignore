@@ -43,3 +43,7 @@ mobile/vendor/
 
 # Local temp scripts (root only; frontend/scripts must be tracked)
 /scripts/
+
+# Ops docs containing the production host / SSH key path (this repo is public)
+docs/*/DEPLOY-VPS-*.md
+deploy/*.log

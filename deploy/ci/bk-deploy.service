@@ -1,0 +1,33 @@
+[Unit]
+Description=金流自动部署（bookkeeping CI/CD：拉取 main 并按变更部署后端/前端/nginx）
+Documentation=file:///opt/bookkeeping/ci/README.md
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+ConditionPathExists=/opt/bookkeeping/ci/deploy.sh
+
+[Service]
+# oneshot：由 bk-deploy.timer 每 2 分钟触发一次；不做常驻进程
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/bookkeeping/ci
+# systemd 的 PATH 很干净，显式给出；HOME 供 npm/git 使用
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOME=/home/ubuntu
+# 日志由 systemd 的 append: 负责落盘，脚本不要再自己写一遍。
+# 必须显式声明：systemd（255 实测）把 fd1 接到 pipe 上，脚本内 readlink / `[ -ef ]` 都探测不出
+# "stdout 就是这个日志文件"，不声明就会每行写两遍（脚本默认 LOG_TO_FILE=1）。
+Environment=BK_DEPLOY_LOG_TO_FILE=0
+ExecStart=/opt/bookkeeping/ci/deploy.sh
+# 日志归集到文件（install.sh 已创建并 chown ubuntu:ubuntu）
+StandardOutput=append:/var/log/bk-deploy.log
+StandardError=append:/var/log/bk-deploy.log
+SyslogIdentifier=bk-deploy
+# 一轮部署最长 30 分钟（首次构建前端依赖可能较久）；超时会被 SIGTERM，脚本会记 ALERT
+TimeoutStartSec=1800
+# 别和线上服务抢 CPU（2 vCPU）
+Nice=5
+# 有意不设 Restart=：失败就停手，由下一轮按"失败提交不再自动重试"的语义处理
+
+[Install]
+WantedBy=multi-user.target

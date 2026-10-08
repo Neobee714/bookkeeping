@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>需求理解确认 · 推送即自动部署（CI/CD）v0.6</title>
+<style>
+  :root{--fg:#1f2328;--muted:#6b7280;--line:#d0d7de;--bg:#f6f8fa}
+  *{box-sizing:border-box}
+  body{margin:0;padding:32px;font:15px/1.6 system-ui,"Segoe UI","Microsoft YaHei",sans-serif;color:var(--fg);background:#fff}
+  .wrap{max-width:1020px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+  section{margin:0 0 28px}
+  h2{font-size:15px;margin:0 0 10px;padding-left:8px;border-left:3px solid #57606a}
+  .say{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:16px 18px;font-size:17px}
+  .say b{color:#0969da}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:var(--bg);font-weight:600}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .step{border:1px dashed #8c959f;border-radius:6px;padding:8px 12px;background:#fafbfc;font-size:13px}
+  .arrow{color:var(--muted)}
+  pre{background:#0d1117;color:#c9d1d9;border-radius:8px;padding:12px 14px;overflow:auto;font-size:12.5px;line-height:1.55}
+  pre .c{color:#8b949e}
+  pre .g{color:#7ee787}
+  pre .y{color:#e3b341}
+  ul{margin:6px 0;padding-left:20px}
+  li{margin:2px 0}
+  .q{border:1px solid var(--line);border-left:3px solid #bf8700;border-radius:6px;padding:10px 14px;margin-bottom:8px}
+  .opt{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:6px 6px 0 0;font-size:13px;color:var(--muted)}
+  .opt.rec{border-color:#8b5cf6;color:#4c1d95;background:#f4f0ff;font-weight:600}
+  code{background:var(--bg);padding:1px 4px;border-radius:4px;font-size:13px}
+  .tip{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:8px;margin-top:8px}
+  .badge{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted);margin-left:6px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>需求理解确认</h1>
+  <div class="sub">推送即自动部署（CI/CD）· v0.6 · 生成于 2026-10-08 01:35 · 这是理解草图（本次无界面，用流程/命令/数据代替线框）</div>
+
+  <section>
+    <h2>一句话理解</h2>
+    <div class="say">我理解你要的是：<b>你把代码提交（上传）到 GitHub 之后，VPS 自己定时去拉取，自动重建后端、跑数据库迁移、重建并发布 Web 前端；部署失败就停下来报警等你处理。</b>不需要你在服务器上手动操作。</div>
+  </section>
+
+  <section>
+    <h2>目标与场景</h2>
+    <ul>
+      <li><b>谁</b>：你自己开发并上传代码；服务器无人值守。</li>
+      <li><b>什么时候用</b>：每次改完代码提交到 <code>main</code> 分支之后。</li>
+      <li><b>解决什么问题</b>：现在每次发布都要在本机打包 → scp 上传 → 手工 rsync / 重建 / 跑迁移（本次 v0.5 我就是这么发的），步骤多、容易漏。</li>
+      <li><b>不解决</b>：Android APK（服务器只有 2 vCPU / 1.9G 内存，且无 JDK/Android SDK，构建 APK 仍在你本机做，OTA 仍走 <code>app.xyvora.me</code>）。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>核心流程</h2>
+    <div class="flow">
+      <div class="step">1. 你 push 到 GitHub <code>main</code></div><span class="arrow">→</span>
+      <div class="step">2. VPS 每 2 分钟 <code>git fetch</code></div><span class="arrow">→</span>
+      <div class="step">3. 有新提交？比对变更目录</div><span class="arrow">→</span>
+      <div class="step">4a. backend/ 变了 → 重建容器 + 跑迁移<br>4b. frontend/ 变了 → npm ci(按需) + vite build + 发布<br>4c. nginx.conf 变了 → nginx -t 通过才 reload</div><span class="arrow">→</span>
+      <div class="step">5. 健康检查 → 记录成功（或失败报警并停手）</div>
+    </div>
+    <div class="tip">没有新提交时整轮几乎零开销（一次 git fetch，约 0.3 秒），不会反复重建。</div>
+  </section>
+
+  <section>
+    <h2>部署判定表（改哪里 → 做什么）</h2>
+    <table>
+      <tr><th>变更路径</th><th>自动动作</th><th>耗时量级</th></tr>
+      <tr><td><code>backend/**</code></td><td>备份 <code>.env</code> → rsync 源码 → <code>docker compose build backend</code> → <code>alembic upgrade head</code>（迁移前自动存一份数据库快照）→ 重启容器 → <code>/health</code> 探活</td><td>1.5–3 分钟（首次构建拉依赖更久）</td></tr>
+      <tr><td><code>frontend/**</code></td><td>rsync 源码（保留 <code>node_modules</code>）→ 若 <code>package-lock.json</code> 变了才 <code>npm ci</code> → <code>vite build</code>（<code>PUBLIC_HOST=api.bookkeeping.neobee.top</code>）→ 发布到 <code>/var/www/frontend</code></td><td>首次含 npm ci 约 3–6 分钟；后续约 30 秒</td></tr>
+      <tr><td><code>deploy/nginx.conf</code></td><td>复制到 <code>sites-available</code> → <code>nginx -t</code> 通过才 reload（不通过就回退配置）</td><td>秒级</td></tr>
+      <tr><td><code>mobile/**</code>、<code>docs/**</code></td><td><b>不部署</b>（App 走 APK/OTA；文档不影响运行）</td><td>—</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>命令样例（你在本机/我都可以用）</h2>
+    <div class="cols">
+      <div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">日常</div>
+        <pre><span class="c"># 当前部署状态（最近成功/失败、有没有待部署提交）</span>
+sudo /opt/bookkeeping/ci/deploy.sh --status
+
+<span class="c"># 不想等下一个 2 分钟周期，立刻部署一次</span>
+sudo systemctl start bk-deploy.service
+
+<span class="c"># 看部署日志</span>
+tail -f /var/log/bk-deploy.log
+journalctl -u bk-deploy -n 50 --no-pager</pre>
+      </div>
+      <div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">异常处理</div>
+        <pre><span class="c"># 某次提交部署失败后，修好代码、重新 push 即可；
+# 想重试同一个提交：</span>
+sudo /opt/bookkeeping/ci/deploy.sh --retry
+
+<span class="c"># 临时停掉自动部署（比如你在服务器上手动调试）</span>
+sudo systemctl disable --now bk-deploy.timer
+
+<span class="c"># 恢复自动部署</span>
+sudo systemctl enable --now bk-deploy.timer</pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>数据样例（服务器上的状态文件与日志）</h2>
+    <div class="cols">
+      <div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">/opt/bookkeeping/ci/state/</div>
+        <pre><span class="c"># last-deployed.txt —— 最近成功部署的提交</span>
+9b738c4fcddb4ed1ab72d3c9cb4155a115689ecb
+
+<span class="c"># failed-sha.txt —— 部署失败、暂停重试的提交（成功后自动清空）</span>
+（不存在 = 一切正常）
+
+<span class="c"># ALERT.txt —— 失败时写给人看的一行提示</span>
+2026-10-08 02:10 部署失败：backend 构建失败（提交 abc1234），
+已停止自动重试，请查看 /var/log/bk-deploy.log</pre>
+      </div>
+      <div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">/var/log/bk-deploy.log</div>
+        <pre><span class="c">[2026-10-08 02:04:11] 无需部署：main 仍为 9b738c4</span>
+[2026-10-08 02:06:12] <span class="g">发现新提交 4c1d9ab（backend/、frontend/）</span>
+[2026-10-08 02:06:13] backend：同步源码 → 构建镜像…
+[2026-10-08 02:08:40] backend：迁移前快照 dumps/pre-deploy_4c1d9ab.sql.gz
+[2026-10-08 02:08:52] backend：alembic 已是 head（无待执行迁移）
+[2026-10-08 02:09:05] backend：容器已重启，/health 200
+[2026-10-08 02:09:06] frontend：package-lock 未变，跳过 npm ci
+[2026-10-08 02:09:38] frontend：已发布 /var/www/frontend
+[2026-10-08 02:09:38] <span class="g">部署成功 4c1d9ab（总耗时 3m27s）</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>我的假设（不对请直接说）</h2>
+    <ul>
+      <li>仓库是 <b>公开</b> 的（已确认），所以 VPS 拉代码 <b>不需要任何凭据</b>；我不会在服务器上放你的 GitHub 令牌。</li>
+      <li>部署脚本放在 <b>仓库之外</b>（<code>/opt/bookkeeping/ci/</code>），不随代码自更新 —— 避免"仓库被改写就自动执行任意脚本"。仓库里存一份副本仅供版本管理。</li>
+      <li>只跟 <code>main</code> 分支；其他分支（含 <code>codex/*</code>）不部署。</li>
+      <li>轮询间隔 <b>2 分钟</b>（可改），部署过程用文件锁互斥，不会两轮撞车。</li>
+      <li>失败语义：<b>记录失败提交并停止重试</b>（避免每 2 分钟反复折腾），日志 + <code>ALERT.txt</code> 报警；你处理后 <code>--retry</code> 或 push 新提交。</li>
+      <li>迁移自动执行，但<b>执行前自动存一份数据库快照</b>（保留最近 5 份），以便回退。</li>
+      <li>报警只落到日志/文件（服务器未配邮件、微信等通道）；如果需要外部通知，下个版本再加。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>暂不做</h2>
+    <ul>
+      <li>不在服务器上构建 APK（无 JDK/SDK，内存也不够）——APK 仍由你本机构建后推 OTA。</li>
+      <li>不用 GitHub Actions（你选的是 VPS 轮询；也不需要把私钥存到 GitHub）。</li>
+      <li>不做自动回滚（你选的是"失败停手 + 人工处理"）；也不做 pytest 门禁。</li>
+      <li>不动数据库里的业务数据，也不重建 nginx 站点/证书。</li>
+      <li>不做多环境（测试/预发）：只有这一套生产环境。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>设计确认（已答，记录在此）</h2>
+    <div class="q">
+      <b>部署范围</b>：<span class="opt rec">后端 + Web 前端 + 自动跑迁移 ✅</span>
+    </div>
+    <div class="q">
+      <b>触发方式</b>：<span class="opt rec">VPS 定时轮询 ✅</span>
+      <span class="opt">GitHub Actions 触发</span>
+      <span class="opt">轮询 + 立即部署命令（本次已含）</span>
+    </div>
+    <div class="q">
+      <b>测试门禁</b>：<span class="opt rec">不加门禁，直接部署 ✅</span>
+      <span class="opt">后端 pytest 门禁</span>
+    </div>
+    <div class="q">
+      <b>失败处理</b>：<span class="opt rec">停下来报警，人工处理 ✅</span>
+      <span class="opt">自动回滚上一版</span>
+    </div>
+    <div class="tip">还剩一个开放项：<b>APK 2.2.0 仍未构建</b>（v0.5 的成果，本机缺 JDK/Android SDK）。这不属于本次 CI/CD 范围，等你有空决定（我自动装工具链构建 / 你用 Android Studio 构建）。</div>
+  </section>
+</div>
+</body>
+</html>
