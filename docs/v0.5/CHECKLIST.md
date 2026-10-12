@@ -42,13 +42,26 @@
 ## 阶段六：验收与发布
 - [x] rel-1：版本号升至 2.2.0 / versionCode 220（`mobile/android/app/build.gradle`）✅ 2026-10-08 00:28
 - [x] rel-2：后端镜像重建 + 迁移执行 + 线上接口自测（alembic → `d4e6f7a8b9c0`、表已建、账单 2091 条未变、带令牌实测三个接口 + 参数边界全过；详见 `docs/v0.5/DEPLOY-RELEASE.md`）✅ 2026-10-08 01:10
-- [ ] rel-3：release APK 构建通过 + OTA 推送 + 真机验证两个快捷功能 —— **状态：用户 2026-10-08 17:3x 要求"暂停构建"（当前无 APK 产出、未发布）**
-  - 过程：16:45 用户先决定暂缓 → 17:0x 确认"OTA 只分发 APK、无热更新"后批准构建 → 17:2x 子 Agent 定位并解决 MAX_PATH 问题后重新构建 → **17:3x 用户要求暂停**，已中断构建并结束全部构建进程（无残留），未产出 APK、未发布。
-  - 恢复方式：`cd C:\bk\mobile\android` 后按第 3 节命令跑 `assembleRelease`（工具链、Gradle 依赖缓存、`app/.cxx` 部分原生编译产物均已保留 → 比首次冷启动快）。
-  - ⚠️ 注意：`C:\bk` 是为绕开 MAX_PATH 建的目录联接（junction，指向工程根，仓库之外）。**若要删除必须用 `cmd /c rmdir C:\bk`**（PowerShell 的 `Remove-Item` 作用于 junction 有删除目标目录内容的风险）。
-  - 现状：App 侧代码（同上次日期 chip / 常用备注 chips / 收藏与长按管理）已随提交 `d81b77a` 推到 GitHub `main`，后端已上线；**手机端仍是 2.1.2，等 APK 发布后即可看到新功能**。
-  - 已就绪（构建成本已大幅降低）：工具链已装好 —— JDK 17 `C:\Users\13212\tools\jdk-17`、Node 24 `C:\Users\13212\tools\node`、SDK `C:\Users\13212\AppData\Local\Android\Sdk`（platform 37.0 / build-tools 37.0.0 / NDK 28.2.13676358 / cmake 3.22.1）、Gradle 9.4.1 已下载；Gradle 代理写在用户级 `~/.gradle/gradle.properties`（不污染仓库）。
-  - 已排除的两个坑：① 构建缓存残留已不存在的 `F:\Work\...` 绝对路径（`autolinking.json`）；② **Windows 260 字符路径上限**（工程路径比旧的 `F:` 盘长 12 字符，导致 CMake `mkdir` 路径达 282 字符而失败）→ 用 `C:\bk` 联接缩短前缀解决（详见 `docs/v0.5/DEPLOY-RELEASE.md` 第 3 节）。
-  - 发布前置已核对：`/opt/bookkeeping/distribute/{publish.sh,gen-index.sh}` 在位、`sudo` 免密、`/var/www` 剩余 28GB；旧包基线 `latest.apk` SHA-256 = `e0ecc64c684e01d6716657475ed28fe8fddffc56acca500b28f872afa3011afb`（2.1.2 / 76,728,113 字节），发布后须与新包不同。
-  - 通道说明：App 只读 `https://app.xyvora.me/bookkeeping/info.json`（`mobile/src/config.ts`），**后端 `/app-updates/apk` 通道客户端从未实现消费**（实测其 APK 目录为空、返回 `has_update:false`）→ 本次只发静态站；如需归档可另用管理员账号 POST 到后端通道。
+- [x] rel-3a：**release APK 构建通过**（2026-10-12 18:06）✅ 2026-10-12 18:10
+  - 产物：`mobile\android\app\build\outputs\apk\release\app-release.apk`，**76,738,337 字节**，
+    SHA-256 `ACBF2DF3319EBDE8FA73903FF5B1ECB920CC446471122A1BA8B3C30E836F438A`，构建耗时 7m20s（`BUILD SUCCESSFUL`）。
+  - 主 Agent 独立复核（自己算哈希 + 自己跑工具，非采信子 Agent 结论）：`aapt2 dump badging` → `com.neobee.bookkeeping` /
+    `versionCode 220` / `versionName 2.2.0` / `targetSdk 36` / 4 个 ABI（arm64-v8a、armeabi-v7a、x86、x86_64）；
+    `apksigner verify -v --print-certs` → `Verifies`、v2 方案有效、`CN=Neobee`、证书 SHA-256 `d8d8202e…f6c06c`
+    与 `keystore/bookkeeping-release.keystore` 中 `bookkeeping` 别名指纹**逐位一致**（同一把发布钥匙，可覆盖安装）。
+  - 说明：仅 v2 签名（无 v1）→ Android 6 及以下无法安装；本项目 `minSdk 24`，刚好安全（与上一版行为一致）。
+- [x] rel-3b：**OTA 发布到 `app.xyvora.me`**（2026-10-12 18:14）✅ 2026-10-12 18:14
+  - 上传包 SHA-256 与本地构建产物逐位一致后才发布（防止上传损坏）。
+  - `info.json` → `version 2.2.0` / `size 76738337` / `updatedAt 2026-10-12T10:14:02Z`；
+    `latest.apk` SHA-256 = `acbf2df3…f438a`（已由旧包 `e0ecc64c…` 换新）；新增归档 `bookkeeping-2.2.0.apk`，
+    旧版 `bookkeeping-2.1.2.apk` 保留（可回退）。
+  - 对外可达性：`info.json` 200 `application/json`、`latest.apk` 200/206 `application/vnd.android.package-archive`、
+    两个版本归档 200、下载页 200；下载页展示名按用户要求设为 **拾光**。
+  - 发布命令：`sudo bash /opt/bookkeeping/distribute/publish.sh <apk> 2.2.0 --app bookkeeping --name "拾光" --desc "双人记账" --changelog "…"`。
+- [ ] rel-3c：**真机验证**（用户在手机上确认更新提示出现、安装后「同上次」日期 chip 与常用备注 chips 工作正常）
+  - 预期路径：打开 App → 启动静默检查 `info.json` → 因 `2.2.0 > 2.1.2` 弹更新窗 → 「立即更新」经系统 DownloadManager 下载安装；
+    也可在「我的」页手动检查更新。
+  - ⚠️ 已知不一致（待用户决定）：**APK 内置应用名是「时光」**（`mobile/android/app/src/main/res/values/strings.xml`
+    字节为 `U+65F6 U+5149`，`aapt2` 读出 `application-label:'时光'`），而下载页展示名本次按用户要求用「拾光」。
+    若希望手机桌面也显示「拾光」，需改 `strings.xml` 后在下一个版本重新构建发布（缓存已热，约 7 分钟）。
 - [ ] rel-4：整体验收（对照 REQ.md 第 4 章逐条勾选）

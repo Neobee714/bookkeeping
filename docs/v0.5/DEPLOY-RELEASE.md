@@ -48,16 +48,28 @@
   （只删新建的空表 `user_note_presets`，不影响业务数据）。
 - 数据回滚：使用第 1 节表格里那份迁移前 dump。
 
-## 2. App 发布（**暂缓** —— 用户 2026-10-08 决定暂不构建 APK）
+## 2. App 发布（**已完成** —— 2026-10-12 18:14 发布 2.2.0 到 OTA）
 
-- 版本号已改好：`mobile/android/app/build.gradle` → `versionCode 220` / `versionName "2.2.0"`。
-- 签名链路完整：`keystore/release-signing.properties`（4 个字段齐全）+ `build.gradle` release 已接。
+| 项 | 值 |
+| --- | --- |
+| 版本 | `versionCode 220` / `versionName "2.2.0"`（`mobile/android/app/build.gradle`） |
+| 产物 | `mobile/android/app/build/outputs/apk/release/app-release.apk`，**76,738,337 字节** |
+| SHA-256 | `ACBF2DF3319EBDE8FA73903FF5B1ECB920CC446471122A1BA8B3C30E836F438A` |
+| 构建 | `BUILD SUCCESSFUL in 7m 20s`（2026-10-12 18:06，缓存已热） |
+| 签名 | v2 方案有效、`CN=Neobee`、证书 SHA-256 `d8d8202e…f6c06c`（与 keystore 中 `bookkeeping` 别名指纹逐位一致） |
+| 包信息 | `com.neobee.bookkeeping`；4 个 ABI（arm64-v8a / armeabi-v7a / x86 / x86_64）；targetSdk 36 |
+| OTA | `app.xyvora.me`：`info.json` = 2.2.0、`latest.apk` SHA-256 同构建产物、新增归档 `bookkeeping-2.2.0.apk`（2.1.2 保留可回退） |
+| 下载页展示名 | **拾光**（按用户要求；注意 APK 内置名为「时光」，见第 3 节末尾的说明） |
 
-## 3. App 构建工具链与 APK 现状（2026-10-08 更新）
+发布流程（可复现）：构建 → 本地 `aapt2 dump badging` + `apksigner verify` 复核 → `scp` 上传 →
+校验上传包 SHA-256 与本地一致 → `sudo bash /opt/bookkeeping/distribute/publish.sh <apk> 2.2.0 --app bookkeeping --name "拾光" --desc "双人记账" --changelog "…"` →
+回验 `info.json` / `latest.apk` / 归档 / 下载页可达性。
+发布前基线（用于确认真的换包）：旧 `latest.apk` SHA-256 = `e0ecc64c684e01d6716657475ed28fe8fddffc56acca500b28f872afa3011afb`（2.1.2 / 76,728,113 字节）。
 
-**结论：用户决定暂缓发布 APK（"暂时不要APK"，2026-10-08 16:45）**，因此 2.2.0 未构建、未推 OTA，
-`app.xyvora.me` 上仍是 **2.1.2**：手机端暂时看不到本次新增的两个快捷功能（后端已就绪，旧 App 不受影响）。
-App 侧代码已随提交 `d81b77a` 推到 GitHub `main`，只等构建发布。
+## 3. App 构建工具链（2026-10-08 建立，2026-10-12 首次成功使用）
+
+> 历史过程：2026-10-08 用户先决定暂缓（"暂时不要APK"）→ 同日批准构建 → 同日在用户要求下暂停 →
+> **2026-10-12 恢复构建并成功**（工具链、Gradle 依赖缓存、`app/.cxx` 原生产物均已保留，恢复后单轮 7m20s 完成）。
 
 原始阻塞情况（2026-10-08 01:00 实测）：本机无 `java`、无 Android Studio、`local.properties` 指向的 SDK 目录不存在、无 `.gradle` 缓存 → 当时无法构建。
 
@@ -160,4 +172,5 @@ curl -s https://app.xyvora.me/bookkeeping/info.json | head -20
 | 2026-10-08 01:10 | 创建发布记录（后端增量上线 + 线上验证 + 回滚说明） |
 | 2026-10-08 01:14 | 追加服务器巡检记录与 3 项待办 |
 | 2026-10-08 16:50 | 更新 APK 现状：用户决定**暂缓发布 2.2.0**；补记已装好的构建工具链与已排除的 F: 盘缓存坑；两项待办（残留失败单元、DeepSeek 密钥）标记完成 |
+| 2026-10-12 18:20 | **2.2.0 构建并发布完成**：APK 76,738,337 字节 / SHA-256 `ACBF2DF3…F438A`，签名与 keystore 指纹逐位一致；已发 OTA 至 `app.xyvora.me`（`info.json` = 2.2.0、`latest.apk` 换新、2.1.2 归档保留）；补齐发布流程与校验记录；另记录「APK 内置名『时光』vs 下载页展示名『拾光』」的不一致待用户决定 |
 
