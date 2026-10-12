@@ -42,8 +42,13 @@
 ## 阶段六：验收与发布
 - [x] rel-1：版本号升至 2.2.0 / versionCode 220（`mobile/android/app/build.gradle`）✅ 2026-10-08 00:28
 - [x] rel-2：后端镜像重建 + 迁移执行 + 线上接口自测（alembic → `d4e6f7a8b9c0`、表已建、账单 2091 条未变、带令牌实测三个接口 + 参数边界全过；详见 `docs/v0.5/DEPLOY-RELEASE.md`）✅ 2026-10-08 01:10
-- [ ] rel-3：release APK 构建通过 + OTA 推送 + 真机验证两个快捷功能 —— **用户 2026-10-08 16:45 决定暂缓（"暂时不要APK"）**
-  - 现状：App 侧代码（同上次日期 chip / 常用备注 chips / 收藏与长按管理）已随提交 `d81b77a` 推到 GitHub `main`，后端也已上线；**但手机上的 App 仍是 2.1.2，暂时看不到新功能**，需等 APK 发布。
-  - 已就绪（后续构建成本大幅降低）：工具链已装好 —— JDK 17 `C:\Users\13212\tools\jdk-17`、Node 24 `C:\Users\13212\tools\node`、SDK `C:\Users\13212\AppData\Local\Android\Sdk`（platform 37.0 / build-tools 37.0.0 / NDK 28.2.13676358 / cmake 3.22.1）、Gradle 9.4.1 已下载；Gradle 代理写在用户级 `~/.gradle/gradle.properties`（不污染仓库）。
-  - 已排除的坑：构建缓存（`autolinking.json` 等 14 个文件）里残留已不存在的 `F:\Work\...` 绝对路径，会必然导致 `assembleRelease` 失败 —— 已清除 `app/build`、`build`、`app/.cxx`、`.gradle`（全部是 git-ignored 产物）。
+- [ ] rel-3：release APK 构建通过 + OTA 推送 + 真机验证两个快捷功能 —— **状态：用户 2026-10-08 17:3x 要求"暂停构建"（当前无 APK 产出、未发布）**
+  - 过程：16:45 用户先决定暂缓 → 17:0x 确认"OTA 只分发 APK、无热更新"后批准构建 → 17:2x 子 Agent 定位并解决 MAX_PATH 问题后重新构建 → **17:3x 用户要求暂停**，已中断构建并结束全部构建进程（无残留），未产出 APK、未发布。
+  - 恢复方式：`cd C:\bk\mobile\android` 后按第 3 节命令跑 `assembleRelease`（工具链、Gradle 依赖缓存、`app/.cxx` 部分原生编译产物均已保留 → 比首次冷启动快）。
+  - ⚠️ 注意：`C:\bk` 是为绕开 MAX_PATH 建的目录联接（junction，指向工程根，仓库之外）。**若要删除必须用 `cmd /c rmdir C:\bk`**（PowerShell 的 `Remove-Item` 作用于 junction 有删除目标目录内容的风险）。
+  - 现状：App 侧代码（同上次日期 chip / 常用备注 chips / 收藏与长按管理）已随提交 `d81b77a` 推到 GitHub `main`，后端已上线；**手机端仍是 2.1.2，等 APK 发布后即可看到新功能**。
+  - 已就绪（构建成本已大幅降低）：工具链已装好 —— JDK 17 `C:\Users\13212\tools\jdk-17`、Node 24 `C:\Users\13212\tools\node`、SDK `C:\Users\13212\AppData\Local\Android\Sdk`（platform 37.0 / build-tools 37.0.0 / NDK 28.2.13676358 / cmake 3.22.1）、Gradle 9.4.1 已下载；Gradle 代理写在用户级 `~/.gradle/gradle.properties`（不污染仓库）。
+  - 已排除的两个坑：① 构建缓存残留已不存在的 `F:\Work\...` 绝对路径（`autolinking.json`）；② **Windows 260 字符路径上限**（工程路径比旧的 `F:` 盘长 12 字符，导致 CMake `mkdir` 路径达 282 字符而失败）→ 用 `C:\bk` 联接缩短前缀解决（详见 `docs/v0.5/DEPLOY-RELEASE.md` 第 3 节）。
+  - 发布前置已核对：`/opt/bookkeeping/distribute/{publish.sh,gen-index.sh}` 在位、`sudo` 免密、`/var/www` 剩余 28GB；旧包基线 `latest.apk` SHA-256 = `e0ecc64c684e01d6716657475ed28fe8fddffc56acca500b28f872afa3011afb`（2.1.2 / 76,728,113 字节），发布后须与新包不同。
+  - 通道说明：App 只读 `https://app.xyvora.me/bookkeeping/info.json`（`mobile/src/config.ts`），**后端 `/app-updates/apk` 通道客户端从未实现消费**（实测其 APK 目录为空、返回 `has_update:false`）→ 本次只发静态站；如需归档可另用管理员账号 POST 到后端通道。
 - [ ] rel-4：整体验收（对照 REQ.md 第 4 章逐条勾选）

@@ -71,11 +71,22 @@ App 侧代码已随提交 `d81b77a` 推到 GitHub `main`，只等构建发布。
 | Gradle | wrapper 9.4.1 已下载；代理写在用户级 `C:\Users\13212\.gradle\gradle.properties`（不污染仓库） |
 | 签名 | `keystore/release-signing.properties` 齐全，`build.gradle` release 已接（无需改动） |
 
-**已排除的关键坑（否则 `assembleRelease` 必然失败）**：工程此前在 `F:` 盘构建过，构建缓存残留
-`F:\Work\...` 绝对路径 —— `mobile/android/build/generated/autolinking/autolinking.json` 内 32 处，且该文件只在
-`package.json` / `package-lock.json` 的 hash 变化时才重新生成，会持续复用旧路径。首次构建报
-`Configuring project ':react-native-safe-area-context' without an existing directory is not allowed` 即由此而来。
-已清除 git-ignored 的 `app/build`、`build`、`app/.cxx`、`.gradle` 让缓存重建（复验 `F:\Work` 残留 0 处）。
+**已排除的关键坑（否则 `assembleRelease` 必然失败）：**
+
+1. **构建缓存里的陈旧绝对路径**：工程此前在 `F:` 盘构建过，缓存残留 `F:\Work\...` ——
+   `mobile/android/build/generated/autolinking/autolinking.json` 内 32 处，且该文件只在
+   `package.json` / `package-lock.json` 的 hash 变化时才重新生成，会持续复用旧路径。首次构建报
+   `Configuring project ':react-native-safe-area-context' without an existing directory is not allowed` 即由此而来。
+   已清除 git-ignored 的 `app/build`、`build`、`app/.cxx`、`.gradle` 让缓存重建（复验 `F:\Work` 残留 0 处）。
+2. **⚠️ Windows 260 字符路径上限（MAX_PATH）** —— 本机最致命的坑：RN 新架构的 CMake 对象目录很长，
+   而工程路径从 `F:\Work\Program\Python\bookkeeping`（**34** 字符）搬到了 `C:\Users\13212\Work\Program\Python\bookkeeping`
+   （**46** 字符），多出的 12 字符让某条 `mkdir` 路径达到 **282 字符**，超限后报
+   `ninja: error: mkdir(safeareacontext_autolinked_build/.../C_/Users/13212/.../react-native-safe-area-context): No such file or directory`。
+   这也解释了"`arm64-v8a` 编过、名字更长的 `armeabi-v7a` 挂掉"（只差几个字符）。
+   **解决**：建目录联接 `C:\bk` → 工程根（`New-Item -ItemType Junction`），从 `C:\bk\mobile\android` 构建，
+   前缀从 46 降到 5 字符（该 `mkdir` 路径回到约 200 字符）。联接在仓库之外、不改任何项目文件，
+   产物仍落在同一物理目录（`mobile\android\app\build\outputs\apk\release\app-release.apk`）。
+   同理：清 `.cxx` 时用 `cmd /c rd /s /q`（长路径 + 只读属性会让 `Remove-Item` 半途而废）。
 
 **下次发布步骤**（工具链已在位；内存紧张时先关掉占内存的程序）：
 

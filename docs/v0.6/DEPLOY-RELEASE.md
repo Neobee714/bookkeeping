@@ -151,13 +151,20 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh [--purge]
 
 后端容器 `StartedAt` 前后完全一致（`2026-10-08T08:02:50Z`），线上 `/health` 仍 200 —— **零抖动** ✅
 
-### 推送方式说明（本机无法直连 GitHub）
+### 推送方式说明（本机到 GitHub 的网络）
 
-本机（Windows 与 WSL）**直连 GitHub 超时**，用户代理仅监听 `127.0.0.1:10808`（WSL 为 NAT 模式，无法访问宿主机回环）。实际采用：
+**2026-10-08 16:0x 的情况**：本机（Windows 与 WSL）直连 GitHub 超时；用户代理仅监听 `127.0.0.1:10808`
+（WSL 为 NAT 模式，无法访问宿主机回环）。当时实际采用：
 **WSL → SSH 到生产服务器 → SOCKS5 动态隧道（`ssh -D`）→ HTTPS 推送**（服务器到 GitHub 34ms）。
 另外在服务器生成了 write 用途的 ed25519 Deploy Key（`~/.ssh/bk-deploy`，指纹
 `SHA256:3kzgNokW5A0q3cuCB/fBrV3E27JS9CL06wSCCvM7Oa4`），仓库 `origin` 的 fetch 保持匿名 HTTPS、
 push 走 `git@github.com:...`，供后续自动化使用（需在 GitHub 仓库 Deploy keys 中勾选 Allow write access）。
+
+**2026-10-08 17:5x 复测（网络已变化）**：本机代理客户端已关闭（`10808` 不再监听、`ProxyEnable=0`），
+但**直连已恢复可用** —— `repo1.maven.org` / `dl.google.com` / `services.gradle.org` 均 200/200/200，
+`github.com` 直连 200，WSL 内 `git ls-remote https://github.com/Neobee714/bookkeeping.git` 正常返回。
+因此：**推送不再需要隧道**（隧道方案保留为备用），Android 构建也不需要代理。
+注意本机对国内镜像（如 `maven.aliyun.com`）的连通性与路径可用性要单独验证，不要假设它一定可用。
 
 ### 复验记录（日志重复修复）
 
