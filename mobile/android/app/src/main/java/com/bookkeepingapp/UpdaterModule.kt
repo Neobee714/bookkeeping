@@ -72,7 +72,9 @@ class UpdaterModule(reactContext: ReactApplicationContext) :
    *
    * @param url  APK 下载地址(HTTPS)
    * @param fileName 保存到公共下载目录的文件名(建议 bookkeeping-{version}.apk)
-   * @param promise 下载完成并成功唤起安装器后 resolve(true);任一环节失败则 reject(中文错误)
+   * @param promise 下载任务成功加入系统下载队列后 resolve(true);仅入队前的校验失败
+   *   (空 URL/文件名、缺少安装权限、存储不可用)才 reject(中文错误)。下载完成后的
+   *   安装由 ACTION_DOWNLOAD_COMPLETE 广播自动唤起,不再经由本 promise 回调。
    */
   @ReactMethod
   fun downloadAndInstall(url: String, fileName: String, promise: Promise) {
@@ -131,6 +133,14 @@ class UpdaterModule(reactContext: ReactApplicationContext) :
     downloadId = downloadManager.enqueue(request)
     Log.d("UpdaterModule", "downloadAndInstall enqueued id=$downloadId url=$trimmedUrl")
 
+    // 入队成功即 resolve:本 promise 只表示「下载任务已成功加入系统下载队列」,
+    // 不表示下载完成。76MB 的安装包下载期间必须让 JS 侧立刻拿到反馈(关闭弹窗并
+    // 提示用户),否则整个下载过程界面毫无反应。
+    // 下载完成后的安装由下方 ACTION_DOWNLOAD_COMPLETE 广播自动唤起,不再回调本
+    // promise——对同一 promise 二次 resolve 会触发 RN 的
+    // "callback called more than once" 错误。
+    promise.resolve(true)
+
     val receiver =
         object : BroadcastReceiver() {
           override fun onReceive(context: Context, intent: Intent) {
@@ -140,7 +150,7 @@ class UpdaterModule(reactContext: ReactApplicationContext) :
               return
             }
             unregisterDownloadReceiver()
-            handleDownloadComplete(downloadManager, destination, promise)
+            handleDownloadComplete(downloadManager, destination)
           }
         }
     downloadCompleteReceiver = receiver
@@ -161,18 +171,22 @@ class UpdaterModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /** 下载完成回调:确认下载状态 → FileProvider 暴露 → ACTION_VIEW 唤起系统安装器。 */
+  /**
+   * 下载完成回调:确认下载状态 → FileProvider 暴露 → ACTION_VIEW 唤起系统安装器。
+   *
+   * 失败只记日志、不再 reject:对应的 promise 已在 enqueue 时 resolve,
+   * 二次回调会抛错;下载失败由系统 DownloadManager 的通知自行提示用户。
+   */
   private fun handleDownloadComplete(
       downloadManager: DownloadManager,
       file: File,
-      promise: Promise,
   ) {
     Log.d("UpdaterModule", "handleDownloadComplete file=$file")
     val query = DownloadManager.Query().setFilterById(downloadId)
     try {
       downloadManager.query(query).use { cursor ->
         if (!cursor.moveToFirst()) {
-          promise.reject("E_DOWNLOAD_NOT_FOUND", "未找到下载任务,请重试")
+          Log.w("UpdaterModule", "handleDownloadComplete: 未找到下载任务 id=$downloadId")
           return
         }
         val status =
@@ -180,29 +194,35 @@ class UpdaterModule(reactContext: ReactApplicationContext) :
         when (status) {
           DownloadManager.STATUS_SUCCESSFUL -> {
             if (!file.exists()) {
-              promise.reject("E_FILE_MISSING", "下载的文件不存在,请重试")
+              Log.w("UpdaterModule", "handleDownloadComplete: 下载的文件不存在 file=$file")
               return
             }
-            launchInstaller(file, promise)
+            launchInstaller(file)
           }
           DownloadManager.STATUS_FAILED -> {
             val reason =
                 cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-            promise.reject("E_DOWNLOAD_FAILED", "下载失败(错误码 $reason),请重试")
+            Log.w(
+                "UpdaterModule",
+                "handleDownloadComplete: 下载失败 reason=$reason id=$downloadId",
+            )
           }
           else -> {
             // 收到完成广播后不应仍处于运行中;防御性处理
-            promise.reject("E_DOWNLOAD_PENDING", "下载尚未完成,请稍后重试")
+            Log.w(
+                "UpdaterModule",
+                "handleDownloadComplete: 下载尚未完成 status=$status id=$downloadId",
+            )
           }
         }
       }
     } catch (e: Exception) {
-      promise.reject("E_QUERY_FAILED", "读取下载状态失败:${e.message ?: "未知错误"}")
+      Log.w("UpdaterModule", "handleDownloadComplete: 读取下载状态失败", e)
     }
   }
 
   /** 用 FileProvider content URI + ACTION_VIEW 唤起系统安装器(覆盖安装)。 */
-  private fun launchInstaller(file: File, promise: Promise) {
+  private fun launchInstaller(file: File) {
     try {
       val uri =
           FileProvider.getUriForFile(
@@ -216,9 +236,9 @@ class UpdaterModule(reactContext: ReactApplicationContext) :
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
           }
       reactApplicationContext.startActivity(intent)
-      promise.resolve(true)
+      Log.d("UpdaterModule", "launchInstaller: 已唤起系统安装器 file=$file")
     } catch (e: Exception) {
-      promise.reject("E_OPEN_INSTALLER", "无法打开系统安装器:${e.message ?: "未知错误"}")
+      Log.w("UpdaterModule", "launchInstaller: 无法打开系统安装器", e)
     }
   }
 

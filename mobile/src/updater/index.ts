@@ -48,7 +48,8 @@ export function openInstallPermissionSettings(): void {
 
 /**
  * 用系统 DownloadManager 下载 APK(通知栏显示进度),下载完成后自动唤起系统安装器。
- * resolve 表示已成功唤起安装器;reject 时 message 为中文错误描述。
+ * resolve 表示下载任务已成功加入系统下载队列(完成后的安装由系统广播自动唤起);
+ * reject 时 message 为中文错误描述(仅入队前的校验失败:空 URL/文件名、缺少安装权限、存储不可用)。
  */
 export function downloadAndInstall(
   url: string,

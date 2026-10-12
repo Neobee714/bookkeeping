@@ -6,10 +6,10 @@
  *    如 jest / 原生模块缺失,按失败处理并提示);
  * 2. 未开启 → Alert 引导去系统设置开启(弹窗保持,用户回来可再次点击);
  * 3. 已开启 → downloadAndInstall 走系统 DownloadManager(通知栏进度),
- *    下载完成自动唤起安装器,resolve 表示已开始下载。
+ *    下载完成自动唤起安装器,resolve 表示下载任务已成功加入系统下载队列。
  *
- * 返回 true 表示已开始下载(调用方可关闭更新弹窗);false 表示未开始
- * (权限引导 / 失败,弹窗保持以便重试)。
+ * 返回 true 表示已开始下载(下载任务已进入系统下载队列,调用方可关闭更新弹窗);
+ * false 表示未开始(权限引导 / 失败,弹窗保持以便重试)。
  */
 import { Alert } from 'react-native';
 
@@ -49,6 +49,7 @@ export async function performUpdate(info: UpdateInfo): Promise<boolean> {
   // 3. 系统 DownloadManager 下载(通知栏进度)→ 自动唤起安装器
   try {
     await downloadAndInstall(info.apkUrl, apkFileName(info.version));
+    // resolve 仅表示已成功入队,下载仍在系统后台进行(通知栏可见进度)
     return true;
   } catch (error) {
     const message =

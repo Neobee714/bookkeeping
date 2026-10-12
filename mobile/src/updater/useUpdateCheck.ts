@@ -88,9 +88,12 @@ export function useUpdateCheck() {
     void performUpdate(info).then((started) => {
       useUpdateCheckStore.setState({ updating: false });
       if (started) {
-        // 已交由系统后台下载(通知栏进度),关闭弹窗并提示用户
+        // 已交由系统后台下载(通知栏进度):先关闭弹窗,再给出立即可见的反馈
         useUpdateCheckStore.getState().hide();
-        Alert.alert('后台更新中', '正在后台下载更新包,完成后会自动安装');
+        Alert.alert(
+          '已在后台下载',
+          '安装包正在后台下载，可在通知栏查看进度，下载完成后会自动打开安装界面。现在可以关闭本应用。',
+        );
       }
     });
   }, []);
