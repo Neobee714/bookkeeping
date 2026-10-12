@@ -48,25 +48,48 @@
   （只删新建的空表 `user_note_presets`，不影响业务数据）。
 - 数据回滚：使用第 1 节表格里那份迁移前 dump。
 
-## 2. App 发布（待完成）
+## 2. App 发布（**暂缓** —— 用户 2026-10-08 决定暂不构建 APK）
 
 - 版本号已改好：`mobile/android/app/build.gradle` → `versionCode 220` / `versionName "2.2.0"`。
 - 签名链路完整：`keystore/release-signing.properties`（4 个字段齐全）+ `build.gradle` release 已接。
 
-## 3. 阻塞项：本机缺 Android 构建工具链
+## 3. App 构建工具链与 APK 现状（2026-10-08 更新）
 
-实测（2026-10-08 01:00）：
+**结论：用户决定暂缓发布 APK（"暂时不要APK"，2026-10-08 16:45）**，因此 2.2.0 未构建、未推 OTA，
+`app.xyvora.me` 上仍是 **2.1.2**：手机端暂时看不到本次新增的两个快捷功能（后端已就绪，旧 App 不受影响）。
+App 侧代码已随提交 `d81b77a` 推到 GitHub `main`，只等构建发布。
 
-| 检查 | 结果 |
+原始阻塞情况（2026-10-08 01:00 实测）：本机无 `java`、无 Android Studio、`local.properties` 指向的 SDK 目录不存在、无 `.gradle` 缓存 → 当时无法构建。
+
+**现已就绪（为下次构建铺好路）：**
+
+| 项 | 位置 / 值 |
 | --- | --- |
-| `java` | 不在 PATH |
-| `C:\Program Files\Java`、`Program Files (x86)`、`Program Files\Eclipse Adoptium` | 无 JDK |
-| Android Studio（`Program Files\Android`、`%LOCALAPPDATA%\Programs\Android Studio`） | 未安装 |
-| `mobile/android/local.properties` 指向的 `C:\Users\13212\AppData\Local\Android\Sdk` | **不存在** |
-| `%USERPROFILE%\.gradle` | **不存在**（无历史构建缓存） |
+| JDK | Temurin 17.0.20.1+1 → `C:\Users\13212\tools\jdk-17` |
+| Node（RN release 必需） | v24.21.0 → `C:\Users\13212\tools\node`（`settings.gradle` 的 autolink 与 JS bundle 都要 node） |
+| Android SDK | `C:\Users\13212\AppData\Local\Android\Sdk`：platform-tools、**platforms;android-37.0**（目录名带 `.0`）、build-tools;37.0.0、ndk;28.2.13676358、cmake;3.22.1 |
+| Gradle | wrapper 9.4.1 已下载；代理写在用户级 `C:\Users\13212\.gradle\gradle.properties`（不污染仓库） |
+| 签名 | `keystore/release-signing.properties` 齐全，`build.gradle` release 已接（无需改动） |
 
-因此**无法在本机构建 release APK**（仓库里现存的 76 MB APK 是 2.1.2 时代的产物）。
-可选路径见给用户的提问：自动安装工具链 / 用户自行构建 / 暂缓。
+**已排除的关键坑（否则 `assembleRelease` 必然失败）**：工程此前在 `F:` 盘构建过，构建缓存残留
+`F:\Work\...` 绝对路径 —— `mobile/android/build/generated/autolinking/autolinking.json` 内 32 处，且该文件只在
+`package.json` / `package-lock.json` 的 hash 变化时才重新生成，会持续复用旧路径。首次构建报
+`Configuring project ':react-native-safe-area-context' without an existing directory is not allowed` 即由此而来。
+已清除 git-ignored 的 `app/build`、`build`、`app/.cxx`、`.gradle` 让缓存重建（复验 `F:\Work` 残留 0 处）。
+
+**下次发布步骤**（工具链已在位；内存紧张时先关掉占内存的程序）：
+
+```powershell
+$env:JAVA_HOME = 'C:\Users\13212\tools\jdk-17'
+$env:PATH = "C:\Users\13212\tools\node;$env:JAVA_HOME\bin;$env:PATH"
+cd mobile\android
+.\gradlew.bat assembleRelease          # 产物：app\build\outputs\apk\release\app-release.apk
+# 校验：build-tools\37.0.0\apksigner.bat verify --print-certs + aapt2 dump badging
+# 期望：com.neobee.bookkeeping / versionCode 220 / versionName 2.2.0 / 签名 CN=Neobee
+```
+
+⚠️ **发布前必须重新校验**：`mobile\android\app\build\outputs\apk\release\` 里 2026-08-16 那个
+76,728,113 字节的 APK 是 **2.1.2（versionCode 212）**，不要误当成 2.2.0 发出去。
 
 ## 4. 后续 OTA 发布命令（工具链就绪后）
 
@@ -113,9 +136,17 @@ curl -s https://app.xyvora.me/bookkeeping/info.json | head -20
 
 ### 巡检发现的待办（未擅自改动）
 
-1. **`bookkeeping-relay.service` 处于 `not-found failed` 状态**（旧的残留单元，服务文件已不存在）——
-   建议 `sudo systemctl reset-failed bookkeeping-relay.service` 清掉告警；是否彻底移除由用户决定。
+1. ✅ **残留失败单元已清理**（`bookkeeping-relay.service`，2026-10-08 12:42 `systemctl reset-failed`；现 `systemctl --failed` 为 0 项）。
 2. **Docker 构建缓存 932MB（可回收 464MB）**，需要时 `sudo docker builder prune`。
-3. **`DEEPSEEK_API_KEY` 为空** → App 内置 Agent（`/agent/chat`）不可用；用户提供密钥后写入
-   `/opt/bookkeeping/stack/.env` 并 `sudo -E docker compose up -d --force-recreate backend` 即可（写入前先备份 `.env`）。
+3. ✅ **`DEEPSEEK_API_KEY` 已填入并验证**（2026-10-08 16:30）：写入 `/opt/bookkeeping/stack/.env`（先备份）后
+   `sudo -E docker compose up -d --force-recreate backend`；实测基础对话正常，且能调用 `search_transactions`
+   回答"最近一笔账"。备份在服务器 `/tmp/stack-env-backup-*`（含数据库口令，勿外传，可自行删除）。
+
+## 10. 修订记录
+
+| 时间 | 变更说明 |
+| --- | --- |
+| 2026-10-08 01:10 | 创建发布记录（后端增量上线 + 线上验证 + 回滚说明） |
+| 2026-10-08 01:14 | 追加服务器巡检记录与 3 项待办 |
+| 2026-10-08 16:50 | 更新 APK 现状：用户决定**暂缓发布 2.2.0**；补记已装好的构建工具链与已排除的 F: 盘缓存坑；两项待办（残留失败单元、DeepSeek 密钥）标记完成 |
 

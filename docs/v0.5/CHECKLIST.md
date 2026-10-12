@@ -42,5 +42,8 @@
 ## 阶段六：验收与发布
 - [x] rel-1：版本号升至 2.2.0 / versionCode 220（`mobile/android/app/build.gradle`）✅ 2026-10-08 00:28
 - [x] rel-2：后端镜像重建 + 迁移执行 + 线上接口自测（alembic → `d4e6f7a8b9c0`、表已建、账单 2091 条未变、带令牌实测三个接口 + 参数边界全过；详见 `docs/v0.5/DEPLOY-RELEASE.md`）✅ 2026-10-08 01:10
-- [ ] rel-3：release APK 构建通过 + OTA 推送 + 真机验证两个快捷功能（**阻塞**：本机无 JDK / Android SDK / gradle 缓存，无法构建；待用户决定安装工具链或自行构建）
+- [ ] rel-3：release APK 构建通过 + OTA 推送 + 真机验证两个快捷功能 —— **用户 2026-10-08 16:45 决定暂缓（"暂时不要APK"）**
+  - 现状：App 侧代码（同上次日期 chip / 常用备注 chips / 收藏与长按管理）已随提交 `d81b77a` 推到 GitHub `main`，后端也已上线；**但手机上的 App 仍是 2.1.2，暂时看不到新功能**，需等 APK 发布。
+  - 已就绪（后续构建成本大幅降低）：工具链已装好 —— JDK 17 `C:\Users\13212\tools\jdk-17`、Node 24 `C:\Users\13212\tools\node`、SDK `C:\Users\13212\AppData\Local\Android\Sdk`（platform 37.0 / build-tools 37.0.0 / NDK 28.2.13676358 / cmake 3.22.1）、Gradle 9.4.1 已下载；Gradle 代理写在用户级 `~/.gradle/gradle.properties`（不污染仓库）。
+  - 已排除的坑：构建缓存（`autolinking.json` 等 14 个文件）里残留已不存在的 `F:\Work\...` 绝对路径，会必然导致 `assembleRelease` 失败 —— 已清除 `app/build`、`build`、`app/.cxx`、`.gradle`（全部是 git-ignored 产物）。
 - [ ] rel-4：整体验收（对照 REQ.md 第 4 章逐条勾选）
