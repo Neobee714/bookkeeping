@@ -378,7 +378,7 @@ export default function HomeScreen() {
               {greeting}
             </Text>
           ) : null}
-          <Text style={[styles.title, { color: colors.textPrimary }]}>时光</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>拾光</Text>
         </View>
 
         {/* 月度汇总卡(渐变):滚动时收缩为 56px 窄条吸顶(FR-02) */}

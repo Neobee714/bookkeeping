@@ -58,10 +58,26 @@
   - 对外可达性：`info.json` 200 `application/json`、`latest.apk` 200/206 `application/vnd.android.package-archive`、
     两个版本归档 200、下载页 200；下载页展示名按用户要求设为 **拾光**。
   - 发布命令：`sudo bash /opt/bookkeeping/distribute/publish.sh <apk> 2.2.0 --app bookkeeping --name "拾光" --desc "双人记账" --changelog "…"`。
-- [ ] rel-3c：**真机验证**（用户在手机上确认更新提示出现、安装后「同上次」日期 chip 与常用备注 chips 工作正常）
-  - 预期路径：打开 App → 启动静默检查 `info.json` → 因 `2.2.0 > 2.1.2` 弹更新窗 → 「立即更新」经系统 DownloadManager 下载安装；
-    也可在「我的」页手动检查更新。
-  - ⚠️ 已知不一致（待用户决定）：**APK 内置应用名是「时光」**（`mobile/android/app/src/main/res/values/strings.xml`
-    字节为 `U+65F6 U+5149`，`aapt2` 读出 `application-label:'时光'`），而下载页展示名本次按用户要求用「拾光」。
-    若希望手机桌面也显示「拾光」，需改 `strings.xml` 后在下一个版本重新构建发布（缓存已热，约 7 分钟）。
+- [x] rel-3c：**应用改名「时光」→「拾光」并升版重发**（用户 2026-10-12 决定）✅ 2026-10-12 18:35
+  - 改动 5 个文件（均为用户可见文案或版本号，字节级替换、UTF-8 无 BOM、行尾不变）：
+    `mobile/android/app/src/main/res/values/strings.xml`（`app_name`）、`mobile/app.json`（`displayName`）、
+    `mobile/src/screens/LoginScreen.tsx`（登录页标题）、`mobile/src/screens/HomeScreen.tsx`（首页标题）、
+    `mobile/android/app/build.gradle`（`versionCode 220→221`、`versionName "2.2.0"→"2.2.1"`）。
+    助手名「小光」未动；包名 `com.neobee.bookkeeping` 未动（保证可覆盖安装）。
+  - 版本号必须递增的原因：App 更新判定为 `compareVersions(remote, local) > 0`（纯版本号比较），同版本号不会再提示更新。
+  - 构建：`BUILD SUCCESSFUL in 3m 23s`，产物 **76,738,337 字节**（与 2.2.0 恰好同字节数，因全是等长替换），
+    SHA-256 `E1046FFC31080E6734B5B1A33EA9F83BDCD2F43602769949686AC893E66828A0`（**与 2.2.0 的 `ACBF2DF3…` 不同**）。
+  - **独立复核（主 Agent 亲自做，含二进制层）**：`aapt2` 的 label 原始字节 = `e6 8b be e5 85 89` = `U+62FE U+5149` = **拾光**；
+    `resources.arsc` 内「拾光」×1、「时光」×0；`assets/index.android.bundle` 内（UTF-16LE）「拾光」×1、「时光」×0、
+    「小光」×1（正向对照，证明检索方法有效）；`versionCode 221` / `versionName 2.2.1` / 包名不变；
+    `apksigner` `Verifies`、证书 SHA-256 仍为 `d8d8202e…f6c06c`（同一把钥匙）。
+  - 已发布 OTA：`info.json` = **2.2.1**、`latest.apk` SHA-256 = `e1046ffc…28a0`、归档保留 **2.1.2 / 2.2.0 / 2.2.1** 三版、
+    下载页展示名「拾光」。发布前置校验：上传包 SHA-256 与本地逐位一致后才执行 `publish.sh`。
+  - 坑记录：`Get-Content` 读重定向的 `aapt2` 输出会按本机 ANSI(GBK) 解码，导致中文显示成 `鎷惧厜` 这类乱码 —— **不要据此判定包内文案错误**，要按字节或指定 UTF-8 解码复核。
+- [ ] rel-3d：**真机验证**（用户在手机上确认更新提示出现、安装后应用名显示「拾光」、两个快捷功能正常）
+  - 预期路径：打开 App → 启动静默检查 `info.json` → 因 `2.2.1 > 本地版本` 弹更新窗 → 「立即更新」经系统 DownloadManager 下载安装；
+    也可在「我的」页手动检查更新（若之前点过「稍后」，重启 App 会再次自动检查）。
+  - 需验证的功能点：① 新增账单里日期行右侧「同上次 MM-DD」chip 点击可套用上次日期；
+    ② 备注框下方常用备注 chips（★收藏 + 当前分类推荐）点击填入、「＋收藏」可用、长按可「取消收藏 / 不再推荐」；
+    ③ 深色主题下淡紫 chip 可读；④ 断网时点这三个操作会有失败提示且不改本地状态。
 - [ ] rel-4：整体验收（对照 REQ.md 第 4 章逐条勾选）

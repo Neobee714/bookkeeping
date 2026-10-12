@@ -48,23 +48,43 @@
   （只删新建的空表 `user_note_presets`，不影响业务数据）。
 - 数据回滚：使用第 1 节表格里那份迁移前 dump。
 
-## 2. App 发布（**已完成** —— 2026-10-12 18:14 发布 2.2.0 到 OTA）
+## 2. App 发布（**已完成** —— 2026-10-12 发布 2.2.0，随后改名升版发布 **2.2.1**）
+
+### 2.1 最终线上版本：**2.2.1**（应用名「拾光」）
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | `versionCode 220` / `versionName "2.2.0"`（`mobile/android/app/build.gradle`） |
-| 产物 | `mobile/android/app/build/outputs/apk/release/app-release.apk`，**76,738,337 字节** |
-| SHA-256 | `ACBF2DF3319EBDE8FA73903FF5B1ECB920CC446471122A1BA8B3C30E836F438A` |
-| 构建 | `BUILD SUCCESSFUL in 7m 20s`（2026-10-12 18:06，缓存已热） |
-| 签名 | v2 方案有效、`CN=Neobee`、证书 SHA-256 `d8d8202e…f6c06c`（与 keystore 中 `bookkeeping` 别名指纹逐位一致） |
-| 包信息 | `com.neobee.bookkeeping`；4 个 ABI（arm64-v8a / armeabi-v7a / x86 / x86_64）；targetSdk 36 |
-| OTA | `app.xyvora.me`：`info.json` = 2.2.0、`latest.apk` SHA-256 同构建产物、新增归档 `bookkeeping-2.2.0.apk`（2.1.2 保留可回退） |
-| 下载页展示名 | **拾光**（按用户要求；注意 APK 内置名为「时光」，见第 3 节末尾的说明） |
+| 版本 | `versionCode 221` / `versionName "2.2.1"` |
+| 产物 | `mobile/android/app/build/outputs/apk/release/app-release.apk`，**76,738,337 字节**（与 2.2.0 恰好同字节数：本次全是等长替换） |
+| SHA-256 | `E1046FFC31080E6734B5B1A33EA9F83BDCD2F43602769949686AC893E66828A0` |
+| 构建 | `BUILD SUCCESSFUL in 3m 23s`（2026-10-12 18:32，增量；已删 `generated/assets/react` 强制 bundle 重打） |
+| 应用名 | `application-label = 拾光`（原始字节 `e6 8b be e5 85 89` = `U+62FE U+5149`，`resources.arsc` 内「时光」为 0 次） |
+| 签名 | v2 有效、`CN=Neobee`、证书 SHA-256 `d8d8202e…f6c06c`（与 2.2.0 同一把钥匙） |
+| OTA | `info.json` = 2.2.1、`latest.apk` SHA-256 = `e1046ffc…28a0`；归档保留 **2.1.2 / 2.2.0 / 2.2.1** 三版 |
+| 下载页展示名 | **拾光**（与 APK 内置名一致，此前的不一致已消除） |
 
-发布流程（可复现）：构建 → 本地 `aapt2 dump badging` + `apksigner verify` 复核 → `scp` 上传 →
-校验上传包 SHA-256 与本地一致 → `sudo bash /opt/bookkeeping/distribute/publish.sh <apk> 2.2.0 --app bookkeeping --name "拾光" --desc "双人记账" --changelog "…"` →
-回验 `info.json` / `latest.apk` / 归档 / 下载页可达性。
-发布前基线（用于确认真的换包）：旧 `latest.apk` SHA-256 = `e0ecc64c684e01d6716657475ed28fe8fddffc56acca500b28f872afa3011afb`（2.1.2 / 76,728,113 字节）。
+改名范围（5 个文件，字节级替换）：`strings.xml` 的 `app_name`、`mobile/app.json` 的 `displayName`、
+`LoginScreen.tsx` 登录页标题、`HomeScreen.tsx` 首页标题、`build.gradle` 的版本号两处。
+助手名「小光」与包名 `com.neobee.bookkeeping` **未动**。
+
+### 2.2 前一版（已被 2.2.1 取代，归档仍保留）
+
+| 项 | 值 |
+| --- | --- |
+| 版本 | `versionCode 220` / `versionName "2.2.0"` |
+| SHA-256 | `ACBF2DF3319EBDE8FA73903FF5B1ECB920CC446471122A1BA8B3C30E836F438A` |
+| 构建 | `BUILD SUCCESSFUL in 7m 20s`（2026-10-12 18:06） |
+| 包信息 | `com.neobee.bookkeeping`；4 个 ABI（arm64-v8a / armeabi-v7a / x86 / x86_64）；targetSdk 36 |
+| 应用名 | 时光（**用户随后要求改为「拾光」→ 遂有 2.2.1**） |
+| OTA | 2026-10-12 18:14 发布；`latest.apk` 曾为 `acbf2df3…f438a`，归档 `bookkeeping-2.2.0.apk` 保留 |
+
+### 2.3 发布流程（可复现）
+
+构建 → 本地 `aapt2 dump badging` + `apksigner verify` 复核（含二进制层搜字节确认文案）→ `scp` 上传 →
+校验上传包 SHA-256 与本地**逐位一致**才发布 →
+`sudo bash /opt/bookkeeping/distribute/publish.sh <apk> <版本号> --app bookkeeping --name "拾光" --desc "双人记账" --changelog "…"` →
+回验 `info.json` / `latest.apk` 哈希 / 各版本归档 / 下载页可达性。
+发布前基线（确认真的换包用）：2.1.2 = `e0ecc64c684e01d6716657475ed28fe8fddffc56acca500b28f872afa3011afb`（76,728,113 字节）。
 
 ## 3. App 构建工具链（2026-10-08 建立，2026-10-12 首次成功使用）
 
