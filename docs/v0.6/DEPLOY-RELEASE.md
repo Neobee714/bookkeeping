@@ -161,10 +161,14 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh [--purge]
 push 走 `git@github.com:...`，供后续自动化使用（需在 GitHub 仓库 Deploy keys 中勾选 Allow write access）。
 
 **2026-10-08 17:5x 复测（网络已变化）**：本机代理客户端已关闭（`10808` 不再监听、`ProxyEnable=0`），
-但**直连已恢复可用** —— `repo1.maven.org` / `dl.google.com` / `services.gradle.org` 均 200/200/200，
-`github.com` 直连 200，WSL 内 `git ls-remote https://github.com/Neobee714/bookkeeping.git` 正常返回。
-因此：**推送不再需要隧道**（隧道方案保留为备用），Android 构建也不需要代理。
-注意本机对国内镜像（如 `maven.aliyun.com`）的连通性与路径可用性要单独验证，不要假设它一定可用。
+但**直连一度恢复可用** —— `repo1.maven.org` / `dl.google.com` / `services.gradle.org` 均 200/200/200，
+`github.com` 直连 200，WSL 内 `git ls-remote` 正常返回。
+
+**2026-10-12 18:2x 更正：直连 GitHub 不稳定，推送请优先走隧道。** 当天用直连 `git push` 时命令挂住
+10 分钟无响应（超时被杀），改用 SSH 隧道后 3 秒完成。结论：
+- **构建拉依赖**：直连可用（Android 构建全程无代理、7m20s 成功）；
+- **git push**：优先用隧道（`ssh -D` 到生产服务器），直连仅作为「先试一下」；两者都失败时先确认 `github.com` 是否可达再重试。
+- 不要假设国内镜像（如 `maven.aliyun.com`）一定可用，路径与连通性都要单独验证。
 
 ### 复验记录（日志重复修复）
 
