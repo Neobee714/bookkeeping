@@ -7,7 +7,7 @@
 #   sudo bash uninstall.sh --purge  上面做完后，再删除 /opt/bookkeeping/ci（含状态文件）
 #
 # 有意保留的东西：$REPO_DIR（git 克隆）、$LOG_FILE（日志，便于事后排查）、
-#                $STACK_DIR、$FRONTEND_PUBLISH、$DUMP_DIR（线上数据与快照都不动）。
+#                $STACK_DIR、$DUMP_DIR（线上数据与快照都不动）。
 # ---------------------------------------------------------------------------
 
 set -uo pipefail
@@ -106,5 +106,5 @@ fi
 log "=== 卸载完成（保留仓库与日志）==="
 log "  仓库（保留）: $REPO_DIR"
 log "  日志（保留）: $LOG_FILE   # 如需删除：sudo rm -f $LOG_FILE"
-log "  线上数据（未动）: /opt/bookkeeping/stack、/var/www/frontend、/opt/bookkeeping/dumps"
+log "  线上数据（未动）: /opt/bookkeeping/stack、/opt/bookkeeping/dumps"
 log "  重新安装: sudo bash $CI_DIR/install.sh（若已 --purge，则需重新上传 deploy/ci/ 或用 --from-github）"

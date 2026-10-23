@@ -1,16 +1,7 @@
 .venv/
 backend/.venv/
 backend/.env
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-frontend/.env.production
-frontend/android/.gradle/
-frontend/android/app/build/
 plan.md
-frontend/scripts/build-apk.ps1
-frontend/build-apk.bat
-frontend/.gradle-user-home/
 
 # Local tooling
 .claude/
@@ -22,9 +13,6 @@ __pycache__/
 
 # Local databases
 *.db
-
-# Build artifacts
-frontend/dist-bundle-*.zip
 
 # React Native (mobile/)
 mobile/node_modules/
@@ -41,7 +29,7 @@ mobile/vendor/
 # Release keystore (sensitive)
 /keystore/
 
-# Local temp scripts (root only; frontend/scripts must be tracked)
+# Local temp scripts (root only)
 /scripts/
 
 # Ops docs containing the production host / SSH key path (this repo is public)

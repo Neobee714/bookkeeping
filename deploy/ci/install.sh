@@ -16,7 +16,7 @@
 #   7 装单元 → daemon-reload → enable --now bk-deploy.timer
 #   8 首跑：deploy.sh --status（只读，不改任何东西）
 #
-# 注意：本脚本不会碰 /opt/bookkeeping/stack（compose/.env）、/var/www/frontend、
+# 注意：本脚本不会碰 /opt/bookkeeping/stack（compose/.env）、
 #       /etc/nginx 与 /opt/bookkeeping/dumps 里的任何既有文件。
 # ---------------------------------------------------------------------------
 

@@ -20,7 +20,7 @@
 # 设计要点：
 #   - 无新提交时零开销退出：一次 git fetch，然后与 state/last-deployed.txt 比对即返回，
 #     不 rsync、不 build、不重启、不写状态文件。
-#   - 按变更目录决定动作：backend/ → 后端；frontend/ → 前端；deploy/nginx.conf → nginx；
+#   - 按变更目录决定动作：backend/ → 后端；deploy/nginx.conf → nginx；
 #     deploy/ci/ → 只提示（不自更新）；其它（mobile/、docs/ 等）→ 只记录，不动作。
 #   - 失败"停手"：任一步失败即写 state/failed-sha.txt + state/ALERT.txt，并在后续轮次里
 #     停止自动重试该提交（修好代码 push 新提交，或 --retry 手动重试）。
@@ -54,9 +54,6 @@ REPO_URL="${REPO_URL:-https://github.com/Neobee714/bookkeeping.git}"
 REPO_DIR="${REPO_DIR:-/opt/bookkeeping/repo}"
 STATE_DIR="${STATE_DIR:-/opt/bookkeeping/ci/state}"
 STACK_DIR="${STACK_DIR:-/opt/bookkeeping/stack}"
-FRONTEND_SRC="${FRONTEND_SRC:-/opt/bookkeeping/frontend}"
-FRONTEND_PUBLISH="${FRONTEND_PUBLISH:-/var/www/frontend}"
-PUBLIC_HOST="${PUBLIC_HOST:-api.bookkeeping.neobee.top}"
 DUMP_DIR="${DUMP_DIR:-/opt/bookkeeping/dumps}"
 KEEP_DUMPS="${KEEP_DUMPS:-5}"
 LOG_FILE="${LOG_FILE:-/var/log/bk-deploy.log}"
@@ -64,7 +61,6 @@ HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:18080/health}"
 POLL_INTERVAL="${POLL_INTERVAL:-2min}"
 
 # 高级覆盖项（默认即现网值；只在测试/迁移时用环境变量覆盖，不放进 ci.env.example）
-FRONTEND_BUILD_SCRIPT="${FRONTEND_BUILD_SCRIPT:-/opt/bookkeeping/deploy-build-frontend.sh}"
 NGINX_SITE="${NGINX_SITE:-/etc/nginx/sites-available/bookkeeping}"
 NGINX_SERVICE="${NGINX_SERVICE:-nginx}"
 
@@ -89,9 +85,7 @@ LAST=""              # 上次成功部署的提交 SHA
 CHANGED_FILES=""     # 变更文件列表（换行分隔）
 ALL_CHANGED=0        # 1=无法比对历史（首次部署 / 记录失效）→ 视为全部变更
 BACKEND_CHANGED=0
-FRONTEND_CHANGED=0
 NGINX_CHANGED=0
-LOCK_CHANGED=0       # frontend/package-lock.json 是否变化（决定是否 npm ci）
 CI_CHANGED=0         # deploy/ci/** 变化（只提示，不自我更新）
 OTHER_FILES=""       # 其它变更（只记录）
 CURRENT_STEP="init"  # 当前步骤名（失败行里显示它）
@@ -190,7 +184,7 @@ usage() {
   printf '%s\n' \
     "用法: $SELF [选项]" \
     "" \
-    "  （无选项）    执行一轮：拉取 → 判定变更 → 按需部署后端/前端/nginx" \
+    "  （无选项）    执行一轮：拉取 → 判定变更 → 按需部署后端/nginx" \
     "  --status      只打印状态，不做任何改动（永远退出 0）" \
     "  --retry       清除失败标记后立即执行一轮（用于重试上次失败的提交）" \
     "  --dry-run     只打印本轮将会做什么，不产生任何副作用" \
@@ -452,17 +446,13 @@ collect_changes() {
 # 按路径前缀决定动作
 classify_changes() {
   BACKEND_CHANGED=0
-  FRONTEND_CHANGED=0
   NGINX_CHANGED=0
-  LOCK_CHANGED=0
   CI_CHANGED=0
   OTHER_FILES=""
 
   if [ "$ALL_CHANGED" = "1" ]; then
     BACKEND_CHANGED=1
-    FRONTEND_CHANGED=1
     NGINX_CHANGED=1
-    LOCK_CHANGED=1
     return 0
   fi
 
@@ -471,8 +461,6 @@ classify_changes() {
     [ -n "$f" ] || continue
     case "$f" in
       backend/*)                  BACKEND_CHANGED=1 ;;
-      frontend/package-lock.json) FRONTEND_CHANGED=1; LOCK_CHANGED=1 ;;
-      frontend/*)                 FRONTEND_CHANGED=1 ;;
       deploy/nginx.conf)          NGINX_CHANGED=1 ;;
       deploy/ci/*)                CI_CHANGED=1 ;;
       *)                          OTHER_FILES="$OTHER_FILES $f" ;;
@@ -482,7 +470,7 @@ classify_changes() {
 }
 
 print_change_plan() {
-  log "变更判定：backend=$(yn "$BACKEND_CHANGED")  frontend=$(yn "$FRONTEND_CHANGED")  nginx=$(yn "$NGINX_CHANGED")  ci=$(yn "$CI_CHANGED")"
+  log "变更判定：backend=$(yn "$BACKEND_CHANGED")  nginx=$(yn "$NGINX_CHANGED")  ci=$(yn "$CI_CHANGED")"
 
   if [ "$ALL_CHANGED" = "1" ]; then
     log "变更集合：全部（首次部署或无可用历史基线）"
@@ -497,9 +485,6 @@ print_change_plan() {
     log "变更集合共 $n 个文件"
   fi
 
-  if [ "$LOCK_CHANGED" = "1" ]; then
-    log "注意：frontend/package-lock.json 有变更 → 本轮需要 npm ci"
-  fi
   if [ "$CI_CHANGED" = "1" ]; then
     log "提示：变更含 deploy/ci/ —— 运行中的脚本不随仓库自更新（有意为之）；需要时执行：sudo bash /opt/bookkeeping/ci/install.sh"
   fi
@@ -517,11 +502,6 @@ preflight() {
   done
   if [ "$BACKEND_CHANGED" = "1" ]; then
     for t in sudo docker rsync curl; do
-      command -v "$t" >/dev/null 2>&1 || missing+=("$t")
-    done
-  fi
-  if [ "$FRONTEND_CHANGED" = "1" ]; then
-    for t in sudo rsync npm; do
       command -v "$t" >/dev/null 2>&1 || missing+=("$t")
     done
   fi
@@ -653,69 +633,6 @@ deploy_backend() {
 }
 
 # ---------------------------------------------------------------------------
-# 7) 前端部署：同步源码(保留 node_modules) → 按需 npm ci → 构建发布 → 校验
-# ---------------------------------------------------------------------------
-deploy_frontend() {
-  CURRENT_STEP="frontend"
-  log "frontend：开始部署（同步源码 → 按需 npm ci → 构建并发布）"
-
-  # 1) 同步源码；--exclude node_modules 同时保护它不被 --delete 删掉
-  #    --checksum 同后端：避免"大小不变 + mtime 同秒"被漏同步
-  run_step "同步源码到 $FRONTEND_SRC/（保留 node_modules）" \
-    sudo rsync -a --checksum --delete --exclude node_modules "$REPO_DIR/frontend/" "$FRONTEND_SRC/"
-
-  # 2) 依赖：node_modules 缺失 或 package-lock.json 变化时才装（避免每轮 342MB 重装）
-  local need_ci=0 reason="" build_script=""
-  if [ ! -d "$FRONTEND_SRC/node_modules" ]; then
-    need_ci=1
-    reason="node_modules 缺失"
-  fi
-  if [ "$LOCK_CHANGED" = "1" ]; then
-    need_ci=1
-    reason="${reason:+$reason；}package-lock.json 有变更"
-  fi
-  if [ "$need_ci" = "1" ]; then
-    if [ "$DRY_RUN" != "1" ] && [ ! -w "$FRONTEND_SRC" ]; then
-      fail "$CURRENT_STEP" "前端源码目录不可写（$FRONTEND_SRC），npm ci 无法执行；修复：sudo chown -R ubuntu:ubuntu $FRONTEND_SRC" \
-        "test -w $FRONTEND_SRC" 1
-    fi
-    # npm ci 以 ubuntu 身份运行（不用 sudo npm，避免 node_modules 变成 root 属主）
-    run_step_in "$FRONTEND_SRC" "安装前端依赖（npm ci，$reason）" npm ci
-  else
-    log "  package-lock.json 未变且 node_modules 存在，跳过 npm ci"
-  fi
-
-  # 3) 构建并发布：优先复用服务器上已验证的脚本，缺失时回退到仓库内副本
-  build_script="$FRONTEND_BUILD_SCRIPT"
-  if [ ! -f "$build_script" ]; then
-    build_script="$REPO_DIR/deploy/build-frontend.sh"
-    log "  未找到 $FRONTEND_BUILD_SCRIPT，回退使用仓库内脚本 $build_script"
-  fi
-  if [ "$DRY_RUN" = "1" ]; then
-    log "  [dry-run] 将执行：sudo env PUBLIC_HOST=$PUBLIC_HOST bash $build_script https"
-  else
-    if [ ! -f "$build_script" ]; then
-      fail "$CURRENT_STEP" "找不到前端构建脚本（$FRONTEND_BUILD_SCRIPT 与 $REPO_DIR/deploy/build-frontend.sh 均不存在）" \
-        "test -f $build_script" 1
-    fi
-    # 用 `sudo env VAR=...` 传 PUBLIC_HOST：`sudo VAR=... cmd` 在 sudoers 未开 SETENV 时会被拒绝
-    run_step "构建并发布前端（PUBLIC_HOST=$PUBLIC_HOST）" \
-      sudo env "PUBLIC_HOST=$PUBLIC_HOST" bash "$build_script" https
-  fi
-
-  # 4) 发布校验（构建脚本可能已"成功"但没真正发布）
-  if [ "$DRY_RUN" = "1" ]; then
-    log "  [dry-run] 将校验 $FRONTEND_PUBLISH/index.html 存在"
-  elif [ ! -f "$FRONTEND_PUBLISH/index.html" ]; then
-    fail "$CURRENT_STEP" "发布校验失败：$FRONTEND_PUBLISH/index.html 不存在（构建脚本可能未成功发布）" \
-      "test -f $FRONTEND_PUBLISH/index.html" 1
-  else
-    log "  已发布：$FRONTEND_PUBLISH/index.html"
-  fi
-  return 0
-}
-
-# ---------------------------------------------------------------------------
 # 8) nginx 配置变更：先复制 + nginx -t 校验，通过才 reload，不通过回滚并记为失败
 # ---------------------------------------------------------------------------
 deploy_nginx() {
@@ -835,15 +752,14 @@ run_round() {
   update_worktree
 
   # 只改了 mobile/、docs/ 之类的提交：只记录，不重启任何服务
-  if [ "$BACKEND_CHANGED$FRONTEND_CHANGED$NGINX_CHANGED" = "000" ]; then
-    log "本轮不需要部署（不涉及 backend/ frontend/ deploy/nginx.conf）"
+  if [ "$BACKEND_CHANGED$NGINX_CHANGED" = "00" ]; then
+    log "本轮不需要部署（不涉及 backend/ deploy/nginx.conf）"
     mark_success
     log "完成：无需部署，$SHORT 已标记为已处理（未重启任何服务）"
     exit 0
   fi
 
   if [ "$BACKEND_CHANGED" = "1" ]; then deploy_backend; fi
-  if [ "$FRONTEND_CHANGED" = "1" ]; then deploy_frontend; fi
   if [ "$NGINX_CHANGED" = "1" ]; then deploy_nginx; fi
 
   mark_success

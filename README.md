@@ -1,158 +1,83 @@
-# Bookkeeping App
+# 拾光（Bookkeeping）
 
 ## Overview
-This repository contains a two-person bookkeeping app:
-- `frontend/`: React + Vite + TypeScript web app (also used for Android via Capacitor).
-- `backend/`: FastAPI + SQLAlchemy API service.
 
-## Local Development
+This repository contains an Android-only React Native bookkeeping app and its API: `mobile/` is the React Native app, `backend/` is the FastAPI API, and `deploy/ci/` contains push-to-deploy scripts for the backend.
 
-### Prerequisites
-- Python 3.11+
-- Node.js 20+ and npm
-- PostgreSQL (local or cloud)
+## Local development
 
-### 1) Start Backend
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item .env.example .env
-```
+### Backend
 
-Edit `backend/.env` with your own values:
-- `DATABASE_URL` — PostgreSQL connection string
-- `SECRET_KEY`
-- `ALGORITHM`
-- `ACCESS_TOKEN_EXPIRE_MINUTES`
-- `REFRESH_TOKEN_EXPIRE_DAYS`
-- Optional: `DB_CONNECT_TIMEOUT_SECONDS` (default `10`)
+Requirements: Python 3.11+ and PostgreSQL (local or cloud). From `backend/`, create a virtual environment, install dependencies, and configure `.env` from `.env.example`:
 
-Run migrations and start API:
-```powershell
-.\.venv\Scripts\python.exe -m alembic upgrade head
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
-
-Check:
-- Swagger: `http://127.0.0.1:8000/docs`
-- Health: `http://127.0.0.1:8000/health`
-
-### 2) Start Frontend
-```powershell
-cd frontend
-npm install
-Copy-Item .env.example .env
-npm run dev
-```
-
-Check:
-- App: `http://127.0.0.1:5173`
-
-## VPS Deployment (Backend)
-
-Backend runs on a VPS (Vultr Tokyo) via Docker.
-
-### 1) Build and run
 ```bash
 cd backend
-# Create .env with your production values
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 cp .env.example .env
-# Edit .env: set DATABASE_URL, SECRET_KEY, etc.
+```
 
-# Build image
+Set `DATABASE_URL`, `SECRET_KEY`, and the authentication settings in `backend/.env`. Then run migrations and start the API:
+
+```bash
+python -m alembic upgrade head
+python -m uvicorn app.main:app --reload
+```
+
+The local API docs are at `http://127.0.0.1:8000/docs`; health check: `http://127.0.0.1:8000/health`.
+
+### Android app
+
+`mobile/` is a React Native CLI project. Install its npm dependencies, start Metro, and run the Android app using the project scripts. Android Studio, Android SDK tools, and a compatible JDK are needed for Android builds. See [mobile/README.md](mobile/README.md) for the project’s setup commands.
+
+## VPS deployment (backend)
+
+The VPS deployment scripts in `deploy/ci/` watch the configured Git branch and deploy backend changes, including database migrations and a health check. Changes to `deploy/nginx.conf` are validated before nginx reload. Mobile app changes are not built or deployed by these scripts. See [deploy/ci/README.md](deploy/ci/README.md) for installation and operations.
+
+The backend can also be run manually with Docker. Configure `backend/.env`, then build and start the container:
+
+```bash
+cd backend
+cp .env.example .env
+# Edit .env with production values
 docker build -t bookkeeping-api .
-
-# Run with env file
 docker run -d --name bookkeeping-api \
   --env-file .env \
   -p 8080:8080 \
   --restart unless-stopped \
   bookkeeping-api
-```
-
-### 2) Run migrations
-```bash
 docker exec bookkeeping-api python -m alembic upgrade head
 ```
 
-### 3) Environment variables (set in `.env`)
-- `DATABASE_URL` — PostgreSQL connection string (e.g. `postgresql://user:pass@localhost:5432/bookkeeping`)
-- `SECRET_KEY` — strong random string
-- `ALGORITHM` — default `HS256`
-- `ACCESS_TOKEN_EXPIRE_MINUTES` — default `30`
-- `REFRESH_TOKEN_EXPIRE_DAYS` — default `30`
-- Optional: `DB_CONNECT_TIMEOUT_SECONDS` (default `10`)
-- Optional: `CORS_EXTRA_ORIGINS` (comma-separated origins)
+Set `DATABASE_URL`, `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, and `REFRESH_TOKEN_EXPIRE_DAYS`. Optional settings include `DB_CONNECT_TIMEOUT_SECONDS` and `CORS_EXTRA_ORIGINS`. Put a TLS nginx reverse proxy in front of the API and verify it with `curl https://api.yourdomain.com/health`.
 
-### 4) Nginx reverse proxy
-```nginx
-server {
-    listen 443 ssl;
-    server_name api.yourdomain.com;
+## Android APK
 
-    ssl_certificate     /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+The APK is built locally on macOS; the VPS never builds it (2 vCPU only, no JDK/Android SDK).
 
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+Prerequisites: JDK 17, Android SDK platform/build-tools (matching `mobile/android/build.gradle`), Node 22+.
 
-### 5) Verify
 ```bash
-curl https://api.yourdomain.com/health
-```
-
-## Vercel Deployment (Frontend)
-1. Import this repository in Vercel.
-2. Vercel uses root `vercel.json`:
-   - Build command: `npm --prefix frontend install && npm --prefix frontend run build`
-   - Output directory: `frontend/dist`
-3. Add environment variable in Vercel:
-   - `VITE_API_URL=https://api.yourdomain.com`
-   - Optional: `VITE_API_TIMEOUT_MS=30000` (increase if backend cold starts slowly)
-4. Deploy and verify the app can call backend APIs.
-
-## Android APK Build (Capacitor)
-
-### Manual prerequisites (required)
-- Install Android Studio.
-- Install Android SDK platform + build-tools + command-line tools.
-- Install JDK 17.
-- Configure `JAVA_HOME` and Android SDK environment variables.
-- `JAVA_HOME` must point to the JDK root folder (example: `C:\Program Files\Java\jdk-17`), not `...\bin\java.exe`.
-- Accept Android SDK licenses.
-
-### Build commands
-From `frontend/`:
-```powershell
+cd mobile
 npm install
-npm run build
-npx cap sync android
 cd android
-.\gradlew.bat assembleRelease
+./gradlew assembleRelease
 ```
 
-Release APK output:
-`frontend/android/app/build/outputs/apk/release/app-release.apk`
+Output: `mobile/android/app/build/outputs/apk/release/app-release.apk`.
+The release version lives in `mobile/android/app/build.gradle` (`versionCode` / `versionName`);
+`mobile/package.json` is not the release version.
 
-### Optional helper script
-If you use Git Bash/WSL:
+Verify the artifact before publishing:
+
 ```bash
-npm run build:apk
+aapt2 dump badging app/build/outputs/apk/release/app-release.apk | head
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
+shasum -a 256 app/build/outputs/apk/release/app-release.apk
 ```
 
-## Notes
-- Production API URL is injected at build time by `VITE_API_URL`.
-- Frontend request timeout defaults to 30s and can be overridden by `VITE_API_TIMEOUT_MS`.
-- For mobile live reload during local debugging, set `CAP_SERVER_URL` before `npx cap sync android`.
-- CORS already allows:
-  - `https://bookkeeping.neobee.top`
-  - `capacitor://localhost`
-  - local development origins.
+OTA publishing is a separate server-side step: upload the APK, then run
+`/opt/bookkeeping/distribute/publish.sh` on the VPS and verify
+`https://app.xyvora.me/bookkeeping/info.json`. See `docs/v0.5/DEPLOY-RELEASE.md` for the
+reproducible release procedure.

@@ -1,17 +1,19 @@
 # 金流 · 推送即自动部署（CI/CD）v0.6
 
 把「改了代码 → 线上生效」压缩成一次 push：VPS 每 2 分钟自己 `git fetch` 一次 `main`，
-有新提交就按**变更目录**决定动作（后端重建+迁移 / 前端重建+发布 / nginx 校验后 reload），
+有新提交就按**变更目录**决定动作（后端重建+迁移 / nginx 校验后 reload），
 没有新提交就零开销退出；任何一步失败就**停下来写 ALERT 并停止重试该提交**，等人工处理。
 
-- 需求与验收：`docs/v0.6/REQ.md`、`docs/v0.6/ARCH.md`、`docs/v0.6/CHECKLIST.md`
+- 需求与验收：`docs/v0.6/REQ.md`、`docs/v0.6/ARCH.md`、`docs/v0.6/CHECKLIST.md`；
+  v0.7 起 Web 前端下线，本流水线只部署后端与 nginx（见 `docs/v0.7/`）
+- 本仓库包含 React Native Android app 与 FastAPI 后端，不含 Web 前端
 - 本目录是流水线的**版本存档**；服务器上真正运行的是 `/opt/bookkeeping/ci/` 里的副本
 
 ## 1. 文件组成
 
 | 文件 | 作用 |
 | --- | --- |
-| `deploy.sh` | 主脚本：锁 → 拉取 → 变更判定 → 后端/前端/nginx 部署 → 状态与失败处理 |
+| `deploy.sh` | 主脚本：锁 → 拉取 → 变更判定 → 后端/nginx 部署 → 状态与失败处理 |
 | `install.sh` | 幂等安装：建目录、拷脚本、生成 `ci.env`、克隆仓库、装 systemd 单元、首跑 `--status` |
 | `uninstall.sh` | 停用并删除单元（`--purge` 才删 `/opt/bookkeeping/ci`） |
 | `bk-deploy.service` | oneshot 服务：`ExecStart=/opt/bookkeeping/ci/deploy.sh`，日志 append 到 `/var/log/bk-deploy.log` |
@@ -35,9 +37,7 @@
  │    4a backend/**  → rsync(保留 .env) → compose build           │
  │                     → pg_dump 快照 → alembic upgrade head     │
  │                     → compose up -d backend → /health 探活     │
- │    4b frontend/** → rsync(保留 node_modules) → 按需 npm ci     │
- │                     → 复用 deploy-build-frontend.sh → /var/www │
- │    4c deploy/nginx.conf → 复制 → nginx -t 通过才 reload（否则回滚）│
+ │    4b deploy/nginx.conf → 复制 → nginx -t 通过才 reload（否则回滚）│
  │    5 成功：写 last-deployed.txt、清 failed-sha/ALERT            │
  │      失败：写 failed-sha.txt + ALERT.txt，退出 1，不再自动重试   │
  │                                                                │
@@ -45,7 +45,6 @@
  │  /opt/bookkeeping/ci/state/     状态文件                        │
  │  /opt/bookkeeping/stack/        既有 compose 运行目录（部署产物）│
  │  /opt/bookkeeping/dumps/        迁移前快照（保留最近 5 份）      │
- │  /var/www/frontend              前端静态产物（nginx 服务）       │
  └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,9 +78,6 @@ sudo bash install.sh --from-github
 | `REPO_DIR` | `/opt/bookkeeping/repo` | git 工作副本 |
 | `STATE_DIR` | `/opt/bookkeeping/ci/state` | 状态文件目录 |
 | `STACK_DIR` | `/opt/bookkeeping/stack` | compose 运行目录 |
-| `FRONTEND_SRC` | `/opt/bookkeeping/frontend` | 前端源码（含 `node_modules`） |
-| `FRONTEND_PUBLISH` | `/var/www/frontend` | 前端静态发布目录 |
-| `PUBLIC_HOST` | `api.bookkeeping.neobee.top` | 烘焙进前端产物的 API 域 |
 | `DUMP_DIR` | `/opt/bookkeeping/dumps` | 迁移前快照目录 |
 | `KEEP_DUMPS` | `5` | 保留最近几份自动快照（只清理 `pre-deploy_*`） |
 | `LOG_FILE` | `/var/log/bk-deploy.log` | 部署日志 |
@@ -92,7 +88,7 @@ sudo bash install.sh --from-github
 
 **高级覆盖项**（一般不用，仅测试/迁移时用环境变量传；不写进 `ci.env`）：
 `CI_CONFIG`（配置文件路径）、`BK_DEPLOY_LOG_TO_FILE`（`0`=脚本不写日志文件，交给 systemd 的 `append:`；
-`1`=脚本自己追加写；不设则自动判定，规则见第 9 节第 7 条）、`FRONTEND_BUILD_SCRIPT`（默认 `/opt/bookkeeping/deploy-build-frontend.sh`）、
+`1`=脚本自己追加写；不设则自动判定，规则见第 9 节第 7 条）、
 `NGINX_SITE`（默认 `/etc/nginx/sites-available/bookkeeping`）、`NGINX_SERVICE`（默认 `nginx`）、`UNIT_DIR`（默认 `/etc/systemd/system`）。
 
 ## 5. 日常运维
@@ -150,20 +146,19 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh --purge  # 再删掉 /opt/bookkeeping
 ```
 
 卸载**不会**动：`/opt/bookkeeping/repo`、`/var/log/bk-deploy.log`、`/opt/bookkeeping/stack`、
-`/var/www/frontend`、`/opt/bookkeeping/dumps`。要彻底还原线上，需另外手动处理这些目录。
+`/opt/bookkeeping/dumps`。要彻底还原线上，需另外手动处理这些目录。
 
 ## 8. 故障处理速查
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
 | 日志每 2 分钟一行「该提交上次部署失败…」 | 失败提交处于停手状态（设计如此） | 看 `state/ALERT.txt`，修好后 push 新提交；或 `--retry` |
-| 日志一行「另一轮部署进行中，跳过」 | 上一轮还没跑完（例如前端首次 `npm ci`） | 正常，等下一轮；若长期如此看 `journalctl -u bk-deploy` |
-| 一直「无需部署」但线上没更新 | 该提交只改了 `mobile/`、`docs/` 等不部署路径 | 看 `--status` 的 `最近成功` 与 `git log`；需要部署就改 `backend/`/`frontend/` |
-| 前端失败：目录不可写 / npm 报 EACCES | `/opt/bookkeeping/frontend` 属主不是 `ubuntu` | `sudo chown -R ubuntu:ubuntu /opt/bookkeeping/frontend` |
+| 日志一行「另一轮部署进行中，跳过」 | 上一轮还没跑完 | 正常，等下一轮；若长期如此看 `journalctl -u bk-deploy` |
+| 一直「无需部署」但线上没更新 | 该提交只改了 `mobile/`、`docs/` 等不部署路径 | 看 `--status` 的 `最近成功` 与 `git log`；需要部署就改 `backend/` 或 `deploy/nginx.conf` |
 | 后端失败：`/opt/bookkeeping/stack/backend/.env` 丢失 | rsync 覆盖且备份还原失败（脚本会紧急还原并告警） | 检查 `state/.env.backup.*`，从服务器备份恢复 `.env` |
 | nginx 失败：`nginx -t` 不通过 | `deploy/nginx.conf` 写错了 | 线上配置已自动回滚（备份留在 `/tmp/nginx-bookkeeping.<pid>.bak`），修好后 push |
 | `--status` 里 `是否需要部署: 未知` | 服务器无法 fetch（网络/仓库权限） | 检查 `git -C /opt/bookkeeping/repo fetch origin main` 的报错 |
-| 部署被 systemd 砍掉 | 超过 `TimeoutStartSec=1800`（30 分钟） | 日志里有「收到 TERM 信号」，并会写 ALERT；查是哪一步慢（通常是首次 `npm ci`） |
+| 部署被 systemd 砍掉 | 超过 `TimeoutStartSec=1800`（30 分钟） | 日志里有「收到 TERM 信号」，并会写 ALERT；查是哪一步慢 |
 | 仓库目录不可写 / 提示运行 install.sh | `/opt/bookkeeping/repo` 属主不是 `ubuntu` | `sudo bash /opt/bookkeeping/ci/install.sh`（会修正属主） |
 | 日志每行出现两遍 | `bk-deploy.service` 里的 `Environment=BK_DEPLOY_LOG_TO_FILE=0` 被删掉了 | 加回来（或 `--status` 看「日志」一行的判定依据是否为 `explicit`），重装：`sudo bash /opt/bookkeeping/ci/install.sh` |
 
@@ -171,16 +166,16 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh --purge  # 再删掉 /opt/bookkeeping
 
 1. **脚本不随仓库自更新**（有意设计）：`deploy/ci/**` 有变更时日志只提示，运行中的脚本不会被替换
    —— 否则「仓库被改写」就等于「服务器自动执行任意代码」。要让新版本生效：`sudo bash /opt/bookkeeping/ci/install.sh`。
-2. **`deploy/` 目录目前没有被 git 跟踪**：`--from-github` 和"仓库化"都需要先
-   `git add deploy/ && git commit && git push`，否则仓库里没有这份脚本（服务器仍可用方式一手动上传安装）。
+2. **`deploy/ci/` 已纳入 git 跟踪，但线上仍以服务器副本为准**：`deploy/ci/**` 的变更只提示、
+   不自动替换运行中的脚本；要让新版本生效：上传后 `sudo bash /opt/bookkeeping/ci/install.sh`
+   （或直接覆盖 `/opt/bookkeeping/ci/deploy.sh` 并重启 timer）。
 3. **APK 不在服务器构建**：只有 2 vCPU / 1.9GB 内存，且没有 JDK/Android SDK。APK 仍在本机构建后推送到
-   `app.xyvora.me`（见 `deploy/app-distribute/README.md`）。这条流水线只管后端 + Web 前端 + nginx。
+   `app.xyvora.me`（发布工具在服务器 `/opt/bookkeeping/distribute/`，不在本仓库）。这条流水线只部署后端与 nginx。
 4. **`--dry-run` 不 clone、不 reset**：仓库还没克隆时只能告诉你「将会 clone」；仓库已存在时会
    `git fetch`（只读）并算出变更集合，但不改工作副本、不写状态。
 5. **同一失败提交不会被自动重试**，但**推新提交会把「上次成功→新提交」之间的全部变更一起部署**
    （包括上次失败那次的改动）——这正好符合"修好再 push"的用法，但要知道这一点。
-6. **`sudo VAR=val cmd` 在 sudoers 没开 `SETENV` 时会被拒**：所以脚本用 `sudo env VAR=val cmd` 传
-   `PUBLIC_HOST`，不要改回 `sudo PUBLIC_HOST=... cmd`。
+6. **`sudo VAR=val cmd` 在 sudoers 没开 `SETENV` 时会被拒**：这一规则适用于需要经 sudo 传递环境变量的命令。
 7. **日志由 systemd 落盘，脚本不要再写一遍（`BK_DEPLOY_LOG_TO_FILE=0` 不能删）**：
    `bk-deploy.service` 用 `StandardOutput/StandardError=append:` 归集日志，并显式设了
    `Environment=BK_DEPLOY_LOG_TO_FILE=0` 告诉脚本"这次不用你写文件"。
@@ -202,4 +197,4 @@ sudo bash /opt/bookkeeping/ci/uninstall.sh --purge  # 再删掉 /opt/bookkeeping
 13. **源码同步用 `rsync -a --checksum --delete`**：rsync 默认只比"文件大小 + 秒级 mtime"，若某文件
     改动后**字节数不变**且 mtime 恰好落在同一秒，会被判为未变而漏同步（本地自测真的踩到过：同一秒内
     连续两次部署，`print("v10")` → `print("v11")` 没同步过去）。`--checksum` 按内容比对，代价是每次多读
-    几 MB 源码，对这套目录完全可以接受。前端同步同理（`node_modules` 用 `--exclude` 保护、不参与比对）。
+    几 MB 源码，对这套目录完全可以接受。
