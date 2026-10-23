@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme , useSkin} from '../theme';
 import GradientButton from './GradientButton';
 import GradientView from './GradientView';
 
@@ -53,6 +53,7 @@ export function UpdateModal({
   onRequestClose,
 }: UpdateModalProps) {
   const colors = useTheme();
+  const skin = useSkin();
   if (!visible || !updateInfo) {
     return null;
   }
@@ -73,17 +74,17 @@ export function UpdateModal({
       onRequestClose={handleRequestClose}
     >
       <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           {/* 头部:紫粉渐变 + 图标 + 标题 + 版本徽标 */}
           <GradientView style={styles.hero}>
             <View style={styles.appIcon}>
               <Text style={styles.appIconEmoji}>📒</Text>
             </View>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: colors.onAccent }]}>
               {force ? '必须更新到新版本' : '发现新版本'}
             </Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>v{version}</Text>
+              <Text style={[styles.badgeText, { color: colors.onAccent }]}>v{version}</Text>
             </View>
           </GradientView>
 

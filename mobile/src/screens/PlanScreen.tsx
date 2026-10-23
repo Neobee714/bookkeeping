@@ -28,7 +28,7 @@ import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
-import { gradient, radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useSkin, useTheme } from '../theme';
 import type { Budget, BudgetSummary, SavingsGoal } from '../types';
 
 type PlanTab = 'budget' | 'savings';
@@ -121,6 +121,7 @@ const getProgress = (
 /** 规划:预算 + 储蓄目标(FR-05 / FR-06)。 */
 export default function PlanScreen() {
   const colors = useTheme();
+  const skin = useSkin();
   const isFocused = useIsFocused();
 
   const [tab, setTab] = useState<PlanTab>('budget');
@@ -400,7 +401,7 @@ export default function PlanScreen() {
     }
     return (
       <>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <Text style={[styles.summaryCaption, { color: colors.textSecondary }]}>
             本月预算 · {monthLabel}
           </Text>
@@ -437,7 +438,7 @@ export default function PlanScreen() {
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
             分类预算
           </Text>
@@ -522,7 +523,7 @@ export default function PlanScreen() {
       );
     }
     return (
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <View style={[styles.card, skin.surfaces.card]}>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           存钱目标
         </Text>
@@ -632,11 +633,11 @@ export default function PlanScreen() {
       </ScrollView>
 
       <Pressable
-        style={styles.fab}
+        style={[styles.fab, { shadowColor: skin.gradient[0] }]}
         onPress={tab === 'budget' ? openCreateBudgetSheet : openCreateSavingSheet}
       >
         <GradientView style={styles.fabGradient}>
-          <Text style={styles.fabText}>+</Text>
+          <Text style={[styles.fabText, { color: skin.colors.onAccent }]}>+</Text>
         </GradientView>
       </Pressable>
 
@@ -652,7 +653,7 @@ export default function PlanScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Pressable style={[styles.sheetBackdrop, { backgroundColor: colors.overlay }]} onPress={closeBudgetSheet} />
-          <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <View style={[styles.sheet, skin.surfaces.card]}>
             <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
             <ScrollView
               keyboardShouldPersistTaps="handled"
@@ -742,7 +743,7 @@ export default function PlanScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <Pressable style={[styles.sheetBackdrop, { backgroundColor: colors.overlay }]} onPress={closeSavingSheet} />
-          <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <View style={[styles.sheet, skin.surfaces.card]}>
             <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
             <ScrollView
               keyboardShouldPersistTaps="handled"
@@ -1017,7 +1018,6 @@ const styles = StyleSheet.create({
     bottom: 96,
     borderRadius: radius.fab,
     elevation: 8,
-    shadowColor: gradient.start,
     shadowOpacity: 0.4,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },

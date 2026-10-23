@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme , useSkin} from '../theme';
 import GradientButton from './GradientButton';
 
 interface Props {
@@ -34,6 +34,7 @@ export default function ConfirmModal({
   onCancel,
 }: Props) {
   const colors = useTheme();
+  const skin = useSkin();
   return (
     <Modal
       visible={visible}
@@ -42,7 +43,7 @@ export default function ConfirmModal({
       onRequestClose={onCancel}
     >
       <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
             {title}
           </Text>

@@ -27,7 +27,7 @@ import {
 import { cacheKey, readCache, writeCache } from '../offline/cache';
 import { isOnlineNow } from '../offline/network';
 import { useAuthStore } from '../store/authStore';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme , useSkin} from '../theme';
 import type {
   QuickInputs,
   QuickNoteCandidate,
@@ -111,6 +111,7 @@ export default function AddTransactionSheet({
   onSubmit,
 }: Props) {
   const colors = useTheme();
+  const skin = useSkin();
   const insets = useSafeAreaInsets();
 
   const [type, setType] = useState<TransactionType>('expense');
@@ -424,8 +425,8 @@ export default function AddTransactionSheet({
           <View
             style={[
               styles.sheet,
+              skin.surfaces.sheet,
               {
-                backgroundColor: colors.card,
                 paddingBottom: spacing.xl + Math.max(insets.bottom, 56),
               },
             ]}
@@ -454,7 +455,7 @@ export default function AddTransactionSheet({
                 <Pressable style={styles.seg} onPress={() => setType('expense')}>
                   {type === 'expense' ? (
                     <GradientView style={styles.segActive}>
-                      <Text style={styles.segTextActive}>支出</Text>
+                      <Text style={[styles.segTextActive, { color: colors.onAccent }]}>支出</Text>
                     </GradientView>
                   ) : (
                     <Text style={[styles.segText, { color: colors.textSecondary }]}>
@@ -465,7 +466,7 @@ export default function AddTransactionSheet({
                 <Pressable style={styles.seg} onPress={() => setType('income')}>
                   {type === 'income' ? (
                     <GradientView style={styles.segActive}>
-                      <Text style={styles.segTextActive}>收入</Text>
+                      <Text style={[styles.segTextActive, { color: colors.onAccent }]}>收入</Text>
                     </GradientView>
                   ) : (
                     <Text style={[styles.segText, { color: colors.textSecondary }]}>
@@ -477,7 +478,7 @@ export default function AddTransactionSheet({
 
               {/* 金额 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>金额</Text>
-              <View style={[styles.amountBox, { backgroundColor: colors.surface }]}>
+              <View style={[styles.amountBox, skin.surfaces.input]}>
                 <Text style={[styles.yuan, { color: colors.primary }]}>¥</Text>
                 <TextInput
                   style={[styles.amountInput, { color: colors.textPrimary }]}
@@ -491,7 +492,7 @@ export default function AddTransactionSheet({
 
               {/* 备注 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>备注(可选)</Text>
-              <View style={[styles.noteRow, { backgroundColor: colors.surface }]}>
+              <View style={[styles.noteRow, skin.surfaces.input]}>
                 <TextInput
                   style={[styles.noteInput, { color: colors.textPrimary }]}
                   value={note}
@@ -571,7 +572,7 @@ export default function AddTransactionSheet({
               {/* 日期 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>日期</Text>
               <Pressable
-                style={[styles.dateRow, { backgroundColor: colors.surface }]}
+                style={[styles.dateRow, skin.surfaces.input]}
                 onPress={handleOpenDatePicker}
               >
                 <Text style={[styles.dateText, { color: colors.textPrimary }]}>
@@ -584,7 +585,7 @@ export default function AddTransactionSheet({
                     lastDateActive ? (
                       <Pressable onPress={handleUseLastDate} hitSlop={6}>
                         <GradientView style={styles.dateChip}>
-                          <Text style={styles.dateChipTextActive}>
+                          <Text style={[styles.dateChipTextActive, { color: colors.onAccent }]}>
                             {`✓ 同上次 ${formatMonthDay(lastDate)}`}
                           </Text>
                         </GradientView>
@@ -661,13 +662,13 @@ export default function AddTransactionSheet({
                         return (
                           <Pressable
                             key={item.id}
-                            style={[styles.cat, { backgroundColor: colors.surface }]}
+                            style={[styles.cat, skin.surfaces.input]}
                             onPress={() => setCategory(item.name)}
                           >
                             {active ? (
                               <GradientView style={styles.catActiveFill}>
                                 <Text style={styles.catEmoji}>{item.icon}</Text>
-                                <Text style={styles.catNameActive}>{item.name}</Text>
+                                <Text style={[styles.catNameActive, { color: colors.onAccent }]}>{item.name}</Text>
                               </GradientView>
                             ) : (
                               <>

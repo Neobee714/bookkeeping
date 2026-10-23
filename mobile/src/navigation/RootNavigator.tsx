@@ -14,6 +14,7 @@ import LoadingView from '../components/LoadingView';
 import UpdateModal from '../components/UpdateModal';
 import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import AgentScreen from '../screens/AgentScreen';
+import AppearanceScreen from '../screens/AppearanceScreen';
 import CategoryScreen from '../screens/CategoryScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -22,7 +23,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import StatsScreen from '../screens/StatsScreen';
 import { useAuthStore } from '../store/authStore';
-import { radius, useIsDarkMode, useTheme } from '../theme';
+import { radius, useIsDarkMode, useSkin, useTheme } from '../theme';
 import { checkForUpdate, useUpdateCheck } from '../updater/useUpdateCheck';
 import type { MainTabParamList, RootStackParamList } from './types';
 
@@ -55,14 +56,12 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 
 function MainTabs() {
   const colors = useTheme();
+  const skin = useSkin();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: [
-          styles.tabBar,
-          { backgroundColor: colors.tabBarBg, borderTopColor: colors.border },
-        ],
+        tabBarStyle: [styles.tabBar, skin.surfaces.tabBar],
       }}
     >
       {(Object.keys(TAB_ITEMS) as Array<keyof MainTabParamList>).map((name) => (
@@ -123,6 +122,7 @@ function MainStack() {
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="Main" component={MainTabs} />
       <RootStack.Screen name="Category" component={CategoryScreen} />
+      <RootStack.Screen name="Appearance" component={AppearanceScreen} />
       <RootStack.Screen name="AdminUsers" component={AdminUsersScreen} />
     </RootStack.Navigator>
   );

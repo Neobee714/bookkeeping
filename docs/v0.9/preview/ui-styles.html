@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拾光 · 前端 UI 重设计 · 10 个方向预览</title>
+<link rel="stylesheet" href="css/page.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/skins-a.css">
+<link rel="stylesheet" href="css/skins-b.css">
+<link rel="stylesheet" href="css/skins-c.css">
+<link rel="stylesheet" href="css/sheet.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">拾光 · v0.8 预览 · 2026-10-23</div>
+    <h1>前端 UI 重设计：10 个方向</h1>
+    <p class="lead">功能、信息架构、交互、字段全部不变。只动视觉层：配色、字体、圆角、阴影、间距、图标表现、分隔方式。</p>
+    <p class="meta">每个方向展示 3 个关键界面：<b>首页</b> / <b>图表</b> / <b>记一笔</b>。数据是同一份，方便横向对比。点目录跳转。</p>
+  </header>
+
+  <nav class="nav" id="index" aria-label="风格目录"></nav>
+
+  <main id="board"></main>
+
+  <section class="outro">
+    <h2>怎么读这 10 个方向</h2>
+    <ul>
+      <li><b>1–2 纸质系</b>：留白与纸张质感，弱化“理财 App”的科技感，偏安静、长期看不累。</li>
+      <li><b>3–4 材质系</b>：玻璃与浮雕，靠光影做层次，视觉最“贵”，但也最挑设备与光线。</li>
+      <li><b>5–6 强个性</b>：粗野与霓虹，记忆点最强，代价是配色容错率低，深色/浅色只能二选一主打。</li>
+      <li><b>7–8 功能系</b>：终端与糖果，分别走“数据密度”和“亲和力”两个极端。</li>
+      <li><b>9–10 叙事系</b>：皮革账本给仪式感，流动极光给现代感，后者落地最稳。</li>
+    </ul>
+    <h2>不变的部分</h2>
+    <p>月份切换、我的/伴侣切换、按日分组与当日支出、长按删除、点按编辑、记一笔里的收支切换/金额/备注+收藏/常用备注 chips/日期+同上次/分类宫格、图表的支出分布与趋势与备注排行、五个 Tab、更新弹窗、登录注册、分类管理、管理后台——全部保留，位置和操作方式也不变。</p>
+    <h2>选定之后怎么落地</h2>
+    <p>只改 <code>mobile/src/theme/</code> 的 token 与各组件的 <code>StyleSheet</code>：预计 8–12 个文件、纯样式改动，不碰 api / store / navigation / 业务逻辑。深色模式沿用现有主题机制，给每个方向各出一套暗色 token 即可。版本号 +1 后照常出 APK。</p>
+    <p class="foot">建议：先选 1 个主方向，再从另外 1–2 个方向里挑局部（例如 09 的账本分隔线、07 的数字排版）做混搭。告诉我编号即可，我再出选中方向的完整三端稿（含深色与边界状态）。</p>
+  </section>
+
+</div>
+<script src="js/data.js"></script>
+<script src="js/parts.js"></script>
+<script src="js/mount.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+/* ========== 09 皮革账本 Leather ========== */
+[data-skin="leather"]{
+  --bg:#123028;--card:#F5ECD8;--surface:#EBDFC4;--text:#2A2418;--muted:#7B6A4F;--faint:#A08D69;
+  --line:#DCCBA8;--accent:#B08A3E;--accent2:#8C6B2F;--income:#2F6B4F;--expense:#9B2F2F;
+  --radius:4px;--radius-sm:3px;
+  --hero-bg:#F5ECD8;--hero-border:1px solid #B08A3E;
+  --hero-shadow:inset 0 0 0 3px rgba(176,138,62,.32),0 10px 22px rgba(0,0,0,.3);
+  --icon-bg:#EBDFC4;--sheet-bg:#F5ECD8;--fab-bg:#B08A3E;--fab-fg:#123028;--tab-bg:#0E2620;
+}
+[data-skin="leather"]{background:radial-gradient(circle at 30% 8%,#1B423A,#0E2620 72%)}
+[data-skin="leather"]::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.7;
+  background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px);background-size:4px 4px}
+[data-skin="leather"] .home-top{color:#EFE3C6}
+[data-skin="leather"] .greet{color:#C9A96A;letter-spacing:.1em}
+[data-skin="leather"] .wordmark{font-family:"Songti SC",Georgia,serif;font-size:18px;letter-spacing:.22em;
+  color:#E8CF98;text-shadow:0 1px 0 rgba(0,0,0,.6),0 -1px 0 rgba(255,235,190,.2)}
+[data-skin="leather"] .avatar{background:#0E2620;box-shadow:inset 0 0 0 1px #B08A3E;color:#D8BC7E}
+[data-skin="leather"] .hero{outline:1px dashed rgba(140,107,47,.55);outline-offset:-6px}
+[data-skin="leather"] .blabel{font-weight:600;letter-spacing:.24em;color:#8C6B2F}
+[data-skin="leather"] .bnum{font-family:"Songti SC",Georgia,serif;font-weight:700;color:#241E14}
+[data-skin="leather"] .mnav{background:transparent;box-shadow:inset 0 0 0 1px #C9A96A;color:#8C6B2F}
+[data-skin="leather"] .mlabel{font-family:"Songti SC",serif;letter-spacing:.12em;color:#5E4A2A}
+[data-skin="leather"] .split{margin-top:2px;padding-top:6px;border-top:1px solid rgba(176,138,62,.4)}
+[data-skin="leather"] .views{margin-top:11px;padding:0;gap:10px;border-radius:0;background:transparent}
+[data-skin="leather"] .views span{flex:none;padding:2px 4px;font-family:"Songti SC",serif;
+  font-size:9px;letter-spacing:.1em;color:#C9A96A}
+[data-skin="leather"] .views .on{background:#C9A96A;color:#0E2620;border-radius:2px;font-weight:700}
+[data-skin="leather"] .feed{margin:0 10px;padding:1px 10px 58px;background:#F5ECD8;border-radius:2px;
+  box-shadow:inset 0 0 0 1px rgba(176,138,62,.5),inset 0 0 0 4px rgba(176,138,62,.14)}
+[data-skin="leather"] .feed .day{color:#8C6B2F;letter-spacing:.08em}
+[data-skin="leather"] .tx{padding:6px 2px;margin-bottom:0;border-radius:0;background:transparent;
+  border-bottom:1px solid rgba(176,138,62,.28)}
+[data-skin="leather"] .tx-main b{color:#2A2418}
+[data-skin="leather"] .tx-main em{color:#8A795C}
+[data-skin="leather"] .ico{width:24px;height:24px;border-radius:50%;background:#EBDFC4;
+  box-shadow:inset 0 0 0 1px #D6C29B}
+[data-skin="leather"] .amt{font-family:"Songti SC",serif;font-size:11.5px;font-weight:700}
+[data-skin="leather"] .amt.out{color:#9B2F2F}
+[data-skin="leather"] .tabs{border-top:1px solid #B08A3E}
+[data-skin="leather"] .tabs .tab{font-family:"Songti SC",serif;letter-spacing:.06em;color:#C9A96A}
+[data-skin="leather"] .tabs .tab.on{color:#F1DCA8}
+[data-skin="leather"] .tabs .tab i{filter:sepia(1) saturate(.55) brightness(1.15)}
+[data-skin="leather"] .fab{font-size:24px;bottom:70px;color:#123028;
+  background:radial-gradient(circle at 35% 30%,#E2C288,#A87F35);
+  box-shadow:inset 0 0 0 1px #7E5D22,0 6px 14px rgba(0,0,0,.45)}
+[data-skin="leather"] .kpi,[data-skin="leather"] .panel{background:#F5ECD8;
+  box-shadow:inset 0 0 0 1px rgba(176,138,62,.4)}
+[data-skin="leather"] .sp-head h2{font-family:"Songti SC",serif;letter-spacing:.1em;color:#F1DCA8}
+[data-skin="leather"] .month.small .mnav{color:#C9A96A;box-shadow:inset 0 0 0 1px #8C6B2F}
+[data-skin="leather"] .month.small .mlabel{color:#E0C68F}
+[data-skin="leather"] .sheet{border-top:2px solid #B08A3E;border-radius:4px 4px 0 0;
+  box-shadow:0 -14px 30px rgba(0,0,0,.5)}
+[data-skin="leather"] .s-head b,[data-skin="leather"] .flabel{font-family:"Songti SC",serif;
+  letter-spacing:.08em;color:#5E4A2A}
+[data-skin="leather"] .seg{background:#EBDFC4;border-radius:2px}
+[data-skin="leather"] .seg span{border-radius:2px;color:#7B6A4F}
+[data-skin="leather"] .seg .on{background:#123028;color:#E8CF98}
+[data-skin="leather"] .amount,[data-skin="leather"] .input{background:#EBDFC4;border-radius:2px;
+  box-shadow:inset 0 0 0 1px #D6C29B}
+[data-skin="leather"] .cat{background:#EBDFC4;border-radius:2px;box-shadow:inset 0 0 0 1px #D6C29B}
+[data-skin="leather"] .cat.on{background:#123028;color:#E8CF98;box-shadow:none}
+[data-skin="leather"] .save{border-radius:2px;letter-spacing:.12em;color:#12100A;
+  background:linear-gradient(180deg,#C9A96A,#A87F35);box-shadow:inset 0 0 0 1px #7E5D22}
+[data-skin="leather"] .chip{background:transparent;border-color:#C9A96A;color:#8C6B2F}
+[data-skin="leather"] .chip.pin{background:#123028;border-color:#123028;color:#E8CF98}
+[data-skin="leather"] .close{background:#EBDFC4;color:#7B6A4F}
+[data-skin="leather"] .chart .dot{stroke:#F5ECD8}
+
+/* ========== 10 流动极光 Aurora ========== */
+[data-skin="aurora"]{
+  --bg:#F7F8FC;--card:#FFFFFF;--surface:#F2F3F9;--text:#14161F;--muted:#6E7386;--faint:#98A0B0;
+  --line:#ECEEF6;--accent:#6D5BFF;--accent2:#23C4A2;--income:#12A67C;--expense:#E4566E;
+  --radius:24px;--radius-sm:16px;
+  --card-shadow:0 10px 26px rgba(24,26,40,.07);
+  --hero-bg:#fff;--hero-shadow:0 16px 36px rgba(24,26,40,.10);
+  --icon-bg:linear-gradient(145deg,rgba(109,91,255,.14),rgba(35,196,162,.14));
+  --sheet-bg:#fff;--fab-bg:linear-gradient(135deg,#6D5BFF,#23C4A2);--fab-fg:#fff;--tab-bg:#fff;
+}
+[data-skin="aurora"]{background:linear-gradient(170deg,#F4F5FC,#F9FBFC 55%,#FDF7F4)}
+[data-skin="aurora"]::before{content:"";position:absolute;inset:0;z-index:-1;
+  background:radial-gradient(circle at 92% 4%,rgba(35,196,162,.22),transparent 42%),
+             radial-gradient(circle at 3% 28%,rgba(109,91,255,.16),transparent 40%),
+             radial-gradient(circle at 62% 104%,rgba(255,169,120,.22),transparent 42%)}
+[data-skin="aurora"] .hero{padding-bottom:15px}
+[data-skin="aurora"] .mnav{background:var(--surface);color:var(--accent)}
+[data-skin="aurora"] .tabs{margin:auto 10px 8px;height:50px;border-top:none;border-radius:20px;
+  box-shadow:0 12px 28px rgba(24,26,40,.12)}
+[data-skin="aurora"] .tabs .tab.on{padding:3px 0;border-radius:14px;color:#fff;
+  background:linear-gradient(135deg,#6D5BFF,#23C4A2);box-shadow:0 6px 14px rgba(109,91,255,.3)}
+[data-skin="aurora"] .fab{bottom:70px;box-shadow:0 14px 26px rgba(109,91,255,.35)}
+[data-skin="aurora"] .sheet{border-radius:28px 28px 0 0}
+[data-skin="aurora"] .seg .on{background:linear-gradient(90deg,#6D5BFF,#23C4A2)}
+[data-skin="aurora"] .cat.on{background:linear-gradient(135deg,#6D5BFF,#23C4A2)}
+[data-skin="aurora"] .save{background:linear-gradient(90deg,#6D5BFF,#23C4A2);
+  box-shadow:0 8px 18px rgba(109,91,255,.28)}
+
+/* 结余率环（仅 10 号方向） */
+.ring{display:none;position:absolute;top:42px;right:14px;width:54px;height:54px;border-radius:50%;
+  place-items:center;
+  background:conic-gradient(from -90deg,#6D5BFF 0 25.7%,#23C4A2 25.7% 26.4%,#EEF0F8 26.4% 100%)}
+[data-skin="aurora"] .ring{display:grid}
+.ring>span{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 8px rgba(20,22,31,.08);text-align:center;line-height:1.05}
+.ring b{font-size:9.5px;font-weight:800;color:#14161F;letter-spacing:-.02em}
+.ring b em{font-style:normal;font-size:7px;font-weight:700;margin-left:.5px}
+.ring small{display:block;margin-top:1px;font-size:6px;font-weight:600;color:var(--muted);letter-spacing:.02em}

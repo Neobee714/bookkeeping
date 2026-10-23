@@ -13,7 +13,7 @@ import * as authApi from '../api/auth';
 import { extractErrorMessage } from '../api/client';
 import AuthLayout from '../components/AuthLayout';
 import type { RootStackParamList } from '../navigation/types';
-import { gradient, spacing, typography } from '../theme';
+import { spacing, typography, useSkin } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -22,6 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
  * 后端注册只返回 user、不签发 token,因此成功后跳回登录页(与 Web 行为对齐)。
  */
 export default function RegisterScreen({ navigation }: Props) {
+  const skin = useSkin();
   const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
@@ -159,14 +160,15 @@ export default function RegisterScreen({ navigation }: Props) {
         onPress={() => void handleRegister()}
         style={({ pressed }) => [
           styles.submitButton,
+          { shadowColor: skin.gradient[0] },
           pressed && styles.submitPressed,
           disabled && styles.submitDisabled,
         ]}
       >
         {submitting ? (
-          <ActivityIndicator color={gradient.start} />
+          <ActivityIndicator color={skin.gradient[0]} />
         ) : (
-          <Text style={styles.submitText}>注 册</Text>
+          <Text style={[styles.submitText, { color: skin.gradient[0] }]}>注 册</Text>
         )}
       </Pressable>
 
@@ -284,7 +286,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: gradient.start,
     shadowOpacity: 0.35,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
@@ -298,7 +299,6 @@ const styles = StyleSheet.create({
   },
   submitText: {
     ...typography.button,
-    color: gradient.start,
     fontWeight: '700',
     letterSpacing: 6,
   },

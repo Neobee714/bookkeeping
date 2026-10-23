@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { radius, spacing, useTheme } from '../theme';
+import { radius, useSkin, useTheme } from '../theme';
 import GradientView from './GradientView';
 
 export interface SegmentOption {
@@ -21,6 +21,7 @@ interface Props {
  */
 export default function SegmentedControl({ options, value, onChange }: Props) {
   const colors = useTheme();
+  const skin = useSkin();
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
       {options.map((option) => {
@@ -33,13 +34,15 @@ export default function SegmentedControl({ options, value, onChange }: Props) {
           >
             {selected ? (
               <GradientView style={styles.active}>
-                <Text style={styles.activeText}>{option.label}</Text>
+                <Text style={[styles.activeText, { color: skin.colors.onAccent }]}>
+                  {option.label}
+                </Text>
               </GradientView>
             ) : null}
             <Text
               style={
                 selected
-                  ? styles.activeText
+                  ? [styles.activeText, { color: skin.colors.onAccent }]
                   : [styles.inactiveText, { color: colors.textSecondary }]
               }
             >

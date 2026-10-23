@@ -18,4 +18,6 @@ export type RootStackParamList = {
   Category: undefined;
   /** 管理后台用户列表(FR-10,仅管理员)。 */
   AdminUsers: undefined;
+  /** 外观：主题与明暗模式。 */
+  Appearance: undefined;
 };

@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, useSkin } from '../theme';
 import GradientView from './GradientView';
 
 interface Props {
@@ -25,6 +25,7 @@ export default function GradientButton({
   disabled = false,
   style,
 }: Props) {
+  const skin = useSkin();
   return (
     <Pressable
       disabled={disabled}
@@ -32,7 +33,7 @@ export default function GradientButton({
       style={({ pressed }) => [styles.pressable, style, pressed && styles.pressed]}
     >
       <GradientView style={[styles.gradient, disabled && styles.disabled]}>
-        <Text style={styles.text}>{title}</Text>
+        <Text style={[styles.text, { color: skin.colors.onAccent }]}>{title}</Text>
       </GradientView>
     </Pressable>
   );

@@ -17,7 +17,7 @@ import { extractErrorMessage } from '../api/client';
 import { sendAgentMessage } from '../api/agent';
 import GradientView from '../components/GradientView';
 import { useAuthStore } from '../store/authStore';
-import { radius, spacing, typography, useTheme, type ThemeColors } from '../theme';
+import { radius, spacing, typography, useTheme, type ThemeColors , useSkin} from '../theme';
 import type { AgentChatRole, AgentToolCallSummary } from '../types';
 
 /**
@@ -105,7 +105,7 @@ function MessageBubble({
     return (
       <View style={styles.rowEnd}>
         <GradientView style={styles.userBubble}>
-          <Text style={styles.userText}>{message.content}</Text>
+          <Text style={[styles.userText, { color: colors.onAccent }]}>{message.content}</Text>
         </GradientView>
       </View>
     );
@@ -151,6 +151,7 @@ function MessageBubble({
 /** 小光:AI 记账助手(FR-07)。 */
 export default function AgentScreen() {
   const colors = useTheme();
+  const skin = useSkin();
   const userId = useAuthStore((s) => s.user?.id);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -291,7 +292,7 @@ export default function AgentScreen() {
           <>
             {loading ? (
               <View style={styles.rowStart}>
-                <View style={[styles.aiBubble, { backgroundColor: colors.card }]}>
+                <View style={[styles.aiBubble, skin.surfaces.card]}>
                   <ActivityIndicator size="small" color={colors.primary} />
                   <Text style={[styles.aiText, { color: colors.textSecondary }]}>
                     正在分析账单…
@@ -301,7 +302,7 @@ export default function AgentScreen() {
             ) : null}
             {error ? (
               <View style={styles.rowStart}>
-                <View style={[styles.aiBubble, { backgroundColor: colors.card }]}>
+                <View style={[styles.aiBubble, skin.surfaces.card]}>
                   <Text style={[styles.errorText, { color: colors.expense }]}>
                     {error}
                   </Text>

@@ -27,7 +27,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import { cacheKey, readCache, writeCache } from '../offline/cache';
 import { isOnlineNow } from '../offline/network';
 import { useAuthStore } from '../store/authStore';
-import { radius, spacing, typography, useTheme, type ThemeColors } from '../theme';
+import { radius, spacing, typography, useTheme, type ThemeColors , useSkin} from '../theme';
 import type { MonthlySummary, NoteRankItem, TrendPoint } from '../types';
 
 type SummaryTab = 'self' | 'partner';
@@ -263,6 +263,7 @@ function ChartLegend({ colors }: { colors: ThemeColors }) {
 /** 图表:统计页(FR-04)。 */
 export default function StatsScreen() {
   const colors = useTheme();
+  const skin = useSkin();
   const isFocused = useIsFocused();
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const partner = useAuthStore((state) => state.user?.partner);
@@ -503,7 +504,7 @@ export default function StatsScreen() {
       >
         <Text style={[styles.title, { color: colors.textPrimary }]}>图表</Text>
 
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <View style={styles.monthRow}>
             <MonthArrow onPress={() => setCurrentMonth((previous) => shiftMonth(previous, -1))}>
               ‹
@@ -579,7 +580,7 @@ export default function StatsScreen() {
           </View>
         ) : summary ? (
           <>
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={[styles.card, skin.surfaces.card]}>
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                 支出分布
               </Text>
@@ -628,7 +629,7 @@ export default function StatsScreen() {
               )}
             </View>
 
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={[styles.card, skin.surfaces.card]}>
               {selectedNote ? (
                 <>
                   <View style={styles.noteTrendHeader}>
@@ -758,7 +759,7 @@ export default function StatsScreen() {
               )}
             </View>
 
-            <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={[styles.card, skin.surfaces.card]}>
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                 收支趋势
               </Text>

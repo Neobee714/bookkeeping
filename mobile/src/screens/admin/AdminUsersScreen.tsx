@@ -16,7 +16,7 @@ import LoadingView from '../../components/LoadingView';
 import ScreenHeader from '../../components/ScreenHeader';
 import UserAvatar from '../../components/UserAvatar';
 import type { RootStackParamList } from '../../navigation/types';
-import { radius, spacing, typography, useTheme } from '../../theme';
+import { radius, spacing, typography, useSkin, useTheme } from '../../theme';
 import type { AdminUser } from '../../types';
 import { formatDateTime } from '../../utils/format';
 
@@ -29,6 +29,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AdminUsers'>;
  */
 export default function AdminUsersScreen({ navigation }: Props) {
   const colors = useTheme();
+  const skin = useSkin();
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ export default function AdminUsersScreen({ navigation }: Props) {
             说明:管理员与封禁状态由后端环境配置决定。
           </Text>
           {users.map((user) => (
-            <View key={user.id} style={[styles.card, { backgroundColor: colors.card }]}>
+            <View key={user.id} style={[styles.card, skin.surfaces.card]}>
               <UserAvatar avatar={user.avatar} size={44} />
               <View style={styles.userInfo}>
                 <View style={styles.userNameRow}>

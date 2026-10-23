@@ -14,13 +14,14 @@ import { extractErrorMessage } from '../api/client';
 import AuthLayout from '../components/AuthLayout';
 import type { RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { gradient, spacing, typography } from '../theme';
+import { spacing, typography, useSkin } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 /** 登录页(FR-01):用户名 + 密码,调真实 API,成功后写入登录态自动进入主界面。 */
 export default function LoginScreen({ navigation }: Props) {
   const login = useAuthStore((s) => s.login);
+  const skin = useSkin();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -105,14 +106,15 @@ export default function LoginScreen({ navigation }: Props) {
         onPress={() => void handleLogin()}
         style={({ pressed }) => [
           styles.submitButton,
+          { shadowColor: skin.gradient[0] },
           pressed && styles.submitPressed,
           submitting && styles.submitDisabled,
         ]}
       >
         {submitting ? (
-          <ActivityIndicator color={gradient.start} />
+          <ActivityIndicator color={skin.gradient[0]} />
         ) : (
-          <Text style={styles.submitText}>登 录</Text>
+          <Text style={[styles.submitText, { color: skin.gradient[0] }]}>登 录</Text>
         )}
       </Pressable>
 
@@ -167,7 +169,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: gradient.start,
     shadowOpacity: 0.35,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
@@ -181,7 +182,6 @@ const styles = StyleSheet.create({
   },
   submitText: {
     ...typography.button,
-    color: gradient.start,
     fontWeight: '700',
     letterSpacing: 6,
   },

@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import OfflineBanner from './src/components/OfflineBanner';
 import { useOfflineSync } from './src/offline/useOfflineSync';
-import { loadStoredThemeMode } from './src/store/themeStore';
+import { loadStoredTheme } from './src/store/themeStore';
 import { useIsDarkMode, useTheme } from './src/theme';
 
 function App() {
@@ -15,7 +15,7 @@ function App() {
   useOfflineSync();
 
   useEffect(() => {
-    void loadStoredThemeMode();
+    void loadStoredTheme();
   }, []);
 
   return (

@@ -49,7 +49,7 @@ import { syncQueue } from '../offline/sync';
 import type { PendingTransaction } from '../offline/types';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineStore } from '../store/offlineStore';
-import { gradient, spacing, typography, useTheme } from '../theme';
+import { spacing, typography, useSkin, useTheme } from '../theme';
 import type {
   MonthlySummary,
   Transaction,
@@ -85,6 +85,12 @@ const COLLAPSED_CARD_HEIGHT = 56;
  */
 export default function HomeScreen() {
   const colors = useTheme();
+  const skin = useSkin();
+  const heroGradient = skin.heroGradient ?? [skin.colors.card, skin.colors.card];
+  const heroRadius = Number(skin.surfaces.hero.borderRadius ?? 24);
+  const heroChipBg = skin.heroGradient
+    ? 'rgba(255, 255, 255, 0.20)'
+    : 'rgba(43, 52, 69, 0.07)';
   const user = useAuthStore((s) => s.user);
   const partner = user?.partner ?? null;
   const partnerLabel = partner?.nickname?.trim() || '伴侣';
@@ -613,16 +619,18 @@ export default function HomeScreen() {
         <Animated.View
           style={[
             styles.cardShadow,
-            { shadowOpacity: cardAnim.shadowOpacity, elevation: cardAnim.elevation },
+            skin.surfaces.hero,
+            { borderRadius: heroRadius },
           ]}
         >
           <Animated.View
             style={[
               styles.cardClip,
+              { borderRadius: heroRadius },
               cardAnim.height ? { height: cardAnim.height } : null,
             ]}
           >
-            <GradientView style={styles.cardGradient}>
+            <GradientView colors={heroGradient} style={styles.cardGradient}>
               {/* 完整卡内容:收缩时整体淡出,并被容器高度裁剪 */}
               <Animated.View
                 style={[styles.cardFull, { opacity: cardAnim.fullOpacity }]}
@@ -641,18 +649,26 @@ export default function HomeScreen() {
                   }
                   style={styles.monthRow}
                 />
-                <Text style={styles.balanceLabel}>本月结余</Text>
-                <Text style={styles.balanceAmount}>¥{formatMoney(balance)}</Text>
+                <Text style={[styles.balanceLabel, { color: skin.colors.onHeroMuted }]}>
+                  本月结余
+                </Text>
+                <Text style={[styles.balanceAmount, { color: skin.colors.onHero }]}>
+                  ¥{formatMoney(balance)}
+                </Text>
                 <View style={styles.sumRow}>
-                  <View style={styles.sumChip}>
-                    <Text style={styles.sumChipLabel}>收入</Text>
-                    <Text style={styles.sumChipValue}>
+                  <View style={[styles.sumChip, { backgroundColor: heroChipBg }]}>
+                    <Text style={[styles.sumChipLabel, { color: skin.colors.onHeroMuted }]}>
+                      收入
+                    </Text>
+                    <Text style={[styles.sumChipValue, { color: skin.colors.onHero }]}>
                       ¥{formatMoney(displaySummary?.total_income ?? 0)}
                     </Text>
                   </View>
-                  <View style={styles.sumChip}>
-                    <Text style={styles.sumChipLabel}>支出</Text>
-                    <Text style={styles.sumChipValue}>
+                  <View style={[styles.sumChip, { backgroundColor: heroChipBg }]}>
+                    <Text style={[styles.sumChipLabel, { color: skin.colors.onHeroMuted }]}>
+                      支出
+                    </Text>
+                    <Text style={[styles.sumChipValue, { color: skin.colors.onHero }]}>
                       ¥{formatMoney(displaySummary?.total_expense ?? 0)}
                     </Text>
                   </View>
@@ -671,7 +687,7 @@ export default function HomeScreen() {
                   }
                   style={styles.collapsedMonthGroup}
                 />
-                <Text style={styles.collapsedBalance}>
+                <Text style={[styles.collapsedBalance, { color: skin.colors.onHero }]}>
                   本月结余 ¥{formatMoney(balance)}
                 </Text>
               </Animated.View>
@@ -696,7 +712,7 @@ export default function HomeScreen() {
         {/* 列表区:加载 / 未绑定伴侣 / 错误 / 空 / 列表 */}
         <View style={styles.content}>
           {error && hasMonthData && !isPartnerUnavailable ? (
-            <View style={[styles.errorBanner, { backgroundColor: colors.card }]}>
+            <View style={[styles.errorBanner, skin.surfaces.card]}>
               <Text style={[styles.errorBannerText, { color: colors.expense }]}>
                 {errorMessage}
               </Text>
@@ -771,8 +787,8 @@ export default function HomeScreen() {
       {/* 渐变 FAB(右下角 60px,仅「我的」视图显示) */}
       {isSelfView ? (
         <Pressable style={styles.fab} onPress={openCreate}>
-          <GradientView style={styles.fabGradient}>
-            <Text style={styles.fabText}>+</Text>
+          <GradientView style={[styles.fabGradient, skin.fabShadow]}>
+            <Text style={[styles.fabText, { color: skin.colors.onAccent }]}>+</Text>
           </GradientView>
         </Pressable>
       ) : null}
@@ -820,22 +836,28 @@ function MonthSwitcher({
   onShift: (direction: -1 | 1) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const skin = useSkin();
+  const chipBg = skin.heroGradient
+    ? 'rgba(255, 255, 255, 0.25)'
+    : 'rgba(43, 52, 69, 0.08)';
   return (
     <View style={style}>
       <Pressable
         onPress={() => onShift(-1)}
-        style={styles.monthArrow}
+        style={[styles.monthArrow, { backgroundColor: chipBg }]}
         hitSlop={8}
       >
-        <Text style={styles.monthArrowText}>‹</Text>
+        <Text style={[styles.monthArrowText, { color: skin.colors.onHero }]}>‹</Text>
       </Pressable>
-      <Text style={styles.monthLabel}>{formatMonthLabel(currentMonth)}</Text>
+      <Text style={[styles.monthLabel, { color: skin.colors.onHero }]}>
+        {formatMonthLabel(currentMonth)}
+      </Text>
       <Pressable
         onPress={() => onShift(1)}
-        style={styles.monthArrow}
+        style={[styles.monthArrow, { backgroundColor: chipBg }]}
         hitSlop={8}
       >
-        <Text style={styles.monthArrowText}>›</Text>
+        <Text style={[styles.monthArrowText, { color: skin.colors.onHero }]}>›</Text>
       </Pressable>
     </View>
   );
@@ -867,11 +889,6 @@ const styles = StyleSheet.create({
   },
   cardShadow: {
     borderRadius: 24,
-    shadowColor: gradient.start,
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
   },
   cardClip: {
     borderRadius: 24,
@@ -1021,11 +1038,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: gradient.end,
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
   },
   fabText: {
     color: '#FFFFFF',

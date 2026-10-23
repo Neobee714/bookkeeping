@@ -28,7 +28,7 @@ import ErrorView from '../components/ErrorView';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme , useSkin} from '../theme';
 import type { TransactionType } from '../types';
 
 /**
@@ -63,6 +63,7 @@ const TYPE_LABELS: Record<TransactionType, string> = {
 /** 分类管理(FR-03)。 */
 export default function CategoryScreen() {
   const colors = useTheme();
+  const skin = useSkin();
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,7 +205,7 @@ export default function CategoryScreen() {
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
         {title}({items.length})
       </Text>
-      <View style={[styles.card, { backgroundColor: colors.card }]}>
+      <View style={[styles.card, skin.surfaces.card]}>
         {items.length === 0 ? (
           <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
             暂无分类
@@ -325,7 +326,7 @@ export default function CategoryScreen() {
             style={[styles.backdrop, { backgroundColor: colors.overlay }]}
             onPress={closeForm}
           />
-          <View style={[styles.sheet, { backgroundColor: colors.card }]}>
+          <View style={[styles.sheet, skin.surfaces.card]}>
             <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
             <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
               {editing ? '编辑分类' : '新增分类'}
@@ -391,7 +392,7 @@ export default function CategoryScreen() {
                   >
                     {active ? (
                       <GradientView style={styles.segmentActive}>
-                        <Text style={styles.segmentActiveText}>
+                        <Text style={[styles.segmentActiveText, { color: colors.onAccent }]}>
                           {TYPE_LABELS[item]}
                         </Text>
                       </GradientView>

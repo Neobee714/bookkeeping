@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { spacing, typography } from '../theme';
+import { spacing, typography, useSkin } from '../theme';
 import GradientView from './GradientView';
 
 interface Props {
@@ -38,8 +38,9 @@ export default function AuthLayout({
   children,
   contentStyle,
 }: Props) {
+  const skin = useSkin();
   return (
-    <GradientView style={styles.background}>
+    <GradientView colors={skin.authGradient} style={styles.background}>
       {/* 登录/注册页顶部为渐变:状态栏图标固定白色。
           AuthLayout 卸载后 RN StatusBar 自动恢复 App 层的主题色配置。 */}
       <StatusBar barStyle="light-content" />

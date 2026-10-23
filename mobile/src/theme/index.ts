@@ -1,24 +1,38 @@
 import { useColorScheme } from 'react-native';
 
 import { useThemeStore } from '../store/themeStore';
-import { darkColors, lightColors, type ThemeColors } from './colors';
+import { resolveSkin } from './skins';
+import type { Skin, ThemeColors } from './types';
 
-export { gradient } from './colors';
 export { spacing, radius } from './spacing';
 export { typography } from './typography';
-export type { ThemeColors } from './colors';
-
-/** 是否处于暗色模式(考虑手动覆盖与系统跟随)。 */
-export function useIsDarkMode(): boolean {
-  const mode = useThemeStore((s) => s.mode);
-  const systemScheme = useColorScheme();
-  return mode === 'dark' || (mode === 'system' && systemScheme === 'dark');
-}
+export { SKINS, DEFAULT_SKIN_ID, getSkinDefinition, resolveSkin } from './skins';
+export type {
+  Skin,
+  SkinDefinition,
+  SkinId,
+  SkinMode,
+  ThemeColors,
+  ThemeMode,
+} from './types';
 
 /**
- * 依据主题模式(跟随系统/手动)解析当前配色。
- * 在组件内调用 `const colors = useTheme();` 即可获得响应式配色。
+ * 当前生效的皮肤（含颜色、渐变、表面样式）。
+ * 锁定模式（04 亮 / 06 暗）会忽略偏好与系统。
  */
+export function useSkin(): Skin {
+  const skinId = useThemeStore((state) => state.skinId);
+  const mode = useThemeStore((state) => state.mode);
+  const systemScheme = useColorScheme();
+  return resolveSkin(skinId, mode, systemScheme === 'dark');
+}
+
+/** 是否处于暗色渲染（用于状态栏图标）。 */
+export function useIsDarkMode(): boolean {
+  return useSkin().scheme === 'dark';
+}
+
+/** 语义色板；等价于 useSkin().colors，保留旧调用点。 */
 export function useTheme(): ThemeColors {
-  return useIsDarkMode() ? darkColors : lightColors;
+  return useSkin().colors;
 }

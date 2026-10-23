@@ -29,7 +29,7 @@ import InputModal from '../components/InputModal';
 import UserAvatar from '../components/UserAvatar';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme , useSkin} from '../theme';
 import { checkForUpdate } from '../updater/useUpdateCheck';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Profile'>;
@@ -40,6 +40,7 @@ const AVATAR_MAX_CHARS = 200000;
 /** 我的:个人资料(FR-10)+ 分类/管理后台入口 + 退出登录。 */
 export default function ProfileScreen({ navigation }: Props) {
   const colors = useTheme();
+  const skin = useSkin();
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
@@ -242,17 +243,19 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* 用户信息卡片 */}
         <GradientView style={styles.headerCard}>
           <UserAvatar avatar={user?.avatar} size={72} />
-          <Text style={styles.headerNickname}>{user?.nickname ?? '未登录'}</Text>
-          <Text style={styles.headerUsername}>@{user?.username}</Text>
+          <Text style={[styles.headerNickname, { color: colors.onAccent }]}>
+            {user?.nickname ?? '未登录'}
+          </Text>
+          <Text style={[styles.headerUsername, { color: colors.onAccent, opacity: 0.78 }]}>@{user?.username}</Text>
           {user?.is_admin ? (
             <View style={styles.adminBadge}>
-              <Text style={styles.adminBadgeText}>管理员</Text>
+              <Text style={[styles.adminBadgeText, { color: colors.onAccent }]}>管理员</Text>
             </View>
           ) : null}
         </GradientView>
 
         {/* 资料信息 */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <InfoRow label="用户名" value={user ? `@${user.username}` : '—'} />
           <Divider colors={colors.border} />
           <InfoRow
@@ -277,7 +280,7 @@ export default function ProfileScreen({ navigation }: Props) {
         </View>
 
         {/* 资料设置 */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <EntryRow
             emoji="✏️"
             label="编辑昵称"
@@ -300,11 +303,17 @@ export default function ProfileScreen({ navigation }: Props) {
         </View>
 
         {/* 功能入口 */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, skin.surfaces.card]}>
           <EntryRow
             emoji="🔄"
             label="检查更新"
             onPress={() => void checkForUpdate('manual')}
+          />
+          <Divider colors={colors.border} />
+          <EntryRow
+            emoji="🎨"
+            label="外观"
+            onPress={() => rootNav?.navigate('Appearance')}
           />
           <Divider colors={colors.border} />
           <EntryRow
@@ -428,7 +437,7 @@ export default function ProfileScreen({ navigation }: Props) {
         onRequestClose={() => setAvatarPreviewVisible(false)}
       >
         <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-          <View style={[styles.avatarModalCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.avatarModalCard, skin.surfaces.card]}>
             <Text style={[styles.avatarModalTitle, { color: colors.textPrimary }]}>
               更换头像
             </Text>
