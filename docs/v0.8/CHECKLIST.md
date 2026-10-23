@@ -65,5 +65,5 @@
 
 ## 阶段八：收尾
 - [x] acc-1：`docs/v0.8/DEPLOY-RELEASE.md` 记录版本、哈希、验证矩阵、回退 ✅ 2026-10-23 16:00
-- [ ] acc-2：更新 `bookkeeping-app-iteration` skill（离线模块、同步触发、幂等约束、构建隔离）
-- [ ] acc-3：向用户汇报，明确「编辑/删除离线」未做、后台同步未做、APK 发布被 keystore 阻塞
+- [x] acc-2：更新 `bookkeeping-app-iteration` skill（离线模块、同步触发、幂等约束、构建隔离）✅ 2026-10-23 16:05
+- [x] acc-3：向用户汇报，明确「编辑/删除离线」未做、后台同步未做、APK 发布被 keystore 阻塞 ✅ 2026-10-23 16:06
