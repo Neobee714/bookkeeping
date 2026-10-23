@@ -149,7 +149,7 @@ ssh ubuntu@119.28.186.88 'tail -30 /var/log/bk-deploy.log'
 - [x] 解除 GitHub 写权限 → push 两个本地提交 → 确认 CI 把删除提交记为「只记录不动作」✅ 2026-10-23 13:22
 - [ ] 删除 Vercel 上的 `bookkeeping.neobee.top` 项目（或改 DNS），这是最后一个 Web 入口
 - [ ] 2026-10-30 后删除 `/var/www/frontend` 与 nginx 备份（确认无回滚需求）
-- [ ] 更新 `bookkeeping-app-iteration` skill：仓库地图去掉 `frontend/`，坑 5 改为「Web 已下线，导入接口保留」
+- [x] 更新 `bookkeeping-app-iteration` skill：仓库地图去掉 `frontend/`，坑 5 改为「Web 已下线，导入接口保留」✅ 2026-10-23 13:26
 - [ ] 若日后需要 CSV 导入：后端 `/transactions/import` 仍在，只需在 App 补入口
 
 ## 7. 修订记录
