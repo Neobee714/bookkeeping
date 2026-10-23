@@ -30,8 +30,8 @@
 ## 阶段 4：门禁
 
 - [x] 4.1 `npx tsc --noEmit` 0 错
-- [x] 4.2 `npx jest` 7 suites / 32 tests 全过
-- [x] 4.3 `npx eslint src App.tsx` 0 error / 42 warnings（改动前为 1 error / 38 warnings）
+- [x] 4.2 `npx jest` 7 suites / 32 tests 全过（合并离线后 8 suites / 37 tests）
+- [x] 4.3 `npx eslint src App.tsx` 0 error / 42 warnings（合并离线后 43 warnings，0 error）
 
 ## 阶段 5：真机与发布
 
