@@ -35,9 +35,13 @@
 
 ## 阶段 5：真机与发布
 
-- [ ] 5.1 版本 2.4.0 / versionCode 224
-- [ ] 5.2 构建 release APK 并在模拟器/真机安装
-- [ ] 5.3 四套主题逐屏走查（首页/图表/规划/小光/我的/记一笔/外观页）
-- [ ] 5.4 明暗切换 + 冷启动恢复
-- [ ] 5.5 出 APK、校验 sha256、OTA 发布
-- [ ] 5.6 更新 DEPLOY-RELEASE.md
+- [x] 5.1 版本 2.4.0 / versionCode 224 ✅ 2026-10-23 16:18
+- [x] 5.2 构建 release APK 并在模拟器/真机安装 ✅ 2026-10-23 16:24
+  - `BUILD SUCCESSFUL in 2m 28s`，76,835,237 bytes；模拟器已安装 2.4.0，登录页正常渲染
+- [ ] 5.3 四套主题逐屏走查（首页/图表/规划/小光/我的/记一笔/外观页）**待用户真机**
+- [ ] 5.4 明暗切换 + 冷启动恢复 **待用户真机**
+- [x] 5.5 出 APK、校验 sha256、OTA 发布 ✅ 2026-10-23 16:25
+  - sha256 `14a910def2b8635496d6061d151ef83cae570b3ff20872f3420c96e6ca29e64d`
+  - `info.json` version 2.4.0、`latest.apk` HTTP 200
+- [x] 5.6 更新 DEPLOY-RELEASE.md ✅ 2026-10-23 16:31
+  - 见 `docs/v0.9/DEPLOY-RELEASE.md`；APK/OTA 细节同时记录在 `docs/v0.8/DEPLOY-RELEASE.md`

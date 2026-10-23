@@ -45,23 +45,27 @@
 - [x] test-6：backend `pytest -q` **91 passed** ✅ 2026-10-23 15:05
 
 ## 阶段六：构建与发布
-- [x] rel-1：版本 2.3.0 / versionCode 223 ✅ 2026-10-23 15:28
-- [ ] rel-2：release APK 构建 **【阻塞：本机缺正式 keystore】**
-  - 已完成：debug APK `BUILD SUCCESSFUL in 14m5s`（166MB，NetInfo 原生编译通过）
-  - 已完成：release JS bundle 1.6MB（干净 worktree `7c4334f`）
-  - 缺：`keystore/bookkeeping-release.keystore` + `release-signing.properties`
-- [ ] rel-3：aapt2 / apksigner / sha256 复核，签名与旧版一致（待 rel-2）
-- [ ] rel-4：OTA 发布并回验 info.json / latest.apk / 归档（待 rel-2）
+- [x] rel-1：离线独立版本 2.3.0 / versionCode 223；最终与 v0.9 合并发布 **2.4.0 / 224** ✅ 2026-10-23 15:28
+- [x] rel-2：release APK 构建 ✅ 2026-10-23 16:24
+  - 正式 keystore 已由用户放入 `keystore/`，证书 `CN=Neobee`、SHA-256 `d8d8202e…f6c06c`，与 2.2.2 一致
+  - `BUILD SUCCESSFUL in 2m 28s`（增量），76,835,237 bytes
+  - debug APK 早前验证 `BUILD SUCCESSFUL in 14m5s`，NetInfo 原生编译通过
+- [x] rel-3：aapt2 / apksigner / sha256 复核 ✅ 2026-10-23 16:24
+  - versionCode 224 / 2.4.0、label 拾光、4 ABI、APK Signature Scheme v2
+  - APK SHA-256 `14a910def2b8635496d6061d151ef83cae570b3ff20872f3420c96e6ca29e64d`
+- [x] rel-4：OTA 发布并回验 info.json / latest.apk / 归档 ✅ 2026-10-23 16:25
+  - info.json version 2.4.0、size 76,835,237；latest.apk HTTP 200；归档 `bookkeeping-2.4.0.apk`
 - [x] rel-5a：后端先部署（迁移 `e2f3a4b5c6d7`，2026-10-23 15:52，client_id + 唯一约束已在生产库验证）✅ 2026-10-23 15:53
-- [ ] rel-5b：APK 发布（待正式 keystore）
+- [x] rel-5b：APK 发布 ✅ 2026-10-23 16:25
+- [x] rel-5c：交易索引迁移 `f3a8b2c9d4e1` 上线，`ix_transactions_user_date_created_at` 已验证 ✅ 2026-10-23 16:22
 
 ## 阶段七：真机验收
-- [ ] e2e-1：飞行模式看缓存月份 + 下拉刷新不白屏（待 APK）
-- [ ] e2e-2：飞行模式新增 2 笔，列表/汇总立即变化，杀进程重开仍在（待 APK）
-- [ ] e2e-3：恢复网络自动同步，服务端恰好 2 条（无重复）（待 APK）
-- [ ] e2e-4：飞行模式编辑/删除提示需联网，数据不变（待 APK）
-- [ ] e2e-5：飞行模式统计页显示缓存或空态（待 APK）
-- [ ] e2e-6：旧版 2.2.2 创建账单仍正常（client_id 可选）（后端已兼容，待真机复核）
+- [ ] e2e-1：飞行模式看缓存月份 + 下拉刷新不白屏（待用户真机，2.4.0 已发布）
+- [ ] e2e-2：飞行模式新增 2 笔，列表/汇总立即变化，杀进程重开仍在（待用户真机）
+- [ ] e2e-3：恢复网络自动同步，服务端恰好 2 条（无重复）（待用户真机）
+- [ ] e2e-4：飞行模式编辑/删除提示需联网，数据不变（待用户真机）
+- [ ] e2e-5：飞行模式统计页显示缓存或空态（待用户真机）
+- [ ] e2e-6：旧版 2.2.2 创建账单仍正常（client_id 可选）（后端已兼容，待用户真机复核）
 
 ## 阶段八：收尾
 - [x] acc-1：`docs/v0.8/DEPLOY-RELEASE.md` 记录版本、哈希、验证矩阵、回退 ✅ 2026-10-23 16:00
