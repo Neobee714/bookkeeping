@@ -42,7 +42,7 @@
 | `eslint` | 0 errors / 43 warnings（低于原 48/10 基线，0 新增错误） |
 | backend `pytest` | 91 passed（原 87 + 幂等 4） |
 | debug APK | `BUILD SUCCESSFUL in 14m 5s`，166MB，NetInfo 原生编译通过 |
-| release JS bundle | Metro 打包成功，1.6MB（`offline-index.android.bundle`） |
+| release JS bundle | 离线独立包 1.6MB（worktree）；最终 2.4.0 合并 bundle 1,966,428 bytes（从 APK 抽取，含离线文案与四套皮肤名） |
 | release APK | `BUILD SUCCESSFUL in 2m 28s`（增量），76,835,237 bytes |
 
 ## 4. Release APK 与签名
