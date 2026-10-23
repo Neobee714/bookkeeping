@@ -46,20 +46,24 @@
 
 ## 阶段六：构建与发布
 - [x] rel-1：版本 2.3.0 / versionCode 223 ✅ 2026-10-23 15:28
-- [ ] rel-2：release APK 构建（新增 NetInfo 原生产物）
-- [ ] rel-3：aapt2 / apksigner / sha256 复核，签名与旧版一致
-- [ ] rel-4：OTA 发布并回验 info.json / latest.apk / 归档
-- [ ] rel-5：后端先部署（迁移）→ 再发 APK
+- [ ] rel-2：release APK 构建 **【阻塞：本机缺正式 keystore】**
+  - 已完成：debug APK `BUILD SUCCESSFUL in 14m5s`（166MB，NetInfo 原生编译通过）
+  - 已完成：release JS bundle 1.6MB（干净 worktree `7c4334f`）
+  - 缺：`keystore/bookkeeping-release.keystore` + `release-signing.properties`
+- [ ] rel-3：aapt2 / apksigner / sha256 复核，签名与旧版一致（待 rel-2）
+- [ ] rel-4：OTA 发布并回验 info.json / latest.apk / 归档（待 rel-2）
+- [x] rel-5a：后端先部署（迁移 `e2f3a4b5c6d7`，2026-10-23 15:52，client_id + 唯一约束已在生产库验证）✅ 2026-10-23 15:53
+- [ ] rel-5b：APK 发布（待正式 keystore）
 
 ## 阶段七：真机验收
-- [ ] e2e-1：飞行模式看缓存月份 + 下拉刷新不白屏
-- [ ] e2e-2：飞行模式新增 2 笔，列表/汇总立即变化，杀进程重开仍在
-- [ ] e2e-3：恢复网络自动同步，服务端恰好 2 条（无重复）
-- [ ] e2e-4：飞行模式编辑/删除提示需联网，数据不变
-- [ ] e2e-5：飞行模式统计页显示缓存或空态
-- [ ] e2e-6：旧版 2.2.2 创建账单仍正常（client_id 可选）
+- [ ] e2e-1：飞行模式看缓存月份 + 下拉刷新不白屏（待 APK）
+- [ ] e2e-2：飞行模式新增 2 笔，列表/汇总立即变化，杀进程重开仍在（待 APK）
+- [ ] e2e-3：恢复网络自动同步，服务端恰好 2 条（无重复）（待 APK）
+- [ ] e2e-4：飞行模式编辑/删除提示需联网，数据不变（待 APK）
+- [ ] e2e-5：飞行模式统计页显示缓存或空态（待 APK）
+- [ ] e2e-6：旧版 2.2.2 创建账单仍正常（client_id 可选）（后端已兼容，待真机复核）
 
 ## 阶段八：收尾
-- [ ] acc-1：`docs/v0.8/DEPLOY-RELEASE.md` 记录版本、哈希、验证矩阵、回退
-- [ ] acc-2：更新 `bookkeeping-app-iteration` skill（离线模块、同步触发、幂等约束）
-- [ ] acc-3：向用户汇报，明确「编辑/删除离线」未做、后台同步未做
+- [x] acc-1：`docs/v0.8/DEPLOY-RELEASE.md` 记录版本、哈希、验证矩阵、回退 ✅ 2026-10-23 16:00
+- [ ] acc-2：更新 `bookkeeping-app-iteration` skill（离线模块、同步触发、幂等约束、构建隔离）
+- [ ] acc-3：向用户汇报，明确「编辑/删除离线」未做、后台同步未做、APK 发布被 keystore 阻塞
