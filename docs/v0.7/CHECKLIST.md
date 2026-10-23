@@ -53,4 +53,4 @@
 ## 阶段七：收尾
 - [x] acc-1：写 `docs/v0.7/DEPLOY-RELEASE.md`（改动、验证矩阵、回退、Vercel 手动步骤、push 阻塞说明）✅ 2026-10-23 11:30
 - [x] acc-2：更新 `bookkeeping-app-iteration` skill（仓库地图、坑、frontend 已不存在）✅ 2026-10-23 13:26
-- [x] acc-3：向用户汇报，明确 Vercel 项目需手动删除、`/var/www/frontend` 观察期、push 权限已解除 ✅ 2026-10-23 13:30
+- [x] acc-3：向用户汇报，明确 Vercel 项目已下线、`/var/www/frontend` 观察期、push 权限已解除 ✅ 2026-10-23 13:36

@@ -1,8 +1,8 @@
 # v0.7 落地记录：App-only 收敛（下线 Web 端）
 
 - 创建时间：2026-10-23 11:30
-- 状态：**已完成**。仓库清理、CI 改造、服务器 nginx 切换、GitHub push 与流水线处理均已验证；
-  剩余两项为用户侧手动收尾（Vercel 项目下线、7 天后删 `/var/www/frontend`）。
+- 状态：**已完成**。仓库清理、CI 改造、服务器 nginx 切换、GitHub push、Vercel 下线与流水线处理均已验证；
+  剩余一项为观察期收尾（2026-10-30 后删 `/var/www/frontend`）。
 - 历史阻塞记录：首次 push 因本机 SSH 身份 `Xyvora1` 对 `Neobee714/bookkeeping` 无写权限而失败，
   已通过新增 Neobee714 专用密钥解决（见第 4 节）。
 
@@ -69,7 +69,7 @@
 | `/app-updates/latest` | 200 |
 | `info.json` / `latest.apk` | 200（2.2.2，`7935de27…e0bd`） |
 | OTA 下载页 `https://app.xyvora.me/` | 200 |
-| `bookkeeping.neobee.top`（Vercel） | 200（**待手动下线**） |
+| `bookkeeping.neobee.top`（Vercel） | **404**（项目已删除；DNS CNAME 仍指向 Vercel，可择机清理） |
 | `mobile/` 变更 | 无；`versionCode 222` / `2.2.2` 未动，本次不构建 APK |
 
 ## 4. push 阻塞与解除方式
@@ -147,7 +147,9 @@ ssh ubuntu@119.28.186.88 'tail -30 /var/log/bk-deploy.log'
 ## 6. 后续待办
 
 - [x] 解除 GitHub 写权限 → push 两个本地提交 → 确认 CI 把删除提交记为「只记录不动作」✅ 2026-10-23 13:22
-- [ ] 删除 Vercel 上的 `bookkeeping.neobee.top` 项目（或改 DNS），这是最后一个 Web 入口
+- [x] 删除 Vercel 上的 `bookkeeping.neobee.top` 项目（或改 DNS），这是最后一个 Web 入口 ✅ 2026-10-23 13:35
+  - 验证：`https://bookkeeping.neobee.top/` 由 200 变为 **404**（Vercel 项目已删除）
+  - DNS 仍是 `cname.vercel-dns.com`，目前只返回 404；无 Web 内容，可择机在 Cloudflare 删掉该 CNAME
 - [ ] 2026-10-30 后删除 `/var/www/frontend` 与 nginx 备份（确认无回滚需求）
 - [x] 更新 `bookkeeping-app-iteration` skill：仓库地图去掉 `frontend/`，坑 5 改为「Web 已下线，导入接口保留」✅ 2026-10-23 13:26
 - [ ] 若日后需要 CSV 导入：后端 `/transactions/import` 仍在，只需在 App 补入口
@@ -158,3 +160,4 @@ ssh ubuntu@119.28.186.88 'tail -30 /var/log/bk-deploy.log'
 | --- | --- |
 | 2026-10-23 11:30 | 创建落地记录：仓库/CI/nginx 变更、验证矩阵、push 权限阻塞与解除方式、回退与后续待办 |
 | 2026-10-23 13:25 | push 已通过 Neobee714 专用密钥完成（`9787eda..40880f7`）；补记流水线对删除提交的「只记录不动作」验证、后端未重启、状态文件无告警 |
+| 2026-10-23 13:36 | 用户删除 Vercel 项目：`bookkeeping.neobee.top` 由 200 变 404；DNS CNAME 暂留，Web 入口全部下线 |
