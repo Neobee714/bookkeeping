@@ -1,16 +1,17 @@
 # v0.7 落地记录：App-only 收敛（下线 Web 端）
 
 - 创建时间：2026-10-23 11:30
-- 状态：**仓库清理、CI 改造、服务器 nginx 切换已完成并验证**；
-  **GitHub push 阻塞**（本机 SSH 身份 `Xyvora1` 对 `Neobee714/bookkeeping` 无写权限），
-  因此「push → CI 自动处理删除提交」这一步尚未发生。
+- 状态：**已完成**。仓库清理、CI 改造、服务器 nginx 切换、GitHub push 与流水线处理均已验证；
+  剩余两项为用户侧手动收尾（Vercel 项目下线、7 天后删 `/var/www/frontend`）。
+- 历史阻塞记录：首次 push 因本机 SSH 身份 `Xyvora1` 对 `Neobee714/bookkeeping` 无写权限而失败，
+  已通过新增 Neobee714 专用密钥解决（见第 4 节）。
 
-## 1. 改动清单（本地提交，未推送）
+## 1. 改动清单（已推送）
 
 | 提交 | 内容 |
 | --- | --- |
 | `1cf55bb` chore: 下线 Web 端，仓库收敛为 App-only | 删除 `frontend/`（44 文件 / 6,894 行）与 `vercel.json`；CI 去前端分支；README / deploy 文档同步 |
-| `c6c2931` docs: 新增 v0.7 App-only 收敛文档 | `docs/v0.7/{REQ,ARCH,CHECKLIST}.md`（本文件随后并入该提交） |
+| `40880f7` docs: 新增 v0.7 App-only 收敛文档 | `docs/v0.7/{REQ,ARCH,CHECKLIST,DEPLOY-RELEASE}.md` |
 
 - 删除总量：69 个文件、19,012 行（含 `frontend/` 与 `vercel.json`）。
 - `deploy/ci/deploy.sh`：删 `FRONTEND_SRC` / `FRONTEND_PUBLISH` / `FRONTEND_BUILD_SCRIPT` / `PUBLIC_HOST`、
@@ -110,6 +111,29 @@ ssh ubuntu@119.28.186.88 'tail -30 /var/log/bk-deploy.log'
 预期日志：`变更判定：backend=否 nginx=否 ci=否` → `只记录不动作（mobile/、docs/ 等）` →
 `本轮不需要部署` → `已标记为已处理`；后端容器 `StartedAt` 不变。
 
+### 4.1 实际解除与 push 结果（2026-10-23 13:22）
+
+用户选择「切换用户到 Neobee714」。由于 GitHub 一个公钥只能绑定一个账号，另生成了一把专用密钥：
+
+- `~/.ssh/id_ed25519_neobee714`（`SHA256:p9Va6KXNd6VByJ+LtbFotjqRluWylwPUMnRGohpkgrQ`），
+  已添加到 Neobee714 账号；
+- `~/.ssh/config` 新增 `Host github-neobee714`（`IdentityFile` 指向该密钥）；
+- 本地 remote：fetch 仍 `git@github.com:Neobee714/bookkeeping.git`，
+  push 改为 `git@github-neobee714:Neobee714/bookkeeping.git`；
+- `ssh -T git@github-neobee714` → `Hi Neobee714!`；
+- `git push origin main` → `9787eda..40880f7 main -> main`。
+
+流水线在 13:22:03 处理 `40880f7`（距 push 约一轮轮询）：
+
+| 项 | 结果 |
+| --- | --- |
+| 变更集合 | 75 个文件（frontend 删除 + docs + deploy/ci） |
+| 判定 | `backend=否 nginx=否 ci=是`（ci 只提示，不自更新） |
+| 动作 | `只记录不动作（mobile/、docs/ 等）` → `本轮不需要部署` → `已标记为已处理` |
+| 状态 | `last-deployed=40880f7`；无 `ALERT` / `failed-sha` |
+| 后端容器 | `StartedAt=2026-10-08T08:30:32Z`，未重启 |
+| 线上 | 根路径 301 → `https://app.xyvora.me/`；`/health` 200；`/transactions` 401；`info.json` 200 |
+
 ## 5. 回退
 
 | 对象 | 方式 |
@@ -122,7 +146,7 @@ ssh ubuntu@119.28.186.88 'tail -30 /var/log/bk-deploy.log'
 
 ## 6. 后续待办
 
-- [ ] 解除 GitHub 写权限 → push 两个本地提交 → 确认 CI 把删除提交记为「只记录不动作」
+- [x] 解除 GitHub 写权限 → push 两个本地提交 → 确认 CI 把删除提交记为「只记录不动作」✅ 2026-10-23 13:22
 - [ ] 删除 Vercel 上的 `bookkeeping.neobee.top` 项目（或改 DNS），这是最后一个 Web 入口
 - [ ] 2026-10-30 后删除 `/var/www/frontend` 与 nginx 备份（确认无回滚需求）
 - [ ] 更新 `bookkeeping-app-iteration` skill：仓库地图去掉 `frontend/`，坑 5 改为「Web 已下线，导入接口保留」
@@ -133,3 +157,4 @@ ssh ubuntu@119.28.186.88 'tail -30 /var/log/bk-deploy.log'
 | 时间 | 变更说明 |
 | --- | --- |
 | 2026-10-23 11:30 | 创建落地记录：仓库/CI/nginx 变更、验证矩阵、push 权限阻塞与解除方式、回退与后续待办 |
+| 2026-10-23 13:25 | push 已通过 Neobee714 专用密钥完成（`9787eda..40880f7`）；补记流水线对删除提交的「只记录不动作」验证、后端未重启、状态文件无告警 |

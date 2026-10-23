@@ -38,12 +38,14 @@
 - [x] srv-7：`/var/www/frontend` 保留，不删除（观察 7 天）✅ 2026-10-23 11:26
 
 ## 阶段六：发布与验证
-- [x] rel-1：本地提交（`1cf55bb` 代码 + `c6c2931` 文档）✅ 2026-10-23 11:19
-- [ ] rel-2：push `main` → 等一轮轮询 **【阻塞：GitHub 写权限】**
-  - `git@github.com` 认证为 `Xyvora1`，对 `Neobee714/bookkeeping` 无 write（`ERROR: Permission denied`）
-  - 本机无 HTTPS 凭据 / token / `gh`；服务器 `~/.ssh/bk-deploy` 也已失效（`Permission denied (publickey)`）
-  - 解除方式：仓库 Settings → Deploy keys 添加本机公钥并勾选 Allow write access，或把 `Xyvora1` 加为 collaborator
-- [ ] rel-3：日志确认「只记录不动作」，`last-deployed` 前进，后端容器未重启（待 rel-2）
+- [x] rel-1：本地提交（`1cf55bb` 代码 + `40880f7` 文档）✅ 2026-10-23 11:19
+- [x] rel-2：push `main` → 等一轮轮询 ✅ 2026-10-23 13:22
+  - 用 Neobee714 账号密钥（`github-neobee714` 别名）推送成功：`9787eda..40880f7 main -> main`
+  - 本地 remote 的 fetch 保持 `git@github.com`，push 改为 `git@github-neobee714:Neobee714/bookkeeping.git`
+- [x] rel-3：日志确认「只记录不动作」，`last-deployed` 前进，后端容器未重启 ✅ 2026-10-23 13:22
+  - 变更集合 75 个文件（frontend 删除 + docs + deploy/ci），判定 `backend=否 nginx=否 ci=是`
+  - 日志：「只记录不动作（mobile/、docs/ 等）」→「本轮不需要部署」→「已标记为已处理」
+  - `last-deployed=40880f7`；无 `ALERT` / `failed-sha`；后端容器 `StartedAt=2026-10-08T08:30:32Z` 未变
 - [x] rel-4：`/health` 200；`/api/health` 200；`/transactions` 无令牌 401；`/app-updates/latest` 200 ✅ 2026-10-23 11:26
 - [x] rel-5：`api.bookkeeping.neobee.top` / `neobee.top` / `www.neobee.top` 根路径均 301 → `https://app.xyvora.me/`；`info.json` 200、`latest.apk` 200、下载页 200 ✅ 2026-10-23 11:26
 - [x] rel-6：`mobile/` 未改、版本仍 2.2.2（222），本次不发 APK ✅ 2026-10-23 11:19
