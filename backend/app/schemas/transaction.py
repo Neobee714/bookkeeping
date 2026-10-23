@@ -15,6 +15,8 @@ class TransactionCreateRequest(BaseModel):
     category: str = Field(min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     date: DateValue
+    # 离线新增幂等键：同一用户重复提交同一 client_id 只会落一条。
+    client_id: str | None = Field(default=None, min_length=8, max_length=64)
 
 
 class TransactionUpdateRequest(BaseModel):

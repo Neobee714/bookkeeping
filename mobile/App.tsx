@@ -3,12 +3,16 @@ import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import RootNavigator from './src/navigation/RootNavigator';
+import OfflineBanner from './src/components/OfflineBanner';
+import { useOfflineSync } from './src/offline/useOfflineSync';
 import { loadStoredThemeMode } from './src/store/themeStore';
 import { useIsDarkMode, useTheme } from './src/theme';
 
 function App() {
   const isDark = useIsDarkMode();
   const colors = useTheme();
+
+  useOfflineSync();
 
   useEffect(() => {
     void loadStoredThemeMode();
@@ -21,6 +25,7 @@ function App() {
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <RootNavigator />
+        <OfflineBanner />
       </View>
     </SafeAreaProvider>
   );

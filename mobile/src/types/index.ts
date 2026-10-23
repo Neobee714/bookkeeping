@@ -96,12 +96,20 @@ export interface RegisterResult {
 export interface Transaction {
   id: number;
   user_id: number;
+  /** 离线新增幂等键（服务端返回；旧记录为 null）。 */
+  client_id?: string | null;
   amount: number;
   type: TransactionType;
   category: Category;
   note: string | null;
   date: string;
   created_at: string;
+  /** 仅本地：待同步（尚未上传）。 */
+  pending?: boolean;
+  /** 仅本地：同步失败（4xx）。 */
+  syncFailed?: boolean;
+  /** 仅本地：失败原因。 */
+  syncError?: string;
 }
 
 export interface TransactionCreatePayload {
@@ -110,6 +118,8 @@ export interface TransactionCreatePayload {
   category: Category;
   note?: string;
   date: string;
+  /** 离线新增幂等键；在线新增可不传。 */
+  client_id?: string;
 }
 
 export interface TransactionUpdatePayload {

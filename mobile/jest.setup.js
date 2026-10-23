@@ -1,3 +1,4 @@
+/* eslint-env jest */
 /**
  * Jest 全局 mock:
  * - AsyncStorage / react-native-keychain 均用内存 stub,
@@ -14,11 +15,23 @@ jest.mock('@react-native-async-storage/async-storage', () => {
     removeItem: jest.fn(async (key) => {
       store.delete(key);
     }),
+    getAllKeys: jest.fn(async () => Array.from(store.keys())),
     clear: jest.fn(async () => {
       store.clear();
     }),
   };
 });
+
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => () => undefined),
+    fetch: jest.fn(async () => ({
+      isConnected: true,
+      isInternetReachable: true,
+    })),
+  },
+}));
 
 jest.mock('react-native-keychain', () => {
   const store = new Map();

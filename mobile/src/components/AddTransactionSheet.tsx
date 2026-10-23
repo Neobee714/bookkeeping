@@ -24,6 +24,9 @@ import {
   removeNotePreset,
   setNotePreset,
 } from '../api/quickInputs';
+import { cacheKey, readCache, writeCache } from '../offline/cache';
+import { isOnlineNow } from '../offline/network';
+import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme } from '../theme';
 import type {
   QuickInputs,
@@ -154,12 +157,36 @@ export default function AddTransactionSheet({
   const loadCategories = async () => {
     setCategoriesLoading(true);
     setCategoriesError('');
+    const userId = useAuthStore.getState().user?.id;
+    const key = userId ? cacheKey(userId, 'categories') : null;
+    let cached: CategoryItem[] | null = null;
+    if (key) {
+      cached = await readCache<CategoryItem[]>(key);
+      if (cached && cached.length > 0) {
+        setCategories(cached);
+        setCategoriesLoaded(true);
+      }
+    }
+
+    if (!isOnlineNow()) {
+      if (!cached || cached.length === 0) {
+        setCategoriesError('离线模式：还没有分类缓存，请联网后重试');
+      }
+      setCategoriesLoading(false);
+      return;
+    }
+
     try {
       const list = await fetchCategories();
       setCategories(list);
       setCategoriesLoaded(true);
+      if (key) {
+        writeCache(key, list).catch(() => undefined);
+      }
     } catch (error) {
-      setCategoriesError(extractErrorMessage(error, '分类加载失败'));
+      if (!cached || cached.length === 0) {
+        setCategoriesError(extractErrorMessage(error, '分类加载失败'));
+      }
     } finally {
       setCategoriesLoading(false);
     }

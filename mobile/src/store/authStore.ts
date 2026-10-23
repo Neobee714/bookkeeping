@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import { create } from 'zustand';
 
+import { clearUserCache } from '../offline/cache';
 import type { User } from '../types';
 
 /**
@@ -71,7 +72,7 @@ interface AuthState {
   setTokens: (accessToken: string, refreshToken?: string) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
@@ -96,6 +97,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    const userId = get().user?.id;
+    if (userId) {
+      await clearUserCache(userId);
+    }
     await Promise.all([
       removeFromKeychain(ACCESS_TOKEN_SERVICE),
       removeFromKeychain(REFRESH_TOKEN_SERVICE),

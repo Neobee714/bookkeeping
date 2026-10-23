@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Enum as SqlEnum, ForeignKey, Numeric, String, func
+from sqlalchemy import Date, DateTime, Enum as SqlEnum, ForeignKey, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -12,9 +12,13 @@ from app.models.enums import TransactionType, enum_values
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_id", name="uq_transactions_user_client_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     type: Mapped[TransactionType] = mapped_column(
         SqlEnum(

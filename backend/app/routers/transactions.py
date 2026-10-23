@@ -7,6 +7,7 @@ from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -65,6 +66,7 @@ def _serialize_transaction(item: Transaction) -> dict:
     return {
         'id': item.id,
         'user_id': item.user_id,
+        'client_id': item.client_id,
         'amount': _to_float(item.amount),
         'type': item.type.value,
         'category': item.category,
@@ -147,8 +149,24 @@ def create_transaction(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    def find_existing() -> Transaction | None:
+        if not payload.client_id:
+            return None
+        return db.scalar(
+            select(Transaction).where(
+                Transaction.user_id == current_user.id,
+                Transaction.client_id == payload.client_id,
+            )
+        )
+
+    existing = find_existing()
+    if existing is not None:
+        # 离线队列重试：同一 client_id 已经落库，直接返回已有记录，不重复插入。
+        return success_response(data=_serialize_transaction(existing), message='已存在')
+
     item = Transaction(
         user_id=current_user.id,
+        client_id=payload.client_id,
         amount=payload.amount,
         type=payload.type,
         category=payload.category,
@@ -156,7 +174,15 @@ def create_transaction(
         date=payload.date,
     )
     db.add(item)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # 并发重试：另一个请求先插入了同一个 (user_id, client_id)。
+        db.rollback()
+        existing = find_existing()
+        if existing is not None:
+            return success_response(data=_serialize_transaction(existing), message='已存在')
+        raise
     db.refresh(item)
     return success_response(data=_serialize_transaction(item), message='创建成功')
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { radius, spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useSkin, useTheme } from '../theme';
 import { formatMoney } from '../utils/format';
 import type { Transaction } from '../types';
 
@@ -11,6 +11,10 @@ interface Props {
   icon: string;
   /** 分类主题色(#RRGGBB)。 */
   color: string;
+  /** 本地待同步（尚未上传）。 */
+  pending?: boolean;
+  /** 本地待同步且 4xx 同步失败。 */
+  syncFailed?: boolean;
   onPress: () => void;
   onLongPress: () => void;
 }
@@ -20,10 +24,13 @@ export default function TransactionItem({
   item,
   icon,
   color,
+  pending,
+  syncFailed,
   onPress,
   onLongPress,
 }: Props) {
   const colors = useTheme();
+  const skin = useSkin();
   const isIncome = item.type === 'income';
   const amountText = `${isIncome ? '+¥ ' : '-¥ '}${formatMoney(item.amount)}`;
   const amountColor = isIncome ? colors.income : colors.expense;
@@ -36,7 +43,7 @@ export default function TransactionItem({
       delayLongPress={450}
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: colors.card },
+        skin.surfaces.card,
         pressed && styles.pressed,
       ]}
     >
@@ -54,6 +61,27 @@ export default function TransactionItem({
         >
           {item.note || '无备注'}
         </Text>
+        {pending ? (
+          <View
+            style={[
+              styles.syncBadge,
+              {
+                backgroundColor: syncFailed
+                  ? `${colors.expense}1A`
+                  : `${colors.primary}1A`,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.syncBadgeText,
+                { color: syncFailed ? colors.expense : colors.primary },
+              ]}
+            >
+              {syncFailed ? '同步失败' : '待同步'}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
@@ -94,6 +122,17 @@ const styles = StyleSheet.create({
   note: {
     fontSize: 11,
     marginTop: 3,
+  },
+  syncBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  syncBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   amount: {
     ...typography.amount,

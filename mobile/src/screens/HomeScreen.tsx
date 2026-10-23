@@ -35,7 +35,20 @@ import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
 import TransactionItem from '../components/TransactionItem';
+import { cacheKey, readCache, writeCache } from '../offline/cache';
+import { createClientId } from '../offline/ids';
+import { isOnlineNow } from '../offline/network';
+import {
+  enqueue,
+  readQueue,
+  removeFromQueue,
+  type EnqueueResult,
+} from '../offline/queue';
+import { applyPendingToSummary } from '../offline/summary';
+import { syncQueue } from '../offline/sync';
+import type { PendingTransaction } from '../offline/types';
 import { useAuthStore } from '../store/authStore';
+import { useOfflineStore } from '../store/offlineStore';
 import { gradient, spacing, typography, useTheme } from '../theme';
 import type {
   MonthlySummary,
@@ -85,6 +98,11 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [pendingItems, setPendingItems] = useState<PendingTransaction[]>([]);
+
+  const queueVersion = useOfflineStore((state) => state.queueVersion);
+  const pendingCount = useOfflineStore((state) => state.pendingCount);
+  const prevPendingRef = useRef(0);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Transaction | null>(null);
@@ -113,7 +131,37 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     const requestId = ++requestIdRef.current;
+    const userId = user?.id;
+    const txKey = userId ? cacheKey(userId, 'tx', viewMode, monthKey) : null;
+    const summaryKey = userId
+      ? cacheKey(userId, 'summary', viewMode, monthKey)
+      : null;
+
+    let cachedTransactions: Transaction[] | null = null;
+    let cachedSummary: MonthlySummary | null = null;
+    if (txKey && summaryKey) {
+      [cachedTransactions, cachedSummary] = await Promise.all([
+        readCache<Transaction[]>(txKey),
+        readCache<MonthlySummary>(summaryKey),
+      ]);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+      if (cachedTransactions && cachedSummary) {
+        setTransactions(cachedTransactions);
+        setSummary(cachedSummary);
+        setLoadedKey(viewKey);
+      }
+    }
+
     setError(null);
+    if (!isOnlineNow()) {
+      if (!cachedTransactions || !cachedSummary) {
+        setError(new Error('离线模式：这个月份还没有本地缓存'));
+      }
+      return;
+    }
+
     try {
       const txLoader =
         viewMode === 'self' ? fetchTransactions : fetchPartnerTransactions;
@@ -129,22 +177,43 @@ export default function HomeScreen() {
       setTransactions(txs);
       setSummary(sum);
       setLoadedKey(viewKey);
+      if (txKey) {
+        writeCache(txKey, txs).catch(() => undefined);
+      }
+      if (summaryKey) {
+        writeCache(summaryKey, sum).catch(() => undefined);
+      }
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
       }
       setError(loadError);
     }
-  }, [viewMode, monthKey, viewKey]);
+  }, [viewMode, monthKey, viewKey, user?.id]);
 
-  // 分类表:用于账单行的 emoji 图标与主题色。
+  // 分类表:用于账单行的 emoji 图标与主题色;离线时用缓存,保证新增弹层可用。
   const loadCategories = useCallback(async () => {
+    const userId = user?.id;
+    const key = userId ? cacheKey(userId, 'categories') : null;
+    if (key) {
+      const cached = await readCache<CategoryItem[]>(key);
+      if (cached && cached.length > 0) {
+        setCategories(cached);
+      }
+    }
+    if (!isOnlineNow()) {
+      return;
+    }
     try {
-      setCategories(await fetchCategories());
+      const data = await fetchCategories();
+      setCategories(data);
+      if (key) {
+        writeCache(key, data).catch(() => undefined);
+      }
     } catch {
       // 图标缺失时行组件会回退默认 emoji,不阻塞列表
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     void loadCategories();
@@ -175,6 +244,29 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [load, loadCategories]);
 
+  const refreshPending = useCallback(async () => {
+    if (!user?.id || viewMode !== 'self') {
+      setPendingItems([]);
+      return;
+    }
+    const queue = await readQueue(user.id);
+    setPendingItems(
+      queue.filter((item) => item.payload.date.startsWith(monthKey)),
+    );
+  }, [user?.id, viewMode, monthKey]);
+
+  useEffect(() => {
+    refreshPending().catch(() => undefined);
+  }, [refreshPending, queueVersion]);
+
+  // 同步完成后（待同步数量下降）重新拉服务端数据，换掉临时 id 与本地汇总。
+  useEffect(() => {
+    if (prevPendingRef.current > pendingCount) {
+      load().catch(() => undefined);
+    }
+    prevPendingRef.current = pendingCount;
+  }, [pendingCount, load]);
+
   const categoryMap = useMemo(() => {
     const map: Record<string, CategoryItem> = {};
     categories.forEach((category) => {
@@ -188,10 +280,53 @@ export default function HomeScreen() {
   const colorFor = (category: string): string =>
     categoryMap[category]?.color || '#8E8E93';
 
+  /** 服务端账单 + 本地待同步项（按 client_id 去重，避免刚上传成功时短暂重复）。 */
+  const displayTransactions = useMemo<Transaction[]>(() => {
+    const server = transactions ?? [];
+    if (viewMode !== 'self' || pendingItems.length === 0) {
+      return server;
+    }
+    const knownClientIds = new Set(
+      server
+        .map((tx) => tx.client_id)
+        .filter((value): value is string => Boolean(value)),
+    );
+    const pending = pendingItems
+      .filter((item) => !knownClientIds.has(item.clientId))
+      .map<Transaction>((item, index) => ({
+        id: -1000000 - index,
+        user_id: user?.id ?? 0,
+        client_id: item.clientId,
+        amount: item.payload.amount,
+        type: item.payload.type,
+        category: item.payload.category,
+        note: item.payload.note ?? null,
+        date: item.payload.date,
+        created_at: item.createdAt,
+        pending: true,
+        syncFailed: item.status === 'failed',
+        syncError: item.error,
+      }));
+    if (pending.length === 0) {
+      return server;
+    }
+    return [...server, ...pending].sort((a, b) => {
+      if (a.date !== b.date) {
+        return b.date.localeCompare(a.date);
+      }
+      return (b.created_at ?? '').localeCompare(a.created_at ?? '');
+    });
+  }, [pendingItems, transactions, user?.id, viewMode]);
+
+  const displaySummary = useMemo(
+    () => applyPendingToSummary(summary, viewMode === 'self' ? pendingItems : []),
+    [pendingItems, summary, viewMode],
+  );
+
   // 按日期分组,生成 FlatList 扁平行(header + item 交错)。
   // 每组顺序:日期分组头在前,账单行在后。
   const rows = useMemo<Row[]>(() => {
-    const txs = transactions ?? [];
+    const txs = displayTransactions;
     const groupMap = new Map<string, { dayExpense: number; items: Transaction[] }>();
     txs.forEach((tx) => {
       let group = groupMap.get(tx.date);
@@ -218,7 +353,7 @@ export default function HomeScreen() {
       });
     });
     return result;
-  }, [transactions]);
+  }, [displayTransactions]);
 
   const hasMonthData = loadedKey === viewKey;
   const isPartnerUnavailable =
@@ -239,6 +374,19 @@ export default function HomeScreen() {
     if (!isSelfView) {
       return;
     }
+    if (tx.pending) {
+      Alert.alert(
+        tx.syncFailed ? '同步失败' : '待同步账单',
+        tx.syncFailed
+          ? `这笔账单没有上传成功：${tx.syncError || '请稍后重试'}\n长按这一行可以删除本地记录。`
+          : '这笔账单还在本地队列里，联网后会自动上传；暂不支持编辑。',
+      );
+      return;
+    }
+    if (!isOnlineNow()) {
+      Alert.alert('需要联网', '离线时暂不支持编辑账单，请联网后重试。');
+      return;
+    }
     setEditingItem(tx);
     setSheetOpen(true);
   };
@@ -250,6 +398,9 @@ export default function HomeScreen() {
 
   const handleSubmit = async (payload: TransactionCreatePayload) => {
     if (editingItem) {
+      if (!isOnlineNow()) {
+        throw new Error('离线时暂不支持编辑，请联网后重试');
+      }
       await updateTransaction(editingItem.id, {
         amount: payload.amount,
         type: payload.type,
@@ -257,11 +408,66 @@ export default function HomeScreen() {
         date: payload.date,
         note: payload.note ?? null,
       });
-    } else {
-      await createTransaction(payload);
+      closeSheet();
+      await load();
+      return;
     }
-    closeSheet();
-    await load();
+
+    if (!user?.id) {
+      throw new Error('登录状态异常，请重新登录');
+    }
+
+    const clientId = createClientId();
+    try {
+      if (!isOnlineNow()) {
+        throw new Error('offline');
+      }
+      await createTransaction({ ...payload, client_id: clientId });
+      closeSheet();
+      await load();
+      return;
+    } catch (submitError) {
+      const status = axios.isAxiosError(submitError)
+        ? submitError.response?.status
+        : undefined;
+      const isNetworkFailure =
+        !isOnlineNow() ||
+        (axios.isAxiosError(submitError) &&
+          (!submitError.response || (status ?? 0) >= 500));
+      if (!isNetworkFailure) {
+        throw submitError;
+      }
+
+      let result: EnqueueResult;
+      try {
+        result = await enqueue(user.id, {
+          clientId,
+          payload,
+          createdAt: new Date().toISOString(),
+          status: 'pending',
+          attempts: 0,
+        });
+      } catch {
+        throw new Error('本地存储写入失败，请稍后重试');
+      }
+      if (!result.ok) {
+        throw new Error('待同步记录过多，请联网同步后再试');
+      }
+
+      closeSheet();
+      const offlineStore = useOfflineStore.getState();
+      offlineStore.bumpQueue();
+      await offlineStore.refreshCounts(user.id);
+      await refreshPending();
+      Alert.alert('已离线保存', '恢复网络后会自动上传这笔账单。');
+
+      // 若是“请求超时但服务端已写入”，立即用同一个 client_id 重试也不会重复。
+      if (isOnlineNow()) {
+        syncQueue(user.id)
+          .then(() => offlineStore.refreshCounts(user.id))
+          .catch(() => undefined);
+      }
+    }
   };
 
   const handleDelete = async () => {
@@ -271,6 +477,26 @@ export default function HomeScreen() {
     const target = deletingItem;
     setDeleting(true);
     try {
+      if (target.pending) {
+        if (user?.id && target.client_id) {
+          await removeFromQueue(user.id, target.client_id);
+        }
+        setDeletingItem(null);
+        const offlineStore = useOfflineStore.getState();
+        offlineStore.bumpQueue();
+        if (user?.id) {
+          await offlineStore.refreshCounts(user.id);
+        }
+        await refreshPending();
+        return;
+      }
+
+      if (!isOnlineNow()) {
+        setDeletingItem(null);
+        Alert.alert('需要联网', '离线时暂不支持删除账单，请联网后重试。');
+        return;
+      }
+
       await removeTransaction(target.id);
       setDeletingItem(null);
       await load();
@@ -303,6 +529,8 @@ export default function HomeScreen() {
         item={tx}
         icon={iconFor(tx.category)}
         color={colorFor(tx.category)}
+        pending={tx.pending}
+        syncFailed={tx.syncFailed}
         onPress={() => openEdit(tx)}
         onLongPress={() => {
           if (isSelfView) {
@@ -314,7 +542,7 @@ export default function HomeScreen() {
   };
 
   const greeting = user?.nickname ? `Hi, ${user.nickname}` : '';
-  const balance = summary?.balance ?? 0;
+  const balance = displaySummary?.balance ?? 0;
 
   // FR-02 吸顶:collapse 0↔1 驱动的高度/透明度/阴影插值(完整卡 → 56px 窄条)。
   const cardAnim = useMemo(
@@ -419,13 +647,13 @@ export default function HomeScreen() {
                   <View style={styles.sumChip}>
                     <Text style={styles.sumChipLabel}>收入</Text>
                     <Text style={styles.sumChipValue}>
-                      ¥{formatMoney(summary?.total_income ?? 0)}
+                      ¥{formatMoney(displaySummary?.total_income ?? 0)}
                     </Text>
                   </View>
                   <View style={styles.sumChip}>
                     <Text style={styles.sumChipLabel}>支出</Text>
                     <Text style={styles.sumChipValue}>
-                      ¥{formatMoney(summary?.total_expense ?? 0)}
+                      ¥{formatMoney(displaySummary?.total_expense ?? 0)}
                     </Text>
                   </View>
                 </View>
@@ -495,7 +723,7 @@ export default function HomeScreen() {
               message={errorMessage}
               onRetry={() => void load()}
             />
-          ) : transactions && transactions.length === 0 ? (
+          ) : displayTransactions.length === 0 ? (
             <ScrollView
               contentContainerStyle={styles.emptyScroll}
               refreshControl={
@@ -561,9 +789,13 @@ export default function HomeScreen() {
         title="删除账单"
         message={
           deletingItem
-            ? `确定删除这条账单吗?\n${deletingItem.category} ${
-                deletingItem.type === 'income' ? '+' : '-'
-              }¥${formatMoney(deletingItem.amount)}`
+            ? deletingItem.pending
+              ? `删除这条本地待同步记录吗?\n${deletingItem.category} ${
+                  deletingItem.type === 'income' ? '+' : '-'
+                }¥${formatMoney(deletingItem.amount)}`
+              : `确定删除这条账单吗?\n${deletingItem.category} ${
+                  deletingItem.type === 'income' ? '+' : '-'
+                }¥${formatMoney(deletingItem.amount)}`
             : undefined
         }
         confirmText="删除"

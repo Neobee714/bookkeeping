@@ -24,6 +24,8 @@ import EmptyView from '../components/EmptyView';
 import ErrorView from '../components/ErrorView';
 import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
+import { cacheKey, readCache, writeCache } from '../offline/cache';
+import { isOnlineNow } from '../offline/network';
 import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme, type ThemeColors } from '../theme';
 import type { MonthlySummary, NoteRankItem, TrendPoint } from '../types';
@@ -262,6 +264,7 @@ function ChartLegend({ colors }: { colors: ThemeColors }) {
 export default function StatsScreen() {
   const colors = useTheme();
   const isFocused = useIsFocused();
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const partner = useAuthStore((state) => state.user?.partner);
   const partnerLabel = partner?.nickname?.trim() || '伴侣';
 
@@ -271,6 +274,7 @@ export default function StatsScreen() {
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
+  const [fromCache, setFromCache] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const [noteType, setNoteType] = useState<NoteType>('expense');
   const [noteRanking, setNoteRanking] = useState<NoteRankItem[]>([]);
@@ -303,9 +307,50 @@ export default function StatsScreen() {
     const endMonth = new Date(year, monthIndex - 1, 1);
     const summaryLoader =
       activeTab === 'self' ? fetchMonthlySummary : fetchPartnerMonthlySummary;
+    const summaryKey = userId
+      ? cacheKey(userId, 'summary', activeTab, activeMonth)
+      : null;
+    const trendKey = userId
+      ? cacheKey(userId, 'trend', activeTab, '6', activeMonth)
+      : null;
+
+    const readCached = async (): Promise<{
+      summary: MonthlySummary;
+      trend: TrendPoint[];
+    } | null> => {
+      if (!summaryKey || !trendKey) {
+        return null;
+      }
+      const [cachedSummary, cachedTrend] = await Promise.all([
+        readCache<MonthlySummary>(summaryKey),
+        readCache<TrendPoint[]>(trendKey),
+      ]);
+      return cachedSummary
+        ? { summary: cachedSummary, trend: cachedTrend ?? [] }
+        : null;
+    };
 
     setLoading(true);
     setError(null);
+    setFromCache(false);
+
+    if (!isOnlineNow()) {
+      const cached = await readCached();
+      if (requestKeyRef.current === key) {
+        if (cached) {
+          setSummary(cached.summary);
+          setTrend(cached.trend);
+          setFromCache(true);
+        } else {
+          setSummary(null);
+          setTrend([]);
+          setError(new Error('离线模式：这个月份还没有缓存'));
+        }
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const [summaryData, trendData] = await Promise.all([
         summaryLoader(activeMonth),
@@ -314,19 +359,34 @@ export default function StatsScreen() {
       if (requestKeyRef.current === key) {
         setSummary(summaryData);
         setTrend(trendData);
+        setFromCache(false);
+        if (summaryKey) {
+          writeCache(summaryKey, summaryData).catch(() => undefined);
+        }
+        if (trendKey) {
+          writeCache(trendKey, trendData).catch(() => undefined);
+        }
       }
     } catch (loadError) {
+      const cached = await readCached();
       if (requestKeyRef.current === key) {
-        setError(loadError);
-        setSummary(null);
-        setTrend([]);
+        if (cached) {
+          setSummary(cached.summary);
+          setTrend(cached.trend);
+          setFromCache(true);
+          setError(null);
+        } else {
+          setError(loadError);
+          setSummary(null);
+          setTrend([]);
+        }
       }
     } finally {
       if (requestKeyRef.current === key) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (!isFocused) {
@@ -490,6 +550,12 @@ export default function StatsScreen() {
           value={tab}
           onChange={(key) => setTab(key as SummaryTab)}
         />
+
+        {fromCache ? (
+          <Text style={[styles.cacheHint, { color: colors.textSecondary }]}>
+            网络不可用，显示上次缓存
+          </Text>
+        ) : null}
 
         {loading ? (
           <View style={styles.stateWrap}>
@@ -723,6 +789,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
     gap: spacing.md,
+  },
+  cacheHint: {
+    ...typography.caption,
+    textAlign: 'center',
   },
   title: {
     ...typography.title,
