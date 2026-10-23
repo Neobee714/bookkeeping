@@ -21,9 +21,9 @@ const dark: SkinPalette = {
     tabInactive: '#6E6E8C',
     onHero: '#FFFFFF',
     onHeroMuted: 'rgba(255, 255, 255, 0.72)',
-    onAccent: '#08080F',
+    onAccent: '#FFFFFF',
   },
-  gradient: ['#7C5CFF', '#00E0FF'],
+  gradient: ['#6A4BF0', '#0093B5'],
   heroGradient: ['#241B4D', '#0C0C18'],
   authGradient: ['#2A1B5E', '#08080F'],
   surfaces: {
