@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- OTA 更新:对外暴露 DownloadManager 的公共下载目录(Download/),供系统安装器读取 APK。 -->
 <paths>
+    <!-- 旧版 DownloadManager 写入的公共下载目录(保留兼容) -->
     <external-path name="downloads" path="Download/" />
+    <!-- 新版应用内下载服务写入的应用私有目录 -->
+    <external-files-path name="updates" path="updates/" />
 </paths>

@@ -2,6 +2,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
       android:name="com.bookkeepingapp.MainApplication"
@@ -24,6 +27,12 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- OTA 更新:应用内前台下载服务(通知栏进度 + 完成后点击安装) -->
+      <service
+          android:name="com.bookkeepingapp.ApkDownloadService"
+          android:exported="false"
+          android:foregroundServiceType="dataSync" />
 
       <!-- OTA 更新:通过 FileProvider 把下载好的 APK 暴露给系统安装器 -->
       <provider

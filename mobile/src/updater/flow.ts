@@ -5,13 +5,13 @@
  * 1. 检查「安装未知来源应用」权限(canRequestPackageInstalls 可能 reject,
  *    如 jest / 原生模块缺失,按失败处理并提示);
  * 2. 未开启 → Alert 引导去系统设置开启(弹窗保持,用户回来可再次点击);
- * 3. 已开启 → downloadAndInstall 走系统 DownloadManager(通知栏进度),
- *    下载完成自动唤起安装器,resolve 表示下载任务已成功加入系统下载队列。
+ * 3. 已开启 → downloadAndInstall 启动应用内前台下载服务(通知栏进度),
+ *    下载完成由服务通知点击唤起安装器,resolve 表示服务已成功启动。
  *
- * 返回 true 表示已开始下载(下载任务已进入系统下载队列,调用方可关闭更新弹窗);
+ * 返回 true 表示下载服务已启动(调用方可关闭更新弹窗);
  * false 表示未开始(权限引导 / 失败,弹窗保持以便重试)。
  */
-import { Alert } from 'react-native';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
 
 import type { UpdateInfo } from '../api/updates';
 import {
@@ -22,6 +22,29 @@ import {
 
 /** 更新安装包文件名,与远端发布命名保持一致(bookkeeping-{version}.apk)。 */
 const apkFileName = (version: string): string => `bookkeeping-${version}.apk`;
+
+/**
+ * Android 13+ 下载进度由应用自己的前台服务通知展示，需要 POST_NOTIFICATIONS。
+ * 用户拒绝时不阻塞下载，只提示通知栏看不到进度。
+ */
+async function ensureNotificationPermission(): Promise<void> {
+  if (Platform.OS !== 'android' || Number(Platform.Version) < 33) {
+    return;
+  }
+  try {
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+      Alert.alert(
+        '通知权限未开启',
+        '下载会继续进行，但通知栏看不到进度。请保持 App 打开；下载完成后会尝试打开安装界面。',
+      );
+    }
+  } catch {
+    // 权限请求失败不阻塞下载；服务仍会在后台下载。
+  }
+}
 
 export async function performUpdate(info: UpdateInfo): Promise<boolean> {
   // 1. 权限检查(原生模块不可用时 reject,按失败提示)
@@ -46,10 +69,11 @@ export async function performUpdate(info: UpdateInfo): Promise<boolean> {
     return false;
   }
 
-  // 3. 系统 DownloadManager 下载(通知栏进度)→ 自动唤起安装器
+  // 3. 应用内前台服务下载(通知栏进度),完成后点击通知安装
+  await ensureNotificationPermission();
   try {
     await downloadAndInstall(info.apkUrl, apkFileName(info.version));
-    // resolve 仅表示已成功入队,下载仍在系统后台进行(通知栏可见进度)
+    // resolve 仅表示下载服务已启动,下载仍在后台进行(通知栏可见进度)
     return true;
   } catch (error) {
     const message =

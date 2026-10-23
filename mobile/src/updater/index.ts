@@ -5,7 +5,8 @@
  * - 检查「安装未知来源应用」权限(canRequestPackageInstalls);
  * - 引导打开系统权限设置页(openInstallPermissionSettings);
  * - 发起下载并自动唤起系统安装器(downloadAndInstall,下载文件名由调用方传入,
- *   建议 bookkeeping-{version}.apk)。
+ *   建议 bookkeeping-{version}.apk)。Android 端由 ApkDownloadService 前台下载,
+ *   不再依赖系统 DownloadManager 的网络校验。
  *
  * 容错:原生模块在非 Android 环境(如 jest、测试渲染)下不存在,
  * 此处对 undefined 做安全包装——Promise 方法 reject、void 方法 console.warn,
@@ -47,9 +48,9 @@ export function openInstallPermissionSettings(): void {
 }
 
 /**
- * 用系统 DownloadManager 下载 APK(通知栏显示进度),下载完成后自动唤起系统安装器。
- * resolve 表示下载任务已成功加入系统下载队列(完成后的安装由系统广播自动唤起);
- * reject 时 message 为中文错误描述(仅入队前的校验失败:空 URL/文件名、缺少安装权限、存储不可用)。
+ * 启动应用内前台下载服务,通知栏显示进度,下载完成后点击通知安装。
+ * resolve 表示下载服务已成功启动(完成后的安装由服务通知负责);
+ * reject 时 message 为中文错误描述(仅启动前的校验失败:空 URL/文件名、缺少安装权限、服务启动失败)。
  */
 export function downloadAndInstall(
   url: string,

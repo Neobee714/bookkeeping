@@ -92,7 +92,7 @@ export function useUpdateCheck() {
         useUpdateCheckStore.getState().hide();
         Alert.alert(
           '已在后台下载',
-          '安装包正在后台下载，可在通知栏查看进度，下载完成后会自动打开安装界面。现在可以关闭本应用。',
+          '安装包正在后台下载，可在通知栏查看进度，下载完成后点击通知安装。现在可以关闭本应用。',
         );
       }
     });
