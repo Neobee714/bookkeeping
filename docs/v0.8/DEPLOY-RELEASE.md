@@ -4,6 +4,8 @@
 - 最终状态：**已随 2.4.0 / versionCode 224 发布（2026-10-23 16:25）**。
   离线功能与 v0.9 主题皮肤合并进同一个 APK；后端幂等与索引迁移均已上线。
   真机（vivo V2339A）飞行模式验收仍待用户执行。
+  2.4.0 的 OTA 下载在国产 ROM 上会被 DownloadManager 卡住，已在 2.4.1 修复，
+  见 [`docs/v0.10/DEPLOY-RELEASE.md`](../v0.10/DEPLOY-RELEASE.md)。
 
 ## 1. 提交
 

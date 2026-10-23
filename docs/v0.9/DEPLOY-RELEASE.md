@@ -5,6 +5,8 @@
   与 v0.8 离线能力合并；APK 签名、哈希、OTA 细节见
   [`docs/v0.8/DEPLOY-RELEASE.md`](../v0.8/DEPLOY-RELEASE.md)。
   四套主题的逐屏视觉走查与明暗冷启动仍需真机确认。
+  2.4.0 的 OTA 下载在国产 ROM 上会被 DownloadManager 卡住，已在 2.4.1 修复，
+  见 [`docs/v0.10/DEPLOY-RELEASE.md`](../v0.10/DEPLOY-RELEASE.md)。
 
 ## 1. 提交
 

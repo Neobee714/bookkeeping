@@ -52,5 +52,5 @@
 
 - [x] `docs/v0.10/{REQ,ARCH,CHECKLIST}.md` ✅
 - [x] `docs/v0.10/DEPLOY-RELEASE.md` ✅
-- [ ] 更新 `bookkeeping-app-iteration` skill（DownloadManager 坑 + 前台服务方案）
+- [x] 更新 `bookkeeping-app-iteration` skill（DownloadManager 坑 + 前台服务方案）✅ 2026-10-24 00:30
 - [ ] 用户确认后勾选真机项
