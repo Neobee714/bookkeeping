@@ -253,69 +253,71 @@ export default function AgentScreen() {
         </Text>
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MessageBubble message={item} colors={colors} />}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={scrollToEnd}
-        ListEmptyComponent={
-          !loading && !error ? (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyEmoji}>✨</Text>
-              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
-                让 AI 帮你记账、查账、总结
-              </Text>
-              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
-                试试说:记一笔早餐 18 元
-              </Text>
-              <View style={styles.exampleWrap}>
-                {EXAMPLES.map((example) => (
-                  <Pressable
-                    key={example}
-                    disabled={loading}
-                    onPress={() => void sendMessage(example)}
-                    style={[styles.exampleChip, { backgroundColor: colors.surface }]}
-                  >
-                    <Text style={[styles.exampleText, { color: colors.primary }]}>
-                      {example}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : undefined
-        }
-        ListFooterComponent={
-          <>
-            {loading ? (
-              <View style={styles.rowStart}>
-                <View style={[styles.aiBubble, skin.surfaces.card]}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={[styles.aiText, { color: colors.textSecondary }]}>
-                    正在分析账单…
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-            {error ? (
-              <View style={styles.rowStart}>
-                <View style={[styles.aiBubble, skin.surfaces.card]}>
-                  <Text style={[styles.errorText, { color: colors.expense }]}>
-                    {error}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-          </>
-        }
-      />
-
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.body}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <FlatList
+          style={styles.list}
+          ref={listRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <MessageBubble message={item} colors={colors} />}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={scrollToEnd}
+          ListEmptyComponent={
+            !loading && !error ? (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyEmoji}>✨</Text>
+                <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+                  让 AI 帮你记账、查账、总结
+                </Text>
+                <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
+                  试试说:记一笔早餐 18 元
+                </Text>
+                <View style={styles.exampleWrap}>
+                  {EXAMPLES.map((example) => (
+                    <Pressable
+                      key={example}
+                      disabled={loading}
+                      onPress={() => void sendMessage(example)}
+                      style={[styles.exampleChip, { backgroundColor: colors.surface }]}
+                    >
+                      <Text style={[styles.exampleText, { color: colors.primary }]}>
+                        {example}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : undefined
+          }
+          ListFooterComponent={
+            <>
+              {loading ? (
+                <View style={styles.rowStart}>
+                  <View style={[styles.aiBubble, skin.surfaces.card]}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.aiText, { color: colors.textSecondary }]}>
+                      正在分析账单…
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+              {error ? (
+                <View style={styles.rowStart}>
+                  <View style={[styles.aiBubble, skin.surfaces.card]}>
+                    <Text style={[styles.errorText, { color: colors.expense }]}>
+                      {error}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </>
+          }
+        />
+
         <View
           style={[
             styles.inputBar,
@@ -352,6 +354,12 @@ export default function AgentScreen() {
 
 const styles = StyleSheet.create({
   safe: {
+    flex: 1,
+  },
+  body: {
+    flex: 1,
+  },
+  list: {
     flex: 1,
   },
   header: {
