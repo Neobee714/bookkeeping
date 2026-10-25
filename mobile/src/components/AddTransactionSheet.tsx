@@ -37,6 +37,7 @@ import type {
 } from '../types';
 import { isValidDateString, toDateString } from '../utils/format';
 import { buildNoteChips, type QuickNoteChip } from '../utils/quickNoteChips';
+import type { VoiceDraft } from '../voice/parseTransaction';
 import GradientButton from './GradientButton';
 import GradientView from './GradientView';
 
@@ -44,6 +45,8 @@ interface Props {
   visible: boolean;
   /** 非空 = 编辑模式(预填),否则为新增。 */
   editingItem: Transaction | null;
+  /** 语音记账解析出的草稿；非空时预填，仍需用户确认。 */
+  initialDraft?: VoiceDraft | null;
   onClose: () => void;
   /** 由父组件负责调用 create/update API;抛错时在弹层内展示。 */
   onSubmit: (payload: TransactionCreatePayload) => Promise<void>;
@@ -107,6 +110,7 @@ const normalizeQuickInputs = (
 export default function AddTransactionSheet({
   visible,
   editingItem,
+  initialDraft = null,
   onClose,
   onSubmit,
 }: Props) {
@@ -143,6 +147,14 @@ export default function AddTransactionSheet({
       setCategory(editingItem.category);
       setDateStr(isValidDateString(editingItem.date) ? editingItem.date : quickDate(0));
       setNote(editingItem.note ?? '');
+    } else if (initialDraft) {
+      setType(initialDraft.type);
+      setAmountInput(String(initialDraft.amount));
+      setCategory(initialDraft.category);
+      setDateStr(
+        isValidDateString(initialDraft.date) ? initialDraft.date : quickDate(0),
+      );
+      setNote(initialDraft.note ?? '');
     } else {
       setType('expense');
       setAmountInput('');
@@ -152,7 +164,7 @@ export default function AddTransactionSheet({
     }
     setErrorMessage('');
     setShowDatePicker(false);
-  }, [visible, editingItem]);
+  }, [visible, editingItem, initialDraft]);
 
   const loadCategories = useCallback(async () => {
     setCategoriesLoading(true);
@@ -444,6 +456,14 @@ export default function AddTransactionSheet({
                 </Text>
               </Pressable>
             </View>
+
+            {initialDraft && !editingItem ? (
+              <View style={[styles.voiceHint, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.voiceHintText, { color: colors.textSecondary }]}>
+                  🎤 语音识别结果，请确认后保存
+                </Text>
+              </View>
+            ) : null}
 
             <ScrollView
               style={styles.sheetScroll}
@@ -763,6 +783,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   closeText: {
+    fontSize: 12,
+  },
+  voiceHint: {
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  voiceHintText: {
     fontSize: 12,
   },
   scrollContent: {

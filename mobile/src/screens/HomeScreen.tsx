@@ -36,6 +36,7 @@ import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
 import TransactionItem from '../components/TransactionItem';
+import VoiceTransactionSheet from '../components/VoiceTransactionSheet';
 import { cacheKey, readCache, writeCache } from '../offline/cache';
 import { createClientId } from '../offline/ids';
 import { isOnlineNow } from '../offline/network';
@@ -51,6 +52,7 @@ import type { PendingTransaction } from '../offline/types';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineStore } from '../store/offlineStore';
 import { spacing, typography, useSkin, useTheme } from '../theme';
+import type { VoiceDraft } from '../voice/parseTransaction';
 import type {
   MonthlySummary,
   Transaction,
@@ -113,6 +115,9 @@ export default function HomeScreen() {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Transaction | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceDraft, setVoiceDraft] = useState<VoiceDraft | null>(null);
+  const longPressFiredRef = useRef(false);
   const [deletingItem, setDeletingItem] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -377,7 +382,24 @@ export default function HomeScreen() {
       return;
     }
     setEditingItem(null);
+    setVoiceDraft(null);
     setSheetOpen(true);
+  };
+
+  const handleFabPress = () => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    openCreate();
+  };
+
+  const handleFabLongPress = () => {
+    if (!isSelfView) {
+      return;
+    }
+    longPressFiredRef.current = true;
+    setVoiceOpen(true);
   };
 
   const openEdit = (tx: Transaction) => {
@@ -398,12 +420,14 @@ export default function HomeScreen() {
       return;
     }
     setEditingItem(tx);
+    setVoiceDraft(null);
     setSheetOpen(true);
   };
 
   const closeSheet = () => {
     setSheetOpen(false);
     setEditingItem(null);
+    setVoiceDraft(null);
   };
 
   const handleSubmit = async (payload: TransactionCreatePayload) => {
@@ -790,18 +814,47 @@ export default function HomeScreen() {
 
       {/* 渐变 FAB(右下角 60px,仅「我的」视图显示) */}
       {isSelfView ? (
-        <Pressable style={styles.fab} onPress={openCreate}>
+        <Pressable
+          style={styles.fab}
+          onPress={handleFabPress}
+          onLongPress={handleFabLongPress}
+          delayLongPress={380}
+          onPressOut={() => {
+            if (longPressFiredRef.current) {
+              setTimeout(() => {
+                longPressFiredRef.current = false;
+              }, 300);
+            }
+          }}
+          accessibilityHint="长按语音记账"
+        >
           <GradientView style={[styles.fabGradient, skin.fabShadow]}>
             <Text style={[styles.fabText, { color: skin.colors.onAccent }]}>+</Text>
           </GradientView>
+          <View style={[styles.fabMicBadge, { backgroundColor: colors.card }]}>
+            <Text style={styles.fabMic}>🎤</Text>
+          </View>
         </Pressable>
       ) : null}
 
       <AddTransactionSheet
         visible={sheetOpen}
         editingItem={editingItem}
+        initialDraft={voiceDraft}
         onClose={closeSheet}
         onSubmit={handleSubmit}
+      />
+
+      <VoiceTransactionSheet
+        visible={voiceOpen}
+        categories={categories}
+        onClose={() => setVoiceOpen(false)}
+        onDraft={(draft) => {
+          setVoiceOpen(false);
+          setEditingItem(null);
+          setVoiceDraft(draft);
+          setSheetOpen(true);
+        }}
       />
 
       <ConfirmModal
@@ -1048,5 +1101,18 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '300',
     lineHeight: 34,
+  },
+  fabMicBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabMic: {
+    fontSize: 11,
   },
 });
