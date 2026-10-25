@@ -28,6 +28,8 @@ import ErrorView from '../components/ErrorView';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
+import { cacheKey, writeCache } from '../offline/cache';
+import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme , useSkin} from '../theme';
 import type { TransactionType } from '../types';
 
@@ -85,7 +87,13 @@ export default function CategoryScreen() {
     setLoading(true);
     setError(null);
     try {
-      setCategories(await fetchCategories());
+      const list = await fetchCategories();
+      setCategories(list);
+      const userId = useAuthStore.getState().user?.id;
+      const key = userId ? cacheKey(userId, 'categories') : null;
+      if (key) {
+        writeCache(key, list).catch(() => undefined);
+      }
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {

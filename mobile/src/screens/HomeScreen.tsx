@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -221,9 +222,12 @@ export default function HomeScreen() {
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    void loadCategories();
-  }, [loadCategories]);
+  // 每次回到首页（例如从分类管理返回）都刷新分类，新增/改名后无需重启 App。
+  useFocusEffect(
+    useCallback(() => {
+      void loadCategories();
+    }, [loadCategories]),
+  );
 
   // FR-02 吸顶:滚动监听已并入 handleScroll(滚动回调直接驱动 collapse 动画)。
   // (原 scrollY.addListener 在 native driver 下不触发,已废弃)

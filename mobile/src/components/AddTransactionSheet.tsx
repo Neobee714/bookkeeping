@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -129,7 +129,6 @@ export default function AddTransactionSheet({
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState('');
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   /** 快捷输入数据(最近一笔日期 + 收藏备注 + 各分类高频备注);null = 不可用(不渲染 chip 区)。 */
   const [quickInputs, setQuickInputs] = useState<QuickInputs | null>(null);
@@ -155,7 +154,7 @@ export default function AddTransactionSheet({
     setShowDatePicker(false);
   }, [visible, editingItem]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     setCategoriesLoading(true);
     setCategoriesError('');
     const userId = useAuthStore.getState().user?.id;
@@ -165,7 +164,6 @@ export default function AddTransactionSheet({
       cached = await readCache<CategoryItem[]>(key);
       if (cached && cached.length > 0) {
         setCategories(cached);
-        setCategoriesLoaded(true);
       }
     }
 
@@ -180,7 +178,6 @@ export default function AddTransactionSheet({
     try {
       const list = await fetchCategories();
       setCategories(list);
-      setCategoriesLoaded(true);
       if (key) {
         writeCache(key, list).catch(() => undefined);
       }
@@ -191,13 +188,15 @@ export default function AddTransactionSheet({
     } finally {
       setCategoriesLoading(false);
     }
-  };
+  }, []);
 
+  // 每次打开弹层都重新拉一次分类：分类管理页新增/改名后，不能等重启 App 才出现。
+  // 先用缓存立即渲染，联网时再用服务端结果覆盖。
   useEffect(() => {
-    if (visible && !categoriesLoaded && !categoriesLoading) {
+    if (visible) {
       void loadCategories();
     }
-  }, [visible, categoriesLoaded, categoriesLoading]);
+  }, [visible, loadCategories]);
 
   // 每次打开弹层拉一次快捷数据(切分类只在本地过滤,不重复请求)。
   // 失败或结构异常一律静默降级:quickInputs 保持 null,不渲染 chip 区、不影响记账。
@@ -420,7 +419,7 @@ export default function AddTransactionSheet({
         <Pressable style={styles.backdrop} onPress={onClose} />
         <KeyboardAvoidingView
           style={styles.sheetWrap}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View
             style={[
@@ -447,6 +446,7 @@ export default function AddTransactionSheet({
             </View>
 
             <ScrollView
+              style={styles.sheetScroll}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.scrollContent}
             >
@@ -640,7 +640,7 @@ export default function AddTransactionSheet({
 
               {/* 分类宫格 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>分类</Text>
-              {categoriesLoading ? (
+              {categoriesLoading && categories.length === 0 ? (
                 <View style={styles.categoriesState}>
                   <ActivityIndicator color={colors.primary} />
                 </View>
@@ -726,6 +726,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   sheetWrap: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -735,6 +736,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingTop: spacing.sm,
     maxHeight: '92%',
+    flexShrink: 1,
+  },
+  sheetScroll: {
+    flexShrink: 1,
   },
   handle: {
     alignSelf: 'center',
