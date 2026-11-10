@@ -88,10 +88,24 @@
 
 ## 8. 异地备份（Mac 侧）
 
-- 脚本：`~/bookkeeping-backups/offsite-sync.sh`（rsync `daily_*.sql.gz` + gzip 校验 + 保留 30 份）
-- 定时：`~/Library/LaunchAgents/com.xyvora.bookkeeping-backup.plist`，每天 12:30；Mac 关机时错过的那次不会补跑
+- 脚本：`~/bookkeeping-backups/offsite-sync.sh`，由 `~/Library/LaunchAgents/com.xyvora.bookkeeping-backup.plist` 每天 12:30 触发
+- 拉取两样东西：
+  1. `offsite/daily_*.sql.gz` —— 每日数据库快照，保留 30 份
+  2. `config/stack-config-YYYYMMDD.tgz` —— 重装所需配置（nginx sites、证书 archive/renewal、
+     compose + `.env`、`ci/` 全套、systemd unit、cron.d、备份脚本），保留 14 份
 - 日志：`~/bookkeeping-backups/offsite-sync.log`
-- 注意：**不能放在 `~/Documents` 下**——launchd 受 macOS TCC 限制会报 `Operation not permitted`。
+- Mac 关机错过的天会在下次运行时补齐（rsync 会拉服务端全部 `daily_*`）
+- 注意：**不能放在 `~/Documents` 下**——launchd 受 macOS TCC 限制会报 `Operation not permitted`
+
+**恢复演练（2026-11-10，用 Mac 上那份副本做的）**
+
+| 项 | 结果 |
+| --- | --- |
+| 两端 sha256 | 一致（`aa170c04…`） |
+| 恢复到临时库 `bookkeeping_drill` | 退出码 0 |
+| 行数对比 | `users` 6/6、`transactions` 2230/2230、`categories` 51/51、`budgets` 8/8、`savings_goals` 0/0、`alembic_version` 1/1 |
+| alembic 版本 | `f3a8b2c9d4e1` 一致 |
+| 演练库 | 已删除 |
 
 ## 9. 真机验收（vivo V2339A，2026-11-10）
 
