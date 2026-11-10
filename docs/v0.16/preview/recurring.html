@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拾光 · v0.16 样例 · 循环记账</title>
+<style>
+  :root{
+    /* 取自 mobile/src/theme/skins/aurora.ts（10 流动极光·亮色） */
+    --bg:#F5F7FB; --card:#FFFFFF; --surface:#F1F3F9;
+    --text:#14161F; --text2:#646B80; --text3:#98A0B0;
+    --primary:#6D5BFF; --income:#0F9E76; --expense:#E0566E;
+    --border:#E8EBF3; --chip:#EFECFF; --chipText:#5B4BD6;
+    --g1:#5B49F5; --g2:#17977F;
+    --overlay:rgba(14,16,28,.45);
+    --r-lg:18px; --r-xl:24px; --r-sheet:28px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#0E1017;color:#E9ECF4;
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif}
+  .page{max-width:1180px;margin:0 auto;padding:36px 24px 72px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7C8698}
+  h1{font-size:26px;margin:8px 0 10px;letter-spacing:-.01em}
+  .lead{color:#A7B0C0;max-width:760px;margin:0 0 6px}
+  .meta{color:#7C8698;font-size:13px;margin:0 0 26px}
+  .board{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:10px}
+  .col > .cap{font-size:12px;color:#8B94A6;letter-spacing:.04em;padding-left:4px}
+  .phone{width:320px;height:760px;border-radius:34px;background:var(--bg);color:var(--text);
+         overflow:hidden;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
+  .statusbar{height:26px;display:flex;align-items:center;justify-content:space-between;
+             padding:0 14px;font-size:10px;color:var(--text2);background:var(--bg)}
+  .screen{position:absolute;inset:26px 0 0;display:flex;flex-direction:column}
+  .body{flex:1;overflow:auto;padding:0 16px 14px}
+  .greet{font-size:11px;color:var(--text2);padding:2px 0 0}
+  .h-title{font-size:22px;font-weight:800;letter-spacing:-.01em;padding:1px 0 8px}
+  .seg{display:flex;background:var(--surface);border-radius:999px;padding:4px;gap:4px;margin-bottom:14px}
+  .seg button{flex:1;border:0;background:transparent;font:inherit;font-size:13px;font-weight:600;
+              color:var(--text2);padding:9px 0;border-radius:999px;cursor:pointer}
+  .seg button.on{background:linear-gradient(120deg,var(--g1),var(--g2));color:#fff}
+  .rule{background:var(--card);border-radius:var(--r-lg);padding:12px 14px;display:flex;align-items:center;
+        gap:11px;margin-bottom:8px;box-shadow:0 6px 16px rgba(20,22,40,.06)}
+  .rule.off{opacity:.55}
+  .ico{width:38px;height:38px;border-radius:12px;background:var(--surface);display:grid;place-items:center;font-size:19px;flex:none}
+  .rmain{flex:1;min-width:0}
+  .rname{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rsub{font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ramt{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;text-align:right;flex:none}
+  .ramt small{display:block;font-size:9.5px;font-weight:600;color:var(--text3);margin-top:1px;letter-spacing:.02em}
+  .amt-out{color:var(--expense)} .amt-in{color:var(--income)}
+  .sw{width:40px;height:23px;border-radius:999px;background:#D7DCE8;position:relative;flex:none;cursor:pointer;
+       transition:background .15s}
+  .sw i{position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;
+        transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .sw.on{background:linear-gradient(120deg,var(--g1),var(--g2))}
+  .sw.on i{left:19.5px}
+  .cta{margin:10px 0 4px;width:100%;border:0;border-radius:14px;padding:14px;color:#fff;font:inherit;
+       font-size:15px;font-weight:700;background:linear-gradient(120deg,var(--g1),var(--g2));cursor:pointer;
+       box-shadow:0 12px 24px rgba(109,91,255,.3)}
+  .hint{font-size:11px;color:var(--text3);text-align:center;margin:10px 0 0}
+  .tabbar{height:56px;border-top:1px solid var(--border);background:#fff;display:flex;align-items:center}
+  .tabbar div{flex:1;text-align:center;font-size:10px;color:var(--text3)}
+  .tabbar div.on{color:var(--primary);font-weight:700}
+  .tabbar .g{font-size:16px;display:block;line-height:1.2}
+
+  /* 首页 */
+  .hero{background:var(--card);border-radius:var(--r-xl);padding:12px 16px;margin:6px 0 10px;
+        box-shadow:0 10px 26px rgba(20,22,40,.08)}
+  .hero .lbl{font-size:11px;color:var(--text2)}
+  .hero .num{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:2px 0 8px}
+  .hero .cols{display:flex;gap:10px}
+  .hero .cols div{flex:1}
+  .hero .cols b{display:block;font-size:15px;margin-top:2px}
+  .dgroup{font-size:11px;color:var(--text3);margin:12px 0 6px}
+  .tx{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:10px 12px;margin-bottom:8px}
+  .tx .nm{flex:1;min-width:0}
+  .tx .nm .t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tx .nm .s{font-size:11px;color:var(--text3)}
+  .pill{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;
+        background:var(--chip);color:var(--chipText);margin-left:6px;vertical-align:1px}
+  .tx .a{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+
+  /* 弹层 */
+  .dim{position:absolute;inset:26px 0 0;background:var(--overlay);display:flex;align-items:flex-end}
+  .sheet{width:100%;max-height:94%;background:#fff;border-radius:var(--r-sheet) var(--r-sheet) 0 0;
+         padding:6px 16px 12px;overflow:auto}
+  .handle{width:44px;height:5px;border-radius:999px;background:var(--border);margin:2px auto 10px}
+  .shead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .shead h3{margin:0;font-size:17px;font-weight:800}
+  .close{background:var(--surface);border:0;border-radius:10px;padding:7px 12px;font:inherit;font-size:12px;color:var(--text2)}
+  .toggle{display:inline-flex;background:var(--surface);border-radius:999px;padding:4px;gap:4px;margin-bottom:10px}
+  .toggle span{font-size:13px;font-weight:600;padding:7px 26px;border-radius:999px;color:var(--text2)}
+  .toggle span.on{background:linear-gradient(120deg,var(--g1),var(--g2));color:#fff}
+  .lab{font-size:12px;color:var(--text2);margin:0 0 6px}
+  .amount{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:12px;padding:4px 14px;margin-bottom:10px}
+  .amount b{color:var(--primary);font-size:20px}
+  .amount span{font-size:30px;font-weight:800;letter-spacing:.5px;color:var(--text)}
+  .input{background:var(--surface);border-radius:12px;padding:10px 14px;color:var(--text3);font-size:13px;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
+  .cell{background:var(--surface);border-radius:14px;padding:7px 0;text-align:center;font-size:11px;font-weight:600;color:var(--text)}
+  .cell.on{background:linear-gradient(120deg,var(--g1),var(--g2));color:#fff}
+  .cell em{display:block;font-style:normal;font-size:18px;margin-bottom:2px}
+  .datefreq{display:flex;align-items:center;justify-content:space-between;background:var(--surface);
+            border-radius:12px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:8px}
+  .datefreq small{color:var(--text2);font-weight:400}
+  .freq{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:8px}
+  .freq button{border:1.5px solid transparent;background:var(--surface);border-radius:12px;padding:8px 0;
+               font:inherit;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer}
+  .freq button.on{border-color:var(--primary);background:var(--chip);color:var(--chipText)}
+  .explain{font-size:10.5px;color:var(--text3);background:#FAFBFE;border:1px dashed var(--border);
+           border-radius:10px;padding:6px 9px;margin-bottom:9px;line-height:1.4}
+  .save{width:100%;border:0;border-radius:14px;padding:12px;color:#fff;font:inherit;font-size:15px;font-weight:700;
+        background:linear-gradient(120deg,var(--g1),var(--g2));cursor:pointer}
+
+  /* 说明区 */
+  .notes{margin-top:44px;border-top:1px solid #232838;padding-top:26px;max-width:900px}
+  .notes h2{font-size:16px;margin:0 0 10px;color:#E9ECF4}
+  .notes h2:not(:first-child){margin-top:24px}
+  .notes ul{margin:0;padding-left:18px;color:#A7B0C0}
+  .notes li{margin:5px 0}
+  .notes code{background:#1A1F2C;border-radius:4px;padding:1px 5px;font-size:12px;color:#CBD3E4}
+  .ask{margin-top:26px;background:#151A26;border:1px solid #232838;border-radius:14px;padding:16px 18px}
+  .ask b{color:#fff}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="eyebrow">拾光 · v0.16 样例 · 2026-11-10</div>
+  <h1>循环记账：需求理解样例</h1>
+  <p class="lead">点一下就能按月/周重复的账单（房租、宽带、工资、会员费）。到期后<b>服务端自动生成</b>真实账单，
+     关掉 App 也会记；每笔生成的账单和手动记的一样能改、能删。</p>
+  <p class="meta">这是<b>提案</b>，还没有改任何生产代码。三个界面分别是：规划·循环列表 / 新建循环弹层 / 首页里的循环账单。</p>
+
+  <div class="board">
+    <!-- ① 规划 · 循环 -->
+    <div class="col">
+      <div class="cap">① 规划页新增第三个分段「循环」</div>
+      <div class="phone">
+        <div class="statusbar"><span>15:40</span><span>5G ▮▮ 100</span></div>
+        <div class="screen">
+          <div class="body">
+            <div class="greet">不用每个月再手动记一遍</div>
+            <div class="h-title">规划</div>
+            <div class="seg" id="segs">
+              <button>预算</button><button>储蓄</button><button class="on">循环</button>
+            </div>
+
+            <div class="rule">
+              <div class="ico">🏠</div>
+              <div class="rmain">
+                <div class="rname">房租</div>
+                <div class="rsub">每月 1 号</div>
+              </div>
+              <div class="ramt amt-out">-3,200.00<small>下期 12-01</small></div>
+              <div class="sw on" data-sw><i></i></div>
+            </div>
+
+            <div class="rule">
+              <div class="ico">📶</div>
+              <div class="rmain">
+                <div class="rname">宽带费</div>
+                <div class="rsub">每月 10 号</div>
+              </div>
+              <div class="ramt amt-out">-99.00<small>下期 12-10</small></div>
+              <div class="sw on" data-sw><i></i></div>
+            </div>
+
+            <div class="rule">
+              <div class="ico">💰</div>
+              <div class="rmain">
+                <div class="rname">工资</div>
+                <div class="rsub">每月 1 号</div>
+              </div>
+              <div class="ramt amt-in">+12,000.00<small>下期 12-01</small></div>
+              <div class="sw on" data-sw><i></i></div>
+            </div>
+
+            <div class="rule off">
+              <div class="ico">🎬</div>
+              <div class="rmain">
+                <div class="rname">视频会员</div>
+                <div class="rsub">每月 25 号</div>
+              </div>
+              <div class="ramt amt-out">-25.00<small>已暂停</small></div>
+              <div class="sw" data-sw><i></i></div>
+            </div>
+
+            <button class="cta">＋ 新建循环记账</button>
+            <p class="hint">点条目可编辑，长按可删除规则</p>
+          </div>
+          <div class="tabbar">
+            <div><span class="g">🏠</span>首页</div>
+            <div><span class="g">📊</span>图表</div>
+            <div><span class="g">✨</span>小光</div>
+            <div class="on"><span class="g">🎯</span>规划</div>
+            <div><span class="g">👤</span>我的</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 新建循环 -->
+    <div class="col">
+      <div class="cap">② 新建循环：频率锚定「首次日期」</div>
+      <div class="phone">
+        <div class="statusbar"><span>15:40</span><span>5G ▮▮ 100</span></div>
+        <div class="screen">
+          <div class="body" style="opacity:.35">
+            <div class="h-title">规划</div>
+            <div class="seg"><button>预算</button><button>储蓄</button><button class="on">循环</button></div>
+            <div class="rule"><div class="ico">🏠</div><div class="rmain"><div class="rname">房租</div>
+              <div class="rsub">每月 1 号</div></div><div class="ramt amt-out">-3,200.00<small>下期 12-01</small></div></div>
+          </div>
+          <div class="dim">
+            <div class="sheet">
+              <div class="handle"></div>
+              <div class="shead"><h3>新建循环记账</h3><button class="close">关闭</button></div>
+
+              <div class="toggle"><span class="on">支出</span><span>收入</span></div>
+
+              <p class="lab">金额</p>
+              <div class="amount"><b>¥</b><span>3200.00</span></div>
+
+              <p class="lab">备注(可选)</p>
+              <div class="input">房租</div>
+
+              <p class="lab">分类</p>
+              <div class="grid">
+                <div class="cell"><em>🍜</em>餐饮</div>
+                <div class="cell"><em>🚌</em>交通</div>
+                <div class="cell"><em>🛒</em>日用</div>
+                <div class="cell"><em>🛍️</em>购物</div>
+                <div class="cell on"><em>🏠</em>居住</div>
+                <div class="cell"><em>📌</em>其他</div>
+                <div class="cell"><em>🥤</em>水</div>
+                <div class="cell"><em>❤️</em>小摔炮</div>
+              </div>
+
+              <p class="lab">重复</p>
+              <div class="freq" id="freq">
+                <button>每天</button><button>每周</button><button class="on">每月</button><button>每年</button>
+              </div>
+
+              <div class="datefreq"><span>首次日期 2026-11-01</span><small>每月 1 号 ›</small></div>
+
+              <div class="explain">到期当天自动生成真实账单，可正常编辑或删除；暂停期间不生成，删规则不删历史账单。</div>
+
+              <button class="save">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 首页 -->
+    <div class="col">
+      <div class="cap">③ 首页：自动生成的账单带「循环」小标</div>
+      <div class="phone">
+        <div class="statusbar"><span>15:40</span><span>5G ▮▮ 100</span></div>
+        <div class="screen">
+          <div class="body">
+            <div class="greet">Hi, 李文晔宝宝的洗衣粉～</div>
+            <div class="h-title">拾光</div>
+            <div class="hero">
+              <div class="lbl">本月结余</div>
+              <div class="num">¥8,675.00</div>
+              <div class="cols">
+                <div><span class="lbl">收入</span><b class="amt-in">¥12,000.00</b></div>
+                <div><span class="lbl">支出</span><b class="amt-out">¥3,325.00</b></div>
+              </div>
+            </div>
+
+            <div class="dgroup">11-10 今天 · 周二</div>
+            <div class="tx">
+              <div class="ico">📶</div>
+              <div class="nm"><div class="t">宽带费<span class="pill">循环</span></div>
+                <div class="s">居住 · 自动生成</div></div>
+              <div class="a amt-out">-99.00</div>
+            </div>
+
+            <div class="dgroup">11-03 周二</div>
+            <div class="tx">
+              <div class="ico">🍜</div>
+              <div class="nm"><div class="t">麻辣烫</div><div class="s">餐饮</div></div>
+              <div class="a amt-out">-26.00</div>
+            </div>
+
+            <div class="dgroup">11-01 周日</div>
+            <div class="tx">
+              <div class="ico">🏠</div>
+              <div class="nm"><div class="t">房租<span class="pill">循环</span></div>
+                <div class="s">居住 · 自动生成</div></div>
+              <div class="a amt-out">-3,200.00</div>
+            </div>
+            <div class="tx">
+              <div class="ico">💰</div>
+              <div class="nm"><div class="t">工资<span class="pill">循环</span></div>
+                <div class="s">收入 · 自动生成</div></div>
+              <div class="a amt-in">+12,000.00</div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="on"><span class="g">🏠</span>首页</div>
+            <div><span class="g">📊</span>图表</div>
+            <div><span class="g">✨</span>小光</div>
+            <div><span class="g">🎯</span>规划</div>
+            <div><span class="g">👤</span>我的</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h2>我理解的需求（请确认）</h2>
+    <ul>
+      <li><b>入口</b>：规划页在「预算 / 储蓄」后加第三个分段「循环」，不新增底部 Tab。</li>
+      <li><b>频率</b>：每天 / 每周 / 每月 / 每年，具体日子<b>由「首次日期」决定</b> —— 首次填 11-01 就是每月 1 号，填 11-05 就是每月 5 号；每周取首次日期是星期几。</li>
+      <li><b>生成</b>：服务端每天检查一次到期规则并落真实账单（含收入），关掉 App 也会记。补跑最多回溯 90 天，避免长时间停机后一次刷出几百笔。</li>
+      <li><b>月末边界</b>：31 号的规则在 2 月按当月最后一天生成（2-28/29），4 月按 4-30。</li>
+      <li><b>暂停/恢复</b>：开关暂停后不再生成；恢复时从下一个到期日开始，不补暂停期间的账。</li>
+      <li><b>编辑/删除</b>：规则可改金额、备注、分类、频率、首次日期；删规则只停止未来生成，已生成的账单保留。</li>
+      <li><b>已经生成的账单</b>：和手动记的完全一样，可编辑、可删除；首页带一个「循环」小标，便于和手记区分。</li>
+      <li><b>双人账本</b>：规则只记自己（同语音记账），伴侣能看到生成的账单和金额，但看不到规则本身。</li>
+      <li><b>离线</b>：循环规则需要联网新建/修改；离线时列表读缓存、按钮置灰并提示。不进入现有离线补记队列。</li>
+    </ul>
+
+    <h2>不在这次范围</h2>
+    <ul>
+      <li>结束日期 / 只跑 N 次（先用暂停或删除控制）。</li>
+      <li>到期前提醒、通知推送。</li>
+      <li>「记到伴侣名下」的循环、多个账本切换。</li>
+      <li>按工作日/每月最后一个工作日这类复杂日历规则。</li>
+      <li>历史账单批量回填（新建规则只从首次日期开始向后生成）。</li>
+    </ul>
+
+    <h2>技术形态（供你确认口径，细节写进 ARCH）</h2>
+    <ul>
+      <li>后端：新表 <code>recurring_rules</code> + 迁移；<code>GET/POST/PATCH/DELETE /recurring</code>；账单表加 <code>recurring_rule_id</code> 与 <code>UNIQUE(rule_id, date)</code> 做幂等，重复生成不会多记。</li>
+      <li>调度：FastAPI 启动时起一个 asyncio 后台循环，每小时跑一次到期生成（当前容器是单进程 uvicorn，不需要额外依赖或 cron）。</li>
+      <li>App：<code>src/api/recurring.ts</code>、<code>RecurringSheet</code> 复用记账弹层的表单与分类宫格、PlanScreen 加分段、首页 TransactionItem 加「循环」小标。</li>
+      <li>版本：<b>2.5.2 → 2.6.0</b>（versionCode 230 → 231）；后端有迁移，push 后由 CI 自动部署。</li>
+    </ul>
+
+    <div class="ask">
+      <b>需要你确认：</b>这份样例是否符合你要的「循环记账」？确认后我再按流程写 REQ/ARCH/CHECKLIST 并派子 Agent 实现。
+      如果频率只想要「每月」，或者入口想放首页，现在说更省事。
+    </div>
+  </div>
+</div>
+
+<script>
+  // 分段切换（纯演示）
+  document.querySelectorAll('#segs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#segs button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+    });
+  });
+  document.querySelectorAll('#freq button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#freq button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      var map = { '每天': '每天 · 下次 11-11', '每周': '每周二 · 下次 11-17',
+                  '每月': '每月 1 号 · 12-01', '每年': '每年 11 月 1 日 · 下次 2027-11-01' };
+      document.querySelector('.datefreq small').textContent = map[b.textContent] + ' ›';
+    });
+  });
+  document.querySelectorAll('[data-sw]').forEach(function (sw) {
+    sw.addEventListener('click', function () {
+      sw.classList.toggle('on');
+      sw.closest('.rule').classList.toggle('off');
+      var sub = sw.closest('.rule').querySelector('.rsub');
+      if (!sw.classList.contains('on') && !/已暂停/.test(sub.textContent)) {
+        sub.dataset.prev = sub.textContent;
+        sub.textContent = sub.textContent.split(' · ')[0] + ' · 已暂停';
+      } else if (sub.dataset.prev) {
+        sub.textContent = sub.dataset.prev;
+      }
+    });
+  });
+</script>
+</body>
+</html>

@@ -33,6 +33,17 @@ jest.mock('@react-native-community/netinfo', () => ({
   },
 }));
 
+// react-native-linear-gradient 发布的是未转译的 ESM，jest 无法直接解析；
+// 视觉层用普通 View 代替即可（只影响快照观感，不影响断言）。
+jest.mock('react-native-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ children, ...props }) => React.createElement(View, props, children),
+  };
+});
+
 jest.mock('react-native-keychain', () => {
   const store = new Map();
   return {
