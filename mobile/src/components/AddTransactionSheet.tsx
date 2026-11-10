@@ -685,27 +685,27 @@ export default function AddTransactionSheet({
                             style={[styles.cat, skin.surfaces.input]}
                             onPress={() => setCategory(item.name)}
                           >
-                            {active ? (
-                              <GradientView style={styles.catActiveFill}>
-                                <Text style={styles.catEmoji}>{item.icon}</Text>
-                                <Text style={[styles.catNameActive, { color: colors.onAccent }]}>{item.name}</Text>
-                              </GradientView>
-                            ) : (
-                              <>
-                                <Text style={styles.catEmoji}>{item.icon}</Text>
-                                <Text
-                                  style={[
-                                    styles.catName,
-                                    { color: colors.textPrimary },
-                                  ]}
-                                >
-                                  {item.name}
-                                </Text>
-                              </>
-                            )}
+                            {/* 渐变只做背景层：图标/文字必须留在正常流里，
+                                否则独占一行的分类（如「旅游」）没有兄弟项撑高度，
+                                选中后会塌成一条细线。 */}
+                            {active ? <GradientView style={styles.catActiveFill} /> : null}
+                            <Text style={styles.catEmoji}>{item.icon}</Text>
+                            <Text
+                              style={[
+                                styles.catName,
+                                { color: active ? colors.onAccent : colors.textPrimary },
+                              ]}
+                            >
+                              {item.name}
+                            </Text>
                           </Pressable>
                         );
                       })}
+                      {/* 末行不足 4 个时补占位，保证每个分类保持 1/4 宽度，
+                          不会因为 flex:1 被拉成整行宽。 */}
+                      {Array.from({ length: 4 - row.length }).map((_, index) => (
+                        <View key={`spacer-${index}`} style={styles.catSpacer} />
+                      ))}
                     </View>
                   ))}
                 </View>
@@ -979,11 +979,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 11,
-    gap: 6,
     borderRadius: 16,
+  },
+  catSpacer: {
+    flex: 1,
   },
   catEmoji: {
     fontSize: 24,
@@ -991,11 +990,6 @@ const styles = StyleSheet.create({
   catName: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  catNameActive: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
   errorBox: {
     borderRadius: 12,

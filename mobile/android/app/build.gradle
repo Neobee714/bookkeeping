@@ -95,8 +95,8 @@ android {
         applicationId "com.neobee.bookkeeping"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 229
-        versionName "2.5.1"
+        versionCode 230
+        versionName "2.5.2"
     }
     signingConfigs {
         debug {
