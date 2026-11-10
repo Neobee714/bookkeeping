@@ -1,12 +1,14 @@
 import { useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -15,6 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { extractErrorMessage } from '../api/client';
 import { fetchBudget, setBudget, updateBudget } from '../api/budget';
+import {
+  createRecurringRule,
+  deleteRecurringRule,
+  fetchRecurringRules,
+  updateRecurringRule,
+} from '../api/recurring';
 import {
   createSaving,
   deleteSaving,
@@ -27,11 +35,23 @@ import ErrorView from '../components/ErrorView';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
+import RecurringSheet from '../components/RecurringSheet';
 import SegmentedControl from '../components/SegmentedControl';
+import { cacheKey, readCache, writeCache } from '../offline/cache';
+import { isOnlineNow, subscribeNetwork } from '../offline/network';
+import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useSkin, useTheme } from '../theme';
-import type { Budget, BudgetSummary, SavingsGoal } from '../types';
+import type {
+  Budget,
+  BudgetSummary,
+  RecurringCreatePayload,
+  RecurringRule,
+  RecurringUpdatePayload,
+  SavingsGoal,
+} from '../types';
+import { describeFreq, nextRunLabel } from '../utils/recurringText';
 
-type PlanTab = 'budget' | 'savings';
+type PlanTab = 'budget' | 'savings' | 'recurring';
 
 /** 分类元信息(emoji + 渐变),与 Web 端 PlanPage 对齐。 */
 const CATEGORY_META: Record<string, { emoji: string; gradient: [string, string] }> = {
@@ -55,6 +75,19 @@ const DEFAULT_META: { emoji: string; gradient: [string, string] } = {
 
 const getCategoryMeta = (name: string): { emoji: string; gradient: [string, string] } =>
   CATEGORY_META[name] ?? DEFAULT_META;
+
+/** 循环规则常见分类的 emoji；「居住 / 通讯 / 会员」等不在预算分类表里。 */
+const RECURRING_EMOJI: Record<string, string> = {
+  居住: '🏠',
+  通讯: '📶',
+  宽带: '📶',
+  会员: '🎬',
+  保险: '🛡️',
+  工资: '💰',
+};
+
+const getRecurringEmoji = (name: string): string =>
+  RECURRING_EMOJI[name] ?? getCategoryMeta(name).emoji;
 
 /** 预算可选分类(支出类)。 */
 const EXPENSE_CATEGORIES = [
@@ -137,6 +170,15 @@ export default function PlanScreen() {
   const [savingsLoading, setSavingsLoading] = useState(true);
   const [savingsError, setSavingsError] = useState<unknown>(null);
 
+  // 循环规则数据
+  const [rules, setRules] = useState<RecurringRule[]>([]);
+  const [rulesLoading, setRulesLoading] = useState(true);
+  const [rulesError, setRulesError] = useState<unknown>(null);
+  const [online, setOnline] = useState(() => isOnlineNow());
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [recurringSheetOpen, setRecurringSheetOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<RecurringRule | null>(null);
+
   const [reloadTick, setReloadTick] = useState(0);
 
   const monthKey = formatMonthKey(month);
@@ -178,6 +220,50 @@ export default function PlanScreen() {
     }
   }, []);
 
+  /** 循环规则缓存：联网成功后写回 bk.cache.v1.<uid>.recurring。 */
+  const persistRules = useCallback((list: RecurringRule[]) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) {
+      return;
+    }
+    writeCache(cacheKey(userId, 'recurring'), list).catch(() => undefined);
+  }, []);
+
+  /** 当前列表快照：缓存只用于冷启动/离线兜底，避免每次刷新先用旧缓存闪一下。 */
+  const rulesRef = useRef<RecurringRule[]>(rules);
+  useEffect(() => {
+    rulesRef.current = rules;
+  }, [rules]);
+
+  const loadRecurring = useCallback(async () => {
+    setRulesLoading(true);
+    setRulesError(null);
+    const userId = useAuthStore.getState().user?.id;
+    const key = userId ? cacheKey(userId, 'recurring') : null;
+    // 先渲染缓存（离线唯一数据源），联网时再用服务端结果覆盖。
+    const cached = key ? await readCache<RecurringRule[]>(key) : null;
+    if (cached && cached.length > 0 && rulesRef.current.length === 0) {
+      setRules(cached);
+    }
+
+    if (!isOnlineNow()) {
+      // 离线：保留当前/缓存列表，只展示提示，不发写请求。
+      setRulesLoading(false);
+      return;
+    }
+
+    try {
+      const list = await fetchRecurringRules();
+      setRules(list);
+      persistRules(list);
+    } catch (loadError) {
+      // 有缓存时保留列表并提示「展示的是上次结果」，避免一次网络抖动清空页面。
+      setRulesError(loadError);
+    } finally {
+      setRulesLoading(false);
+    }
+  }, [persistRules]);
+
   const monthKeyRef = useRef(monthKey);
   useEffect(() => {
     monthKeyRef.current = monthKey;
@@ -196,6 +282,19 @@ export default function PlanScreen() {
     }
     void loadSavings();
   }, [isFocused, reloadTick, loadSavings]);
+
+  // 网络状态：决定「循环」分段能否写操作，并在恢复联网时自动刷新。
+  useEffect(() => {
+    setOnline(isOnlineNow());
+    return subscribeNetwork((next) => setOnline(next));
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+    loadRecurring().catch(() => undefined);
+  }, [isFocused, reloadTick, online, loadRecurring]);
 
   const reload = useCallback(() => setReloadTick((value) => value + 1), []);
 
@@ -374,12 +473,122 @@ export default function PlanScreen() {
     setSavingCurrentInput(String(Number((base + amount).toFixed(2))));
   };
 
+  // ---------- 循环规则 ----------
+
+  const openCreateRecurringSheet = () => {
+    if (!isOnlineNow()) {
+      Alert.alert('需要联网', '新建循环记账需要联网');
+      return;
+    }
+    setEditingRule(null);
+    setRecurringSheetOpen(true);
+  };
+
+  const openEditRecurringSheet = (rule: RecurringRule) => {
+    if (!isOnlineNow()) {
+      Alert.alert('需要联网', '编辑循环规则需要联网');
+      return;
+    }
+    setEditingRule(rule);
+    setRecurringSheetOpen(true);
+  };
+
+  const closeRecurringSheet = () => setRecurringSheetOpen(false);
+
+  /** 新建/编辑共用：成功后关闭弹层并刷新列表（失败由弹层展示并保留输入）。 */
+  const handleSubmitRecurring = async (payload: RecurringCreatePayload) => {
+    if (!isOnlineNow()) {
+      throw new Error('离线状态无法保存，请联网后重试');
+    }
+    if (!editingRule) {
+      await createRecurringRule(payload);
+    } else {
+      // 只发改动字段：freq / start_date 未变时不让后端重算 next_run_date。
+      const patch: RecurringUpdatePayload = {};
+      if (payload.amount !== editingRule.amount) {
+        patch.amount = payload.amount;
+      }
+      if (payload.type !== editingRule.type) {
+        patch.type = payload.type;
+      }
+      if (payload.category !== editingRule.category) {
+        patch.category = payload.category;
+      }
+      if ((payload.note ?? '') !== (editingRule.note ?? '')) {
+        // 清空备注时显式传 null（PATCH 用 exclude_unset，字段缺失会保留旧值）。
+        patch.note = payload.note ?? null;
+      }
+      if (payload.freq !== editingRule.freq) {
+        patch.freq = payload.freq;
+      }
+      if (payload.start_date !== editingRule.start_date) {
+        patch.start_date = payload.start_date;
+      }
+      if (Object.keys(patch).length === 0) {
+        setRecurringSheetOpen(false);
+        return;
+      }
+      await updateRecurringRule(editingRule.id, patch);
+    }
+    setRecurringSheetOpen(false);
+    await loadRecurring();
+  };
+
+  const handleDeleteRecurring = async (rule: RecurringRule) => {
+    if (!isOnlineNow()) {
+      throw new Error('离线状态无法删除，请联网后重试');
+    }
+    await deleteRecurringRule(rule.id);
+    setRecurringSheetOpen(false);
+    await loadRecurring();
+  };
+
+  /** 启用/暂停：先乐观更新，失败回滚并提示（离线直接拦截）。 */
+  const handleToggleRule = async (rule: RecurringRule, nextEnabled: boolean) => {
+    if (!isOnlineNow()) {
+      Alert.alert('需要联网', '切换启用状态需要联网');
+      return;
+    }
+    if (togglingId !== null) {
+      return;
+    }
+    setTogglingId(rule.id);
+    const optimistic = rules.map((item) =>
+      item.id === rule.id ? { ...item, enabled: nextEnabled } : item,
+    );
+    setRules(optimistic);
+    try {
+      const updated = await updateRecurringRule(rule.id, {
+        enabled: nextEnabled,
+      });
+      // 后端在恢复启用时会重算 next_run_date，用返回值覆盖。
+      const merged = optimistic.map((item) =>
+        item.id === updated.id ? updated : item,
+      );
+      setRules(merged);
+      persistRules(merged);
+    } catch (toggleError) {
+      setRules(
+        optimistic.map((item) =>
+          item.id === rule.id ? { ...item, enabled: !nextEnabled } : item,
+        ),
+      );
+      Alert.alert(
+        '操作失败',
+        extractErrorMessage(toggleError, '切换失败，请稍后重试'),
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   // ---------- 渲染 ----------
 
   const remaining =
     (budgetSummary?.total_budget ?? 0) - (budgetSummary?.total_spent ?? 0);
   const budgetErrorText = extractErrorMessage(budgetError, '预算加载失败');
   const savingsErrorText = extractErrorMessage(savingsError, '储蓄目标加载失败');
+  const rulesErrorText = extractErrorMessage(rulesError, '循环规则加载失败');
 
   const renderBudget = () => {
     if (budgetLoading && !budgetSummary) {
@@ -579,6 +788,142 @@ export default function PlanScreen() {
     );
   };
 
+  const renderRecurring = () => {
+    if (rulesLoading && rules.length === 0) {
+      return (
+        <View style={styles.stateWrap}>
+          <LoadingView text="加载循环规则…" />
+        </View>
+      );
+    }
+    if (rulesError && rules.length === 0) {
+      return (
+        <View style={styles.stateWrap}>
+          <ErrorView
+            title="循环规则加载失败"
+            message={rulesErrorText}
+            onRetry={reload}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <>
+        {!online ? (
+          <View style={[styles.offlineNotice, { backgroundColor: colors.chipSoftBg }]}>
+            <Text style={[styles.offlineNoticeText, { color: colors.chipSoftText }]}>
+              离线模式：显示的是上次缓存；新建 / 编辑 / 删除 / 开关需联网
+            </Text>
+          </View>
+        ) : rulesError ? (
+          <View style={[styles.inlineError, { backgroundColor: colors.surface }]}>
+            <Text
+              style={[styles.inlineErrorText, { color: colors.expense }]}
+              numberOfLines={2}
+            >
+              刷新失败，展示的是上次结果
+            </Text>
+            <Pressable onPress={reload} hitSlop={8}>
+              <Text style={[styles.inlineRetry, { color: colors.primary }]}>
+                重试
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {rules.length === 0 ? (
+          <View style={styles.stateWrap}>
+            <EmptyView
+              emoji="🔁"
+              title="还没有循环记账"
+              description={
+                online
+                  ? '把房租、工资这类固定账单设成自动记'
+                  : '联网后可以新建循环记账'
+              }
+            />
+          </View>
+        ) : (
+          <View style={[styles.card, skin.surfaces.card]}>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+              循环规则
+            </Text>
+            {rules.map((rule) => {
+              const isIncome = rule.type === 'income';
+              return (
+                <Pressable
+                  key={rule.id}
+                  onPress={() => openEditRecurringSheet(rule)}
+                  style={({ pressed }) => [
+                    styles.ruleRow,
+                    {
+                      backgroundColor: colors.surface,
+                      opacity: rule.enabled ? 1 : 0.55,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <View style={[styles.ruleIcon, { backgroundColor: colors.card }]}>
+                    <Text style={styles.ruleEmoji}>
+                      {getRecurringEmoji(rule.category)}
+                    </Text>
+                  </View>
+                  <View style={styles.ruleMain}>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.ruleName, { color: colors.textPrimary }]}
+                    >
+                      {rule.note?.trim() || rule.category}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.ruleSub, { color: colors.textTertiary }]}
+                    >
+                      {describeFreq(rule)}
+                    </Text>
+                  </View>
+                  <View style={styles.ruleRight}>
+                    <Text
+                      style={[
+                        styles.ruleAmount,
+                        { color: isIncome ? colors.income : colors.expense },
+                      ]}
+                    >
+                      {isIncome ? '+' : '-'}¥{formatMoney(rule.amount)}
+                    </Text>
+                    <Text style={[styles.ruleNext, { color: colors.textTertiary }]}>
+                      {nextRunLabel(rule)}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={rule.enabled}
+                    onValueChange={(next) => {
+                      handleToggleRule(rule, next);
+                    }}
+                    disabled={!online || togglingId !== null}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    ios_backgroundColor={colors.border}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        <GradientButton
+          title="＋ 新建循环记账"
+          onPress={openCreateRecurringSheet}
+          disabled={!online}
+          style={styles.recurringCta}
+        />
+        <Text style={[styles.recurringHint, { color: colors.textTertiary }]}>
+          点条目可编辑；开关控制是否继续自动生成
+        </Text>
+      </>
+    );
+  };
+
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
@@ -594,6 +939,7 @@ export default function PlanScreen() {
           options={[
             { key: 'budget', label: '预算' },
             { key: 'savings', label: '存钱' },
+            { key: 'recurring', label: '循环' },
           ]}
           value={tab}
           onChange={(key) => setTab(key as PlanTab)}
@@ -629,17 +975,21 @@ export default function PlanScreen() {
           </View>
         )}
 
-        {tab === 'budget' ? renderBudget() : renderSavings()}
+        {tab === 'budget' ? renderBudget() : null}
+        {tab === 'savings' ? renderSavings() : null}
+        {tab === 'recurring' ? renderRecurring() : null}
       </ScrollView>
 
-      <Pressable
-        style={[styles.fab, { shadowColor: skin.gradient[0] }]}
-        onPress={tab === 'budget' ? openCreateBudgetSheet : openCreateSavingSheet}
-      >
-        <GradientView style={styles.fabGradient}>
-          <Text style={[styles.fabText, { color: skin.colors.onAccent }]}>+</Text>
-        </GradientView>
-      </Pressable>
+      {tab !== 'recurring' ? (
+        <Pressable
+          style={[styles.fab, { shadowColor: skin.gradient[0] }]}
+          onPress={tab === 'budget' ? openCreateBudgetSheet : openCreateSavingSheet}
+        >
+          <GradientView style={styles.fabGradient}>
+            <Text style={[styles.fabText, { color: skin.colors.onAccent }]}>+</Text>
+          </GradientView>
+        </Pressable>
+      ) : null}
 
       {/* 预算弹窗 */}
       <Modal
@@ -874,6 +1224,16 @@ export default function PlanScreen() {
         onConfirm={handleDeleteSaving}
         onCancel={() => setConfirmDeleteVisible(false)}
       />
+
+      {/* 循环规则弹层（新建 / 编辑共用） */}
+      <RecurringSheet
+        visible={recurringSheetOpen}
+        editingRule={editingRule}
+        online={online}
+        onClose={closeRecurringSheet}
+        onSubmit={handleSubmitRecurring}
+        onDelete={handleDeleteRecurring}
+      />
     </SafeAreaView>
   );
 }
@@ -1009,6 +1369,83 @@ const styles = StyleSheet.create({
   },
   savingHint: {
     fontSize: 12,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  offlineNotice: {
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  offlineNoticeText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  inlineError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  inlineErrorText: {
+    flexShrink: 1,
+    fontSize: 12,
+  },
+  inlineRetry: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  ruleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ruleEmoji: {
+    fontSize: 19,
+  },
+  ruleMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  ruleName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  ruleSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  ruleRight: {
+    alignItems: 'flex-end',
+  },
+  ruleAmount: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  ruleNext: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  recurringCta: {
+    marginTop: spacing.sm,
+  },
+  recurringHint: {
+    fontSize: 11,
     textAlign: 'center',
     marginTop: spacing.sm,
   },

@@ -104,6 +104,8 @@ export interface Transaction {
   note: string | null;
   date: string;
   created_at: string;
+  /** 由循环规则自动生成时指向规则；手动记账为 null。 */
+  recurring_rule_id?: number | null;
   /** 仅本地：待同步（尚未上传）。 */
   pending?: boolean;
   /** 仅本地：同步失败（4xx）。 */
@@ -210,6 +212,49 @@ export interface SavingsUpdatePayload {
   target_amount?: number;
   current_amount?: number;
   deadline?: string | null;
+}
+
+// ---------- 循环记账 ----------
+
+/** 重复频率：每天 / 每周 / 每月 / 每年（具体日子由 start_date 锚定）。 */
+export type RecurringFreq = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+/** 循环规则（GET /recurring 的 data 条目）。 */
+export interface RecurringRule {
+  id: number;
+  amount: number;
+  type: TransactionType;
+  category: Category;
+  note: string | null;
+  freq: RecurringFreq;
+  /** 锚定日 YYYY-MM-DD：决定每月几号 / 每周哪天 / 每年哪一天。 */
+  start_date: string;
+  /** 下一次到期日 YYYY-MM-DD（后端算好，App 只展示）。 */
+  next_run_date: string;
+  enabled: boolean;
+  last_generated_date: string | null;
+  created_at: string;
+}
+
+/** POST /recurring body。 */
+export interface RecurringCreatePayload {
+  amount: number;
+  type: TransactionType;
+  category: Category;
+  note?: string;
+  freq: RecurringFreq;
+  start_date: string;
+}
+
+/** PATCH /recurring/{id} body：任意子集。 */
+export interface RecurringUpdatePayload {
+  amount?: number;
+  type?: TransactionType;
+  category?: Category;
+  note?: string | null;
+  freq?: RecurringFreq;
+  start_date?: string;
+  enabled?: boolean;
 }
 
 // ---------- 统计 ----------

@@ -67,6 +67,7 @@ def _serialize_transaction(item: Transaction) -> dict:
         'id': item.id,
         'user_id': item.user_id,
         'client_id': item.client_id,
+        'recurring_rule_id': item.recurring_rule_id,
         'amount': _to_float(item.amount),
         'type': item.type.value,
         'category': item.category,

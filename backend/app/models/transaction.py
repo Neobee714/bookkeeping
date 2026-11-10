@@ -25,11 +25,16 @@ class Transaction(Base):
     __table_args__ = (
         Index("ix_transactions_user_date_created_at", "user_id", "date", "created_at"),
         UniqueConstraint("user_id", "client_id", name="uq_transactions_user_client_id"),
+        UniqueConstraint("recurring_rule_id", "date", name="uq_transactions_recurring_date"),
+        Index("ix_transactions_recurring_rule_id", "recurring_rule_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    recurring_rule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("recurring_rules.id", ondelete="SET NULL"), nullable=True
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     type: Mapped[TransactionType] = mapped_column(
         SqlEnum(

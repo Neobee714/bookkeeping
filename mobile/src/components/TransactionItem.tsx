@@ -52,9 +52,25 @@ export default function TransactionItem({
       </View>
 
       <View style={styles.main}>
-        <Text style={[styles.category, { color: colors.textPrimary }]}>
-          {item.category}
-        </Text>
+        <View style={styles.categoryRow}>
+          <Text
+            numberOfLines={1}
+            style={[styles.category, { color: colors.textPrimary }]}
+          >
+            {item.category}
+          </Text>
+          {item.recurring_rule_id ? (
+            <View
+              style={[styles.recurringBadge, { backgroundColor: colors.chipSoftBg }]}
+            >
+              <Text
+                style={[styles.recurringBadgeText, { color: colors.chipSoftText }]}
+              >
+                循环
+              </Text>
+            </View>
+          ) : null}
+        </View>
         <Text
           numberOfLines={1}
           style={[styles.note, { color: colors.textSecondary }]}
@@ -115,9 +131,26 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   category: {
     fontSize: 14,
     fontWeight: '600',
+    flexShrink: 1,
+  },
+  /** 「循环」小标：与 note 行同宽高节奏，底色走主题 chip token。 */
+  recurringBadge: {
+    flexShrink: 0,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  recurringBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   note: {
     fontSize: 11,

@@ -3,6 +3,7 @@ from app.models.category import Category
 from app.models.budget import Budget
 from app.models.enums import CategoryEnum, TransactionType
 from app.models.note_preset import UserNotePreset
+from app.models.recurring import RecurringRule
 from app.models.savings_goal import SavingsGoal
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -12,6 +13,7 @@ __all__ = [
     "Budget",
     "Category",
     "CategoryEnum",
+    "RecurringRule",
     "SavingsGoal",
     "Transaction",
     "TransactionType",
