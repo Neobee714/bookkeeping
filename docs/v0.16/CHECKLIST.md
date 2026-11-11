@@ -53,3 +53,15 @@
 - [x] 服务器 drop-in `bk-deploy.service.d/timeout.conf`：`TimeoutStartSec=3600`
 - [x] `api.neobee.top` vhost 正则白名单加 `recurring`（裸路径否则 301 到下载页），`nginx -t` + reload
 - [ ] 真机验收：手机 USB 未连接（`adb devices` 为空），2.6.0 尚未在 V2339A 上安装
+
+## 阶段 7：2.6.1 工作日类频率
+
+- [x] 后端 `recurring_dates` 支持 `workday` / `monthly_last_workday` / `monthly_nth_workday`
+- [x] `recurring_rules.freq` 列宽 10 → 24（迁移 `5c1d9e7a4b32`，downgrade 先把工作日规则降级为 monthly）
+- [x] schema `RecurringFreq` 扩展；非法频率仍由 pydantic 拦成 422
+- [x] 日期测试 +6（末工作日跨月/闰年 2 月、第 N 个工作日锚定、周末首次日期、工作日补跑）
+- [x] App：频率改两行（常规 4 + 工作日 3），`describeFreq` 输出「每个工作日」「每月最后一个工作日」「每月第 N 个工作日」
+- [x] `pytest` 137 passed；`tsc` 通过；`jest` 12 套件 67 用例；eslint 0 error
+- [x] 迁移已在生产执行（`alembic_version=5c1d9e7a4b32`，freq = varchar(24)），`/health` 200
+- [x] APK 2.6.1 / 232 已发 OTA（sha256 `c074b961…6e3d1`）
+- [ ] 真机验收仍待手机插回 USB

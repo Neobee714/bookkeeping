@@ -82,7 +82,7 @@
 
   /* 弹层 */
   .dim{position:absolute;inset:26px 0 0;background:var(--overlay);display:flex;align-items:flex-end}
-  .sheet{width:100%;max-height:94%;background:#fff;border-radius:var(--r-sheet) var(--r-sheet) 0 0;
+  .sheet{width:100%;max-height:96%;background:#fff;border-radius:var(--r-sheet) var(--r-sheet) 0 0;
          padding:6px 16px 12px;overflow:auto}
   .handle{width:44px;height:5px;border-radius:999px;background:var(--border);margin:2px auto 10px}
   .shead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -107,6 +107,9 @@
   .freq button{border:1.5px solid transparent;background:var(--surface);border-radius:12px;padding:8px 0;
                font:inherit;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer}
   .freq button.on{border-color:var(--primary);background:var(--chip);color:var(--chipText)}
+  .freq.freq2{margin-top:-2px}
+  .freq.freq2 button{font-size:11.5px}
+  .freqhint{font-size:10px;color:var(--text3);margin:-2px 0 9px;line-height:1.4}
   .explain{font-size:10.5px;color:var(--text3);background:#FAFBFE;border:1px dashed var(--border);
            border-radius:10px;padding:6px 9px;margin-bottom:9px;line-height:1.4}
   .save{width:100%;border:0;border-radius:14px;padding:12px;color:#fff;font:inherit;font-size:15px;font-weight:700;
@@ -228,18 +231,18 @@
               <div class="grid">
                 <div class="cell"><em>🍜</em>餐饮</div>
                 <div class="cell"><em>🚌</em>交通</div>
-                <div class="cell"><em>🛒</em>日用</div>
-                <div class="cell"><em>🛍️</em>购物</div>
                 <div class="cell on"><em>🏠</em>居住</div>
                 <div class="cell"><em>📌</em>其他</div>
-                <div class="cell"><em>🥤</em>水</div>
-                <div class="cell"><em>❤️</em>小摔炮</div>
               </div>
 
               <p class="lab">重复</p>
               <div class="freq" id="freq">
                 <button>每天</button><button>每周</button><button class="on">每月</button><button>每年</button>
               </div>
+              <div class="freq freq2" id="freq2">
+                <button>每个工作日</button><button>最后工作日</button><button>第 N 个</button>
+              </div>
+              <p class="freqhint">工作日按周一至周五计（不含法定节假日）；「第 N 个」的 N 取自首次日期</p>
 
               <div class="datefreq"><span>首次日期 2026-11-01</span><small>每月 1 号 ›</small></div>
 
@@ -315,7 +318,7 @@
     <h2>我理解的需求（请确认）</h2>
     <ul>
       <li><b>入口</b>：规划页在「预算 / 储蓄」后加第三个分段「循环」，不新增底部 Tab。</li>
-      <li><b>频率</b>：每天 / 每周 / 每月 / 每年，具体日子<b>由「首次日期」决定</b> —— 首次填 11-01 就是每月 1 号，填 11-05 就是每月 5 号；每周取首次日期是星期几。</li>
+      <li><b>频率</b>：每天 / 每周 / 每月 / 每年，另有工作日类（每个工作日 / 每月最后一个工作日 / 每月第 N 个工作日；工作日=周一至周五，不含法定节假日），具体日子<b>由「首次日期」决定</b> —— 首次填 11-01 就是每月 1 号，填 11-05 就是每月 5 号；每周取首次日期是星期几。</li>
       <li><b>生成</b>：服务端每天检查一次到期规则并落真实账单（含收入），关掉 App 也会记。补跑最多回溯 90 天，避免长时间停机后一次刷出几百笔。</li>
       <li><b>月末边界</b>：31 号的规则在 2 月按当月最后一天生成（2-28/29），4 月按 4-30。</li>
       <li><b>暂停/恢复</b>：开关暂停后不再生成；恢复时从下一个到期日开始，不补暂停期间的账。</li>
@@ -357,12 +360,15 @@
       b.classList.add('on');
     });
   });
-  document.querySelectorAll('#freq button').forEach(function (b) {
+  document.querySelectorAll('#freq button, #freq2 button').forEach(function (b) {
     b.addEventListener('click', function () {
-      document.querySelectorAll('#freq button').forEach(function (x) { x.classList.remove('on'); });
+      document.querySelectorAll('#freq button, #freq2 button').forEach(function (x) { x.classList.remove('on'); });
       b.classList.add('on');
       var map = { '每天': '每天 · 下次 11-11', '每周': '每周二 · 下次 11-17',
-                  '每月': '每月 1 号 · 12-01', '每年': '每年 11 月 1 日 · 下次 2027-11-01' };
+                  '每月': '每月 1 号 · 12-01', '每年': '每年 11 月 1 日 · 下次 2027-11-01',
+                  '每个工作日': '每个工作日 · 下次 11-11',
+                  '最后工作日': '每月最后工作日 · 下次 11-30',
+                  '第 N 个': '每月第 4 个工作日 · 下次 12-04' };
       document.querySelector('.datefreq small').textContent = map[b.textContent] + ' ›';
     });
   });
