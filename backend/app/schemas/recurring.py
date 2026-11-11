@@ -8,7 +8,15 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.models.enums import TransactionType
 
-RecurringFreq = Literal["daily", "weekly", "monthly", "yearly"]
+RecurringFreq = Literal[
+    "daily",
+    "weekly",
+    "monthly",
+    "yearly",
+    "workday",
+    "monthly_last_workday",
+    "monthly_nth_workday",
+]
 
 _REQUIRED_UPDATE_FIELDS = ("amount", "type", "category", "freq", "start_date", "enabled")
 

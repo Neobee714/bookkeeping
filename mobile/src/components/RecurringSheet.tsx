@@ -28,7 +28,7 @@ import type {
   TransactionType,
 } from '../types';
 import { isValidDateString, toDateString } from '../utils/format';
-import { describeFreq, FREQ_OPTIONS } from '../utils/recurringText';
+import { describeFreq, FREQ_OPTIONS, WORKDAY_FREQ_OPTIONS } from '../utils/recurringText';
 import ConfirmModal from './ConfirmModal';
 import GradientButton from './GradientButton';
 import GradientView from './GradientView';
@@ -209,6 +209,33 @@ export default function RecurringSheet({
 
   const title = editingRule ? '编辑循环记账' : '新建循环记账';
   const freqPreview = describeFreq({ freq, start_date: dateStr });
+
+  /** 频率 chip：两组（常规 / 工作日）共用，选中态互斥。 */
+  const renderFreqChip = (key: RecurringFreq, label: string) => {
+    const active = freq === key;
+    return (
+      <Pressable
+        key={key}
+        onPress={() => setFreq(key)}
+        style={[
+          styles.freqChip,
+          active
+            ? { backgroundColor: colors.chipSoftBg, borderColor: colors.primary }
+            : [styles.freqChipIdle, { backgroundColor: colors.surface }],
+        ]}
+      >
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.freqText,
+            { color: active ? colors.chipSoftText : colors.textSecondary },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    );
+  };
 
   const handleOpenDatePicker = () => {
     setPickerDate(parseDateStr(dateStr));
@@ -472,46 +499,21 @@ export default function RecurringSheet({
                   </View>
                 )}
 
-                {/* 重复频率 */}
+                {/* 重复频率：常规 + 工作日类（工作日=周一至周五，不含法定节假日） */}
                 <Text style={[styles.label, { color: colors.textSecondary }]}>
                   重复
                 </Text>
                 <View style={styles.freqRow}>
-                  {FREQ_OPTIONS.map((option) => {
-                    const active = freq === option.key;
-                    return (
-                      <Pressable
-                        key={option.key}
-                        onPress={() => setFreq(option.key)}
-                        style={[
-                          styles.freqChip,
-                          active
-                            ? {
-                                backgroundColor: colors.chipSoftBg,
-                                borderColor: colors.primary,
-                              }
-                            : [
-                                styles.freqChipIdle,
-                                { backgroundColor: colors.surface },
-                              ],
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.freqText,
-                            {
-                              color: active
-                                ? colors.chipSoftText
-                                : colors.textSecondary,
-                            },
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                  {FREQ_OPTIONS.map((option) => renderFreqChip(option.key, option.label))}
                 </View>
+                <View style={[styles.freqRow, styles.freqRowTight]}>
+                  {WORKDAY_FREQ_OPTIONS.map((option) =>
+                    renderFreqChip(option.key, option.label),
+                  )}
+                </View>
+                <Text style={[styles.freqHint, { color: colors.textTertiary }]}>
+                  工作日按周一至周五计（不含法定节假日）；「第 N 个工作日」的 N 取自首次日期
+                </Text>
 
                 {/* 首次日期：频率的具体日子由它锚定 */}
                 <Text style={[styles.label, { color: colors.textSecondary }]}>
@@ -810,12 +812,23 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
+  /** 第二行（工作日类）与上一行贴近，底部留给提示文案。 */
+  freqRowTight: {
+    marginTop: -spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  freqHint: {
+    fontSize: 10.5,
+    lineHeight: 15,
+    marginBottom: spacing.lg,
+  },
   freqChip: {
     flex: 1,
     alignItems: 'center',
     borderRadius: radius.md,
     borderWidth: 1.5,
     paddingVertical: spacing.sm,
+    paddingHorizontal: 2,
   },
   freqChipIdle: {
     borderColor: 'transparent',

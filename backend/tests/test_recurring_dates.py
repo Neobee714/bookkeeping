@@ -136,3 +136,88 @@ def test_due_dates_returns_empty_when_first_is_after_today() -> None:
 def test_invalid_freq_raises() -> None:
     with pytest.raises(ValueError):
         next_occurrence("biweekly", date(2026, 1, 1), date(2026, 1, 1))
+
+
+# ---------- 工作日类频率 ----------
+
+
+def test_is_workday_and_last_workday_of_month() -> None:
+    from app.services.recurring_dates import is_workday, last_workday_of_month
+
+    assert is_workday(date(2026, 11, 6))  # 周五
+    assert not is_workday(date(2026, 11, 7))  # 周六
+    # 11-30 是周一；5-31 是周日 → 退到 5-29；2027-02-28 是周日 → 退到 2-26
+    assert last_workday_of_month(2026, 11) == date(2026, 11, 30)
+    assert last_workday_of_month(2026, 5) == date(2026, 5, 29)
+    assert last_workday_of_month(2027, 2) == date(2027, 2, 26)
+
+
+def test_nth_workday_and_index() -> None:
+    from app.services.recurring_dates import nth_workday_of_month, workday_index_in_month
+
+    assert nth_workday_of_month(2026, 11, 1) == date(2026, 11, 2)  # 11-01 周日
+    assert nth_workday_of_month(2026, 11, 4) == date(2026, 11, 5)
+    assert workday_index_in_month(date(2026, 11, 5)) == 4
+    assert workday_index_in_month(date(2026, 11, 7)) == 5  # 周六按它之前的工作日数
+    # 该月工作日不足时退化为最后一个工作日
+    assert nth_workday_of_month(2026, 11, 22) == date(2026, 11, 30)
+
+
+def test_workday_freq_skips_weekend() -> None:
+    # 周五之后是下周一
+    assert next_occurrence("workday", date(2026, 11, 2), date(2026, 11, 6)) == date(2026, 11, 9)
+    # 首次日期落在周六 → 顺延到周一
+    assert first_occurrence_on_or_after(
+        "workday", date(2026, 11, 7), date(2026, 11, 7)
+    ) == date(2026, 11, 9)
+    # 过去的首次日期 → 取 >= floor 的第一个工作日
+    assert first_occurrence_on_or_after(
+        "workday", date(2026, 1, 1), date(2026, 11, 7)
+    ) == date(2026, 11, 9)
+    assert first_occurrence_on_or_after(
+        "workday", date(2026, 1, 1), date(2026, 11, 10)
+    ) == date(2026, 11, 10)
+
+
+def test_monthly_last_workday_freq() -> None:
+    # 下一次到期日是下一个月的最后工作日
+    assert next_occurrence(
+        "monthly_last_workday", date(2026, 11, 5), date(2026, 11, 30)
+    ) == date(2026, 12, 31)
+    # 首次：上限落在本月最后工作日之前 → 本月最后工作日
+    assert first_occurrence_on_or_after(
+        "monthly_last_workday", date(2026, 11, 5), date(2026, 11, 10)
+    ) == date(2026, 11, 30)
+    # 上限已经越过本月最后工作日 → 顺延到下个月
+    assert first_occurrence_on_or_after(
+        "monthly_last_workday", date(2026, 11, 5), date(2026, 12, 1)
+    ) == date(2026, 12, 31)
+
+
+def test_monthly_nth_workday_freq_anchors_on_start_date() -> None:
+    start = date(2026, 11, 5)  # 当月第 4 个工作日
+    assert next_occurrence("monthly_nth_workday", start, start) == date(2026, 12, 4)
+    assert first_occurrence_on_or_after(
+        "monthly_nth_workday", start, date(2026, 11, 10)
+    ) == date(2026, 12, 4)
+    assert first_occurrence_on_or_after(
+        "monthly_nth_workday", start, date(2027, 3, 1)
+    ) == date(2027, 3, 4)
+
+
+def test_workday_due_dates_fill_only_weekdays() -> None:
+    dates = due_dates(
+        "workday",
+        date(2026, 11, 2),
+        date(2026, 11, 2),
+        date(2026, 11, 10),
+    )
+    assert dates == [
+        date(2026, 11, 2),
+        date(2026, 11, 3),
+        date(2026, 11, 4),
+        date(2026, 11, 5),
+        date(2026, 11, 6),
+        date(2026, 11, 9),
+        date(2026, 11, 10),
+    ]

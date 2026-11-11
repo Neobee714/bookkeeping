@@ -40,7 +40,7 @@ class RecurringRule(Base):
     )
     category: Mapped[str] = mapped_column(String(10), nullable=False)
     note: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    freq: Mapped[str] = mapped_column(String(10), nullable=False)
+    freq: Mapped[str] = mapped_column(String(24), nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     next_run_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     enabled: Mapped[bool] = mapped_column(

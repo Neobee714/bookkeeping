@@ -216,8 +216,15 @@ export interface SavingsUpdatePayload {
 
 // ---------- 循环记账 ----------
 
-/** 重复频率：每天 / 每周 / 每月 / 每年（具体日子由 start_date 锚定）。 */
-export type RecurringFreq = 'daily' | 'weekly' | 'monthly' | 'yearly';
+/** 重复频率：常规四种 + 工作日类三种（日子由 start_date 锚定）。 */
+export type RecurringFreq =
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'yearly'
+  | 'workday'
+  | 'monthly_last_workday'
+  | 'monthly_nth_workday';
 
 /** 循环规则（GET /recurring 的 data 条目）。 */
 export interface RecurringRule {

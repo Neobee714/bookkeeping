@@ -18,13 +18,48 @@ export interface RecurringNextLike {
   next_run_date: string;
 }
 
-/** 频率选择器的固定顺序与文案（弹层用）。 */
+/** 频率选择器的固定顺序与文案（弹层用）：常规频率。 */
 export const FREQ_OPTIONS: ReadonlyArray<{ key: RecurringFreq; label: string }> = [
   { key: 'daily', label: '每天' },
   { key: 'weekly', label: '每周' },
   { key: 'monthly', label: '每月' },
   { key: 'yearly', label: '每年' },
 ];
+
+/**
+ * 工作日类频率。工作日按周一至周五计，不含法定节假日
+ * （节假日需每年维护假日表，本版不做）。
+ */
+export const WORKDAY_FREQ_OPTIONS: ReadonlyArray<{
+  key: RecurringFreq;
+  label: string;
+}> = [
+  { key: 'workday', label: '每个工作日' },
+  { key: 'monthly_last_workday', label: '最后工作日' },
+  { key: 'monthly_nth_workday', label: '第 N 个工作日' },
+];
+
+const isWorkday = (value: Date): boolean => {
+  const day = value.getDay();
+  return day !== 0 && day !== 6;
+};
+
+/** 该日期是当月第几个工作日（1 起）；周末按它之前的工作日数计。 */
+const workdayIndexInMonth = (value: Date): number => {
+  let count = 0;
+  const cursor = new Date(value.getFullYear(), value.getMonth(), 1);
+  while (cursor < value) {
+    if (isWorkday(cursor)) {
+      count += 1;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  if (isWorkday(value)) {
+    count += 1;
+  }
+  return Math.max(count, 1);
+};
+
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -63,6 +98,12 @@ export function describeFreq(rule: RecurringFreqLike): string {
       return date
         ? `每年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`
         : '每年';
+    case 'workday':
+      return '每个工作日';
+    case 'monthly_last_workday':
+      return '每月最后一个工作日';
+    case 'monthly_nth_workday':
+      return date ? `每月第 ${workdayIndexInMonth(date)} 个工作日` : '每月第 N 个工作日';
     case 'daily':
     default:
       return '每天';

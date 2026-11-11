@@ -83,6 +83,29 @@ describe('describeFreq', () => {
       '每年',
     );
   });
+
+  test('工作日类：每个工作日 / 每月最后一个工作日', () => {
+    expect(describeFreq(rule({ freq: 'workday', start_date: '2026-11-02' }))).toBe(
+      '每个工作日',
+    );
+    expect(
+      describeFreq(rule({ freq: 'monthly_last_workday', start_date: '2026-11-30' })),
+    ).toBe('每月最后一个工作日');
+  });
+
+  test('每月第 N 个工作日：N 由首次日期在当月的位置决定', () => {
+    // 2026-11-02 是当月第 1 个工作日，11-05 是第 4 个（11-01 周日）
+    expect(
+      describeFreq(rule({ freq: 'monthly_nth_workday', start_date: '2026-11-02' })),
+    ).toBe('每月第 1 个工作日');
+    expect(
+      describeFreq(rule({ freq: 'monthly_nth_workday', start_date: '2026-11-05' })),
+    ).toBe('每月第 4 个工作日');
+    // 首次日期落在周六：按它之前的工作日数计
+    expect(
+      describeFreq(rule({ freq: 'monthly_nth_workday', start_date: '2026-11-07' })),
+    ).toBe('每月第 5 个工作日');
+  });
 });
 
 describe('nextRunLabel', () => {
