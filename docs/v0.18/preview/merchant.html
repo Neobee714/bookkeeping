@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拾光 · v0.18 样例 · 商家与吃了什么</title>
+<style>
+  :root{
+    /* aurora 亮色 token */
+    --bg:#F5F7FB; --card:#FFFFFF; --surface:#F1F3F9;
+    --text:#14161F; --text2:#646B80; --text3:#98A0B0;
+    --primary:#6D5BFF; --income:#0F9E76; --expense:#E0566E;
+    --border:#E8EBF3; --chip:#EFECFF; --chipText:#5B4BD6;
+    --g1:#5B49F5; --g2:#17977F;
+    --overlay:rgba(14,16,28,.45);
+    --r-lg:18px; --r-xl:24px; --r-sheet:28px;
+    --hero-bg:linear-gradient(118deg,#4E3EE0 0%,#5B49F5 42%,#17977F 100%);
+    --onhero:#FFFFFF; --hero-muted:rgba(255,255,255,.8); --hero-line:rgba(255,255,255,.22);
+  }
+  [data-skin="candy"]{
+    --bg:#FFF8F5; --card:#FFFFFF; --surface:#FFF1F6;
+    --text:#3D2B36; --text2:#8A7480; --text3:#B8A3AE;
+    --primary:#F4739B; --income:#2FA98A; --expense:#E85E7C;
+    --border:#F7E3EB; --chip:#FFEDF3; --chipText:#C2557A;
+    --g1:#F4739B; --g2:#F49B67; --overlay:rgba(60,20,35,.45);
+    --hero-bg:linear-gradient(118deg,#F4739B 0%,#F49B67 100%);
+    --onhero:#4A2230; --hero-muted:rgba(74,34,48,.72); --hero-line:rgba(74,34,48,.18);
+  }
+  [data-skin="neon"]{
+    --bg:#08080F; --card:#111120; --surface:#191927;
+    --text:#EDEDF7; --text2:#9A9AB8; --text3:#6E6E8C;
+    --primary:#8B6CFF; --income:#3DFFA2; --expense:#FF5C8A;
+    --border:#232338; --chip:#1E1B38; --chipText:#B9A8FF;
+    --g1:#6A4BF0; --g2:#0093B5; --overlay:rgba(0,0,0,.66);
+    --hero-bg:linear-gradient(118deg,#241B4D 0%,#1A1140 45%,#0C0C18 100%);
+    --onhero:#FFFFFF; --hero-muted:rgba(255,255,255,.72); --hero-line:rgba(185,168,255,.28);
+  }
+  [data-skin="neu"]{
+    --bg:#E9EDF4; --card:#E9EDF4; --surface:#E9EDF4;
+    --text:#2B3445; --text2:#6F7A8E; --text3:#96A0B2;
+    --primary:#4F6BED; --income:#2E9E6B; --expense:#D95555;
+    --border:#DCE3EE; --chip:#E9EDF4; --chipText:#4F6BED;
+    --g1:#4F6BED; --g2:#4F6BED; --overlay:rgba(24,32,48,.42);
+    --hero-bg:var(--card);
+    --onhero:#2B3445; --hero-muted:#6F7A8E; --hero-line:rgba(43,52,69,.12);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#0E1017;color:#E9ECF4;
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif}
+  .page{max-width:1180px;margin:0 auto;padding:36px 24px 72px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7C8698}
+  h1{font-size:26px;margin:8px 0 10px;letter-spacing:-.01em}
+  .lead{color:#A7B0C0;max-width:820px;margin:0 0 6px}
+  .meta{color:#7C8698;font-size:13px;margin:0 0 22px}
+  .skinbar{display:flex;gap:8px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
+  .skinbar span{font-size:12px;color:#8B94A6;margin-right:4px}
+  .skinbar button{border:1px solid #2A3040;background:#151A26;color:#AEB8CA;border-radius:999px;
+                  padding:7px 14px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .skinbar button.on{background:#E9ECF4;color:#14161F;border-color:#E9ECF4}
+  .board{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:10px}
+  .col > .cap{font-size:12px;color:#8B94A6;letter-spacing:.04em;padding-left:4px;display:flex;align-items:center;gap:6px}
+  .cap b{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;
+         background:#232838;color:#AEB8CA;font-size:11px;font-weight:700}
+  .phone{width:320px;height:760px;border-radius:34px;background:var(--bg);color:var(--text);
+         overflow:hidden;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
+  .statusbar{height:26px;display:flex;align-items:center;justify-content:space-between;
+             padding:0 14px;font-size:10px;color:var(--text2);background:var(--bg)}
+  .screen{position:absolute;inset:26px 0 0;display:flex;flex-direction:column}
+  .body{flex:1;overflow:auto;padding:0 16px 16px}
+  .nav{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none}
+  .nav .side{width:60px;font-size:20px;color:var(--text2)}
+  .nav .side.r{text-align:right;font-size:12px;font-weight:700;color:var(--primary)}
+  .nav .ttl{font-size:17px;font-weight:800}
+  .pressed{opacity:.7}
+  .card{background:var(--card);border-radius:var(--r-lg);padding:13px 15px;
+        box-shadow:0 6px 18px rgba(20,22,40,.06)}
+  .sec-title{font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:space-between}
+  .sec-title small{font-size:9.5px;color:var(--text3);font-weight:600}
+
+  /* ---------- 1 记一笔 ---------- */
+  .type{display:flex;background:var(--surface);border-radius:999px;padding:4px;gap:4px;margin-bottom:10px}
+  .type span{flex:1;text-align:center;font-size:12.5px;font-weight:700;padding:8px 0;border-radius:999px;color:var(--text2)}
+  .type span.on{background:linear-gradient(120deg,var(--g1),var(--g2));color:var(--onhero);box-shadow:0 6px 14px rgba(109,91,255,.22)}
+  .amount{display:flex;align-items:baseline;gap:7px;background:var(--card);border-radius:16px;
+          padding:8px 14px;margin-bottom:8px;box-shadow:0 6px 18px rgba(20,22,40,.06)}
+  .amount b{color:var(--primary);font-size:20px}
+  .amount .val{font-size:31px;font-weight:800;letter-spacing:.3px;font-variant-numeric:tabular-nums}
+  .amount .cur{margin-left:auto;font-size:11px;color:var(--text3)}
+  .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:7px}
+  .cat{background:var(--card);border-radius:13px;padding:6px 0 5px;text-align:center;font-size:10.5px;
+       color:var(--text2);box-shadow:0 4px 12px rgba(20,22,40,.04)}
+  .cat em{display:block;font-style:normal;font-size:17px;margin-bottom:1px}
+  .cat.on{background:linear-gradient(120deg,var(--g1),var(--g2));color:var(--onhero);
+          box-shadow:0 8px 18px rgba(109,91,255,.24)}
+  .date-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);
+            border-radius:13px;padding:8px 13px;margin-bottom:7px;font-size:12px;font-weight:600}
+  .date-row small{color:var(--text3);font-weight:400;font-size:10.5px}
+  .field{background:var(--card);border-radius:15px;padding:8px 12px;margin-bottom:7px;
+         box-shadow:0 5px 14px rgba(20,22,40,.05)}
+  .field .fl{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .field .fl b{font-size:11.5px;font-weight:700}
+  .field .fl small{font-size:9.5px;color:var(--text3)}
+  .inp{background:var(--surface);border-radius:10px;padding:8px 11px;font-size:13px;
+       display:flex;align-items:center;justify-content:space-between;color:var(--text)}
+  .inp .ph{color:var(--text3)}
+  .inp .caret{width:1.5px;height:15px;background:var(--primary);display:inline-block;margin-left:2px}
+  .chips{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+  .chip{font-size:10.5px;font-weight:600;color:var(--text2);background:var(--surface);
+        border-radius:999px;padding:4px 9px}
+  .chip.on{background:var(--chip);color:var(--chipText);box-shadow:inset 0 0 0 1.2px var(--primary)}
+  .chip tiny{font-size:9px;opacity:.7;margin-left:3px}
+  .hint{font-size:9.5px;color:var(--text3);line-height:1.45;padding:0 3px;margin:2px 0 10px}
+  .save{width:100%;border:0;border-radius:14px;padding:13px;color:var(--onhero);font:inherit;
+        font-size:15px;font-weight:800;background:linear-gradient(120deg,var(--g1),var(--g2));
+        box-shadow:0 12px 24px rgba(109,91,255,.28);cursor:pointer}
+  .sheet-foot{padding:0 16px 16px;flex:none;background:var(--bg)}
+
+  /* ---------- 2/3 图表 ---------- */
+  .titlerow{display:flex;align-items:center;justify-content:space-between;padding-top:6px}
+  .h-title{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .entry{display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);
+         border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--text)}
+  .entry .dot{width:7px;height:7px;border-radius:50%;background:var(--expense)}
+  .mini-hero{background:var(--card);border-radius:var(--r-xl);padding:12px 16px;margin:10px 0;
+             box-shadow:0 10px 26px rgba(20,22,40,.08)}
+  .mini-hero .lbl{font-size:11px;color:var(--text2)}
+  .mini-hero .num{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:1px 0 7px;font-variant-numeric:tabular-nums}
+  .mini-hero .cols{display:flex;gap:10px}
+  .mini-hero .cols div{flex:1}
+  .mini-hero .cols span{font-size:10px;color:var(--text2)}
+  .mini-hero .cols b{display:block;font-size:14px;margin-top:1px;font-variant-numeric:tabular-nums}
+  .dim{display:flex;background:var(--surface);border-radius:999px;padding:4px;gap:4px;margin-bottom:10px}
+  .dim span{flex:1;text-align:center;font-size:12px;font-weight:600;padding:8px 0;border-radius:999px;color:var(--text2)}
+  .dim span.on{background:linear-gradient(120deg,var(--g1),var(--g2));color:var(--onhero)}
+  .rank-card{background:var(--card);border-radius:var(--r-lg);padding:13px 15px;
+             box-shadow:0 6px 18px rgba(20,22,40,.06)}
+  .rank-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .rank-head b{font-size:13px;font-weight:800}
+  .rank-head small{font-size:9.5px;color:var(--text3)}
+  .rank-row{margin-bottom:10px}
+  .rank-row:last-child{margin-bottom:0}
+  .rank-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:11.5px}
+  .rank-name{font-weight:700;color:var(--text);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rank-name em{font-style:normal;font-weight:400;color:var(--text3);font-size:9.5px;margin-left:4px}
+  .rank-amt{font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+  .rank-sub{font-size:9.5px;color:var(--text3);margin:1px 0 4px}
+  .track{height:6px;border-radius:999px;background:var(--surface);overflow:hidden}
+  .fill{height:100%;border-radius:999px}
+  .foot-note{font-size:9.5px;color:var(--text3);line-height:1.5;text-align:center;margin:9px 0 2px}
+  .insight-line{display:flex;align-items:center;gap:7px;background:var(--surface);border-radius:11px;
+                padding:8px 10px;margin-bottom:6px}
+  .insight-line .ii{width:18px;height:18px;border-radius:6px;background:var(--chip);color:var(--chipText);
+                    display:grid;place-items:center;font-size:10px;font-weight:800;flex:none}
+  .insight-line p{margin:0;font-size:10.5px;color:var(--text2);line-height:1.4}
+  .insight-line p b{color:var(--text)}
+
+  /* ---------- 4 财报 ---------- */
+  .doc-tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--chipText);
+           background:var(--chip);border-radius:999px;padding:3px 9px}
+  .doc-title{font-size:21px;font-weight:800;letter-spacing:-.01em;margin:7px 0 2px}
+  .doc-sub{font-size:10.5px;color:var(--text3)}
+  .hero{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:14px 16px 13px;margin-top:10px;
+        background:var(--hero-bg);color:var(--onhero);box-shadow:0 14px 30px rgba(76,62,224,.28)}
+  .hero .hl{font-size:11px;color:var(--hero-muted)}
+  .hero .hv{font-size:29px;font-weight:800;letter-spacing:-.02em;margin:1px 0 9px;font-variant-numeric:tabular-nums}
+  .hero .hrow{display:flex;gap:10px;border-top:1px solid var(--hero-line);padding-top:9px}
+  .hero .hrow div{flex:1}
+  .hero .hrow span{font-size:10px;color:var(--hero-muted)}
+  .hero .hrow b{display:block;font-size:14px;font-weight:800;margin-top:1px;font-variant-numeric:tabular-nums}
+  .hero .rate{position:absolute;top:13px;right:14px;text-align:right}
+  .hero .rate b{display:block;font-size:19px;font-weight:800}
+  .hero .rate span{font-size:9.5px;color:var(--hero-muted)}
+  .eat-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .eat-row:last-child{border-bottom:0}
+  .eat-row .ei{width:30px;height:30px;border-radius:10px;background:var(--surface);display:grid;
+               place-items:center;font-size:15px;flex:none}
+  .eat-row .em{flex:1;min-width:0}
+  .eat-row .em b{display:block;font-size:11.5px;font-weight:700}
+  .eat-row .em small{font-size:9.5px;color:var(--text3)}
+  .eat-row .ea{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--expense)}
+
+  /* ---------- 5 整理旧备注 ---------- */
+  .clean-intro{background:var(--card);border-radius:14px;padding:9px 12px;margin:6px 0 8px;
+               box-shadow:0 5px 14px rgba(20,22,40,.05);font-size:10.5px;color:var(--text2);line-height:1.5}
+  .clean-intro b{color:var(--text)}
+  .clean-undo{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);
+              border-radius:14px;padding:8px 10px;margin:0 0 8px}
+  .clean-undo .tx{flex:1;min-width:0}
+  .clean-undo b{display:block;font-size:11px;color:var(--text);font-weight:800}
+  .clean-undo span{display:block;font-size:9px;color:var(--text3);margin-top:1px;line-height:1.35}
+  .clean-undo button{flex:none;border:1px solid var(--primary);background:transparent;color:var(--primary);
+                     border-radius:8px;padding:5px 9px;font:inherit;font-size:10px;font-weight:800}
+  .clean-item{background:var(--card);border-radius:14px;padding:9px 12px;margin-bottom:7px;
+              box-shadow:0 5px 14px rgba(20,22,40,.05)}
+  .clean-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .clean-head .nm{display:flex;align-items:center;gap:5px;min-width:0}
+  .clean-head .nm b{font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clean-head small{font-size:9.5px;color:var(--text3);font-variant-numeric:tabular-nums;flex:none}
+  .clean-sug{font-size:8.5px;font-weight:700;color:var(--chipText);background:var(--chip);
+             border-radius:999px;padding:1.5px 6px;flex:none}
+  .clean-choice{display:flex;gap:5px;margin-top:6px}
+  .clean-btn{flex:1;text-align:center;font-size:10px;font-weight:700;padding:5px 0;border-radius:8px;
+             background:var(--surface);color:var(--text2);border:1px solid transparent}
+  .clean-btn.on{background:var(--chip);color:var(--chipText);border-color:var(--primary)}
+  .clean-fields{display:flex;gap:5px;margin-top:6px}
+  .mini-input{flex:1;background:var(--surface);border-radius:8px;padding:4px 8px;font-size:10.5px;
+              display:flex;align-items:center;justify-content:space-between;gap:4px;color:var(--text)}
+  .mini-input .ml{display:block;font-size:8.5px;color:var(--text3);line-height:1.2}
+  .mini-input b{font-weight:700;font-size:10.5px}
+  .mini-input .cv{color:var(--text3);font-size:11px;flex:none}
+  .clean-tip{font-size:9px;color:var(--text3);margin-top:5px;line-height:1.4}
+  .clean-actions{flex:none;padding:0 16px 16px;background:var(--bg)}
+  .clean-save{width:100%;border:0;border-radius:14px;padding:10px;color:var(--onhero);font:inherit;
+              font-size:14px;font-weight:800;background:linear-gradient(120deg,var(--g1),var(--g2));
+              box-shadow:0 10px 22px rgba(109,91,255,.24);cursor:pointer}
+  .clean-save small{display:block;font-size:9px;font-weight:400;opacity:.82;margin-top:1px}
+
+  /* ---------- 说明 ---------- */
+  .notes{margin-top:44px;border-top:1px solid #232838;padding-top:26px;max-width:940px}
+  .notes h2{font-size:16px;margin:0 0 10px;color:#E9ECF4}
+  .notes h3{font-size:13px;margin:18px 0 6px;color:#C9D1E0}
+  .notes ul{margin:0;padding-left:18px;color:#A7B0C0;font-size:13px}
+  .notes li{margin-bottom:6px}
+  .notes code{background:#1A1F2C;border-radius:5px;padding:1px 5px;font-size:12px;color:#C6BEFF}
+  .q{background:#141926;border:1px solid #232838;border-radius:12px;padding:12px 14px;margin-top:10px;
+     font-size:13px;color:#C9D1E0}
+  .q b{color:#E9ECF4}
+</style>
+</head>
+<body>
+<div class="page" data-skin="aurora">
+  <div class="eyebrow">拾光 · v0.18 proposal</div>
+  <h1>商家、吃了什么与评价：把一笔饭钱拆成三个维度</h1>
+  <p class="lead">分类还是「餐饮」；新增可选的「商家」和「吃了什么」；原来的备注改成「评价」。看表时按商家看「常去哪家店」，按菜品看「爱吃什么」，评价只跟着账单。</p>
+  <p class="meta">样例仅演示交互与视觉，数据为虚构 · 颜色全部取自现有皮肤 token</p>
+
+  <div class="skinbar">
+    <span>预览皮肤</span>
+    <button class="on" data-skin="aurora">极光</button>
+    <button data-skin="candy">糖果</button>
+    <button data-skin="neon">霓虹</button>
+    <button data-skin="neu">浮雕</button>
+  </div>
+
+  <div class="board">
+
+    <!-- 1 记一笔 -->
+    <div class="col">
+      <div class="cap"><b>1</b> 记一笔弹层：商家 + 吃了什么（都可选）</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>拾光</span><span>100%</span></div>
+        <div class="screen">
+          <div class="nav"><div class="side">×</div><div class="ttl">记一笔</div><div class="side r">11月12日</div></div>
+          <div class="body" style="padding-top:0">
+            <div class="type"><span class="on">支出</span><span>收入</span></div>
+            <div class="amount"><b>¥</b><span class="val">32.00</span><span class="cur">CNY</span></div>
+
+            <div class="cat-grid">
+              <div class="cat on"><em>🍜</em>餐饮</div>
+              <div class="cat"><em>🚇</em>交通</div>
+              <div class="cat"><em>🛒</em>日用</div>
+              <div class="cat"><em>🛍️</em>购物</div>
+              <div class="cat"><em>🎮</em>娱乐</div>
+              <div class="cat"><em>💊</em>医疗</div>
+              <div class="cat"><em>📚</em>教育</div>
+              <div class="cat"><em>📌</em>其他</div>
+            </div>
+
+            <div class="date-row"><span>今天 · 11 月 12 日</span><small>同上次 11-11 ›</small></div>
+
+            <div class="field">
+              <div class="fl"><b>商家</b><small>可选 · 最近常用 · 用于「常去的店」</small></div>
+              <div class="inp"><span>和府捞面</span><span class="caret"></span></div>
+              <div class="chips">
+                <span class="chip on">和府捞面<tiny>3 次</tiny></span>
+                <span class="chip">麦当劳<tiny>2 次</tiny></span>
+                <span class="chip">楼下粉店<tiny>2 次</tiny></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="fl"><b>吃了什么</b><small>可选 · 用于「爱吃什么」</small></div>
+              <div class="chips" style="margin-top:2px">
+                <span class="chip on">面</span>
+                <span class="chip">粉</span>
+                <span class="chip">饭</span>
+                <span class="chip">火锅</span>
+                <span class="chip">咖啡</span>
+                <span class="chip">奶茶</span>
+                <span class="chip">+ 自定义</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="fl"><b>评价</b><small>可选 · 只做备注，不参与排行</small></div>
+              <div class="inp"><span>有点咸，面很筋道</span><span class="caret"></span></div>
+            </div>
+
+            <div class="hint">商家和菜品只用于排行，不影响分类和预算；评价只做记录。</div>
+            <button class="save">保存 · ¥32.00</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 图表·商家 -->
+    <div class="col">
+      <div class="cap"><b>2</b> 图表：按商家看「常去哪家店」</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>拾光</span><span>100%</span></div>
+        <div class="screen">
+          <div class="body">
+            <div class="titlerow">
+              <div class="h-title">图表</div>
+              <div class="entry">📄 财报<span class="dot"></span></div>
+            </div>
+            <div class="mini-hero">
+              <div class="lbl">2026 年 10 月 · 结余</div>
+              <div class="num" style="color:var(--income)">¥2,860.50</div>
+              <div class="cols">
+                <div><span>收入</span><b style="color:var(--income)">¥8,420.00</b></div>
+                <div><span>支出</span><b style="color:var(--expense)">¥5,559.50</b></div>
+                <div><span>餐饮</span><b>¥312.00</b></div>
+              </div>
+            </div>
+
+            <div class="dim"><span>分类</span><span class="on">商家</span><span>菜品</span></div>
+
+            <div class="rank-card">
+              <div class="rank-head"><b>常去的店</b><small>按金额排序</small></div>
+
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">和府捞面</span><span class="rank-amt">¥96</span></div>
+                <div class="rank-sub">3 次 · 人均 ¥32</div>
+                <div class="track"><div class="fill" style="width:100%;background:#FF9500"></div></div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">麦当劳</span><span class="rank-amt">¥36</span></div>
+                <div class="rank-sub">2 次 · 人均 ¥18</div>
+                <div class="track"><div class="fill" style="width:38%;background:#FFB340"></div></div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">楼下粉店</span><span class="rank-amt">¥30</span></div>
+                <div class="rank-sub">2 次 · 人均 ¥15</div>
+                <div class="track"><div class="fill" style="width:31%;background:#34C759"></div></div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">星巴克</span><span class="rank-amt">¥19</span></div>
+                <div class="rank-sub">1 次 · 人均 ¥19</div>
+                <div class="track"><div class="fill" style="width:20%;background:#007AFF"></div></div>
+              </div>
+            </div>
+
+            <div class="foot-note">本月 12 笔餐饮中，4 笔没填商家，未计入排行</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 图表·菜品 -->
+    <div class="col">
+      <div class="cap"><b>3</b> 图表：按「吃了什么」看爱吃什么</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>拾光</span><span>100%</span></div>
+        <div class="screen">
+          <div class="body">
+            <div class="titlerow">
+              <div class="h-title">图表</div>
+              <div class="entry">📄 财报<span class="dot"></span></div>
+            </div>
+            <div class="mini-hero">
+              <div class="lbl">2026 年 10 月 · 结余</div>
+              <div class="num" style="color:var(--income)">¥2,860.50</div>
+              <div class="cols">
+                <div><span>收入</span><b style="color:var(--income)">¥8,420.00</b></div>
+                <div><span>支出</span><b style="color:var(--expense)">¥5,559.50</b></div>
+                <div><span>餐饮</span><b>¥312.00</b></div>
+              </div>
+            </div>
+
+            <div class="dim"><span>分类</span><span>商家</span><span class="on">菜品</span></div>
+
+            <div class="rank-card">
+              <div class="rank-head"><b>爱吃的</b><small>按金额排序</small></div>
+
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">面</span><span class="rank-amt">¥130</span></div>
+                <div class="rank-sub">5 次 · 人均 ¥26</div>
+                <div class="track"><div class="fill" style="width:100%;background:#FF9500"></div></div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">饭</span><span class="rank-amt">¥78</span></div>
+                <div class="rank-sub">3 次 · 人均 ¥26</div>
+                <div class="track"><div class="fill" style="width:60%;background:#34C759"></div></div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">咖啡</span><span class="rank-amt">¥58</span></div>
+                <div class="rank-sub">2 次 · 人均 ¥29</div>
+                <div class="track"><div class="fill" style="width:45%;background:#AF52DE"></div></div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-top"><span class="rank-name">粉</span><span class="rank-amt">¥46</span></div>
+                <div class="rank-sub">2 次 · 人均 ¥23</div>
+                <div class="track"><div class="fill" style="width:35%;background:#5AC8FA"></div></div>
+              </div>
+            </div>
+
+            <div class="foot-note">本月旧备注 3 条未整理，暂不计入排行 · <span style="color:var(--primary);font-weight:700">去整理 ›</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 财报 -->
+    <div class="col">
+      <div class="cap"><b>4</b> 财报：新增「吃喝」洞察</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>拾光</span><span>100%</span></div>
+        <div class="screen">
+          <div class="nav"><div class="side">‹</div><div class="ttl">财报</div><div class="side r">⋯</div></div>
+          <div class="body" style="padding-top:0">
+            <span class="doc-tag">月报 · 2026 年 10 月</span>
+            <div class="doc-title">10 月，你存下了 34%</div>
+            <div class="doc-sub">10.01 – 10.31 · 11 月 1 日 09:00 生成</div>
+
+            <div class="hero">
+              <div class="hl">本期结余</div>
+              <div class="hv">¥2,860.50</div>
+              <div class="rate"><b>34%</b><span>储蓄率</span></div>
+              <div class="hrow">
+                <div><span>收入</span><b>¥8,420.00</b></div>
+                <div><span>支出</span><b>¥5,559.50</b></div>
+                <div><span>餐饮</span><b>¥312.00</b></div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:9px">
+              <div class="sec-title">吃喝洞察 <small>来自商家 + 吃了什么</small></div>
+              <div class="insight-line"><div class="ii">1</div><p>最常去 <b>和府捞面</b>，3 次共 <b>¥96</b>，人均 ¥32</p></div>
+              <div class="insight-line"><div class="ii">2</div><p>最常吃 <b>面</b>，5 次共 <b>¥130</b>，占餐饮支出的 42%</p></div>
+              <div class="insight-line"><div class="ii">3</div><p>本月外食 <b>12 次</b>，平均每次 <b>¥26</b>；比 9 月多 3 次</p></div>
+            </div>
+
+            <div class="card" style="margin-top:9px">
+              <div class="sec-title">常去的店 <small>Top 3</small></div>
+              <div class="eat-row">
+                <div class="ei">🍜</div>
+                <div class="em"><b>和府捞面</b><small>3 次 · 人均 ¥32</small></div>
+                <div class="ea">¥96</div>
+              </div>
+              <div class="eat-row">
+                <div class="ei">🍔</div>
+                <div class="em"><b>麦当劳</b><small>2 次 · 人均 ¥18</small></div>
+                <div class="ea">¥36</div>
+              </div>
+              <div class="eat-row">
+                <div class="ei">🍲</div>
+                <div class="em"><b>楼下粉店</b><small>2 次 · 人均 ¥15</small></div>
+                <div class="ea">¥30</div>
+              </div>
+            </div>
+
+            <div class="foot-note" style="margin-top:9px">商家/菜品只统计填了新字段的账单；旧备注可在「整理旧备注」里逐条归类</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 整理旧备注 -->
+    <div class="col">
+      <div class="cap"><b>5</b> 整理旧备注：逐条确认，批量应用到同名账单</div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>拾光</span><span>100%</span></div>
+        <div class="screen">
+          <div class="nav"><div class="side">‹</div><div class="ttl">整理旧备注</div><div class="side r">稍后</div></div>
+          <div class="body" style="padding-top:0">
+            <div class="clean-intro">共 <b>37 条</b>旧备注，去重后 <b>12 个</b>。整理只影响统计，不改金额和日期。<br/>商家和「吃了什么」可以同时选；选「评价」则只保留备注，不进入排行。</div>
+
+            <div class="clean-undo">
+              <div class="tx"><b>上次整理 · 11月10日 20:14 · 12 条</b><span>选错了可以一键恢复；整理后改过的账单会跳过</span></div>
+              <button>撤销</button>
+            </div>
+
+            <div class="clean-item">
+              <div class="clean-head"><div class="nm"><b>和府捞面</b><span class="clean-sug">难判断</span></div><small>12 笔 · ¥384</small></div>
+              <div class="clean-choice"><span class="clean-btn on">商家</span><span class="clean-btn">吃了什么</span><span class="clean-btn">评价</span></div>
+              <div class="clean-fields"><div class="mini-input"><div><span class="ml">商家</span><b>和府捞面</b></div><span class="cv">⌄</span></div></div>
+              <div class="clean-tip">应用到 12 笔同名账单</div>
+            </div>
+
+            <div class="clean-item">
+              <div class="clean-head"><div class="nm"><b>面</b><span class="clean-sug">像菜品</span></div><small>8 笔 · ¥128</small></div>
+              <div class="clean-choice"><span class="clean-btn">商家</span><span class="clean-btn on">吃了什么</span><span class="clean-btn">评价</span></div>
+              <div class="clean-fields"><div class="mini-input"><div><span class="ml">吃了什么</span><b>面</b></div><span class="cv">⌄</span></div></div>
+              <div class="clean-tip">保持为菜品，进入「爱吃的」排行</div>
+            </div>
+
+            <div class="clean-item">
+              <div class="clean-head"><div class="nm"><b>楼下粉店</b><span class="clean-sug">店 + 菜品</span></div><small>6 笔 · ¥90</small></div>
+              <div class="clean-choice"><span class="clean-btn on">商家</span><span class="clean-btn on">吃了什么</span><span class="clean-btn">评价</span></div>
+              <div class="clean-fields">
+                <div class="mini-input"><div><span class="ml">商家</span><b>楼下粉店</b></div><span class="cv">⌄</span></div>
+                <div class="mini-input"><div><span class="ml">吃了什么</span><b>粉</b></div><span class="cv">⌄</span></div>
+              </div>
+              <div class="clean-tip">一笔拆成商家「楼下粉店」+ 菜品「粉」</div>
+            </div>
+
+            <div class="clean-item">
+              <div class="clean-head"><div class="nm"><b>有点咸</b><span class="clean-sug">像评价</span></div><small>2 笔 · ¥56</small></div>
+              <div class="clean-choice"><span class="clean-btn">商家</span><span class="clean-btn">吃了什么</span><span class="clean-btn on">评价</span></div>
+              <div class="clean-tip">保留为评价，不进入商家 / 菜品排行</div>
+            </div>
+          </div>
+          <div class="clean-actions">
+            <button class="clean-save">保存整理结果<small>应用到所有同名账单，不改金额和日期</small></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h2>这个样例在演示什么</h2>
+    <ul>
+      <li><b>记一笔</b>：分类仍是「餐饮」；新增可选的「商家」和「吃了什么」，原备注改为「评价」。商家按最近 90 天常用排序，菜品给固定 chips，评价是自由文本、不参与排行。</li>
+      <li><b>图表</b>：原「备注排行」改为「分类 / 商家 / 菜品」三档；评价不参与排行。商家看金额、次数、人均；菜品看金额、次数，解决「爱吃面还是粉」。</li>
+      <li><b>财报</b>：在现有报告里加「吃喝洞察」和「常去的店 Top3」，与本月总支出、储蓄率放在同一份报告里。</li>
+      <li><b>旧数据</b>：只加可空字段，旧备注原样保留；未分类前默认不计入商家 / 菜品排行，账单里仍能看到原文，不强制迁移。</li>
+      <li><b>整理旧备注</b>：图表/财报给入口，逐条选「商家 / 吃了什么 / 评价 / 跳过」，可批量应用到同名账单；系统只给建议，不自动猜。样例显示的是已选中状态，实际打开默认不选。</li>
+      <li><b>撤销</b>：一次保存归为一批；页面顶部显示「上次整理 · 时间 · 条数」，点「撤销」整批恢复原值。整理后又被编辑过的账单会跳过，不覆盖新改动。</li>
+    </ul>
+
+    <h3>我的建议</h3>
+    <ul>
+      <li>数据模型是「商家 + 吃了什么 + 评价」：前两个进入排行，评价只跟着账单。商家名先不做独立实体表，靠 chips 和手输控制一致性。</li>
+      <li>「吃了什么」以点选 chip 为主，「自定义」再手输，这样「面 / 粉 / 饭」的统计口径稳定；想写「牛肉面」也可以，但会单独成一项。</li>
+      <li>第一版不做：旧备注自动拆分（只提供人工整理入口）、AI 自动识别商家、商家地图/评分、按商家做预算。</li>
+    </ul>
+
+    <h3>预期改动</h3>
+    <ul>
+      <li>后端：`transactions` 加可空 `merchant`、`item` 两个字段 + 迁移；`note` 保留为评价；记账/编辑/导入接口接收三个字段；统计加商家 / 菜品维度；财报快照加吃喝洞察。</li>
+      <li>App：记一笔弹层加商家、吃了什么、评价；图表页加维度切换；财报详情加吃喝卡；整理旧备注页面；离线队列带上商家与菜品。</li>
+      <li>版本：<b>2.8.0 / versionCode 234</b>（已实现，含整理撤销；待发布 OTA）。</li>
+    </ul>
+
+    <div class="q"><b>请确认：</b>「商家 + 吃了什么 + 评价」这个录入口径和两个排行是否符合你的习惯？确认后我再写 <code>docs/v0.18/{REQ,ARCH,CHECKLIST}.md</code>，然后按流程实现。</div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.skinbar button').forEach((el) => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.skinbar button').forEach((b) => b.classList.remove('on'));
+      el.classList.add('on');
+      document.querySelector('.page').dataset.skin = el.dataset.skin;
+    });
+  });
+</script>
+</body>
+</html>
