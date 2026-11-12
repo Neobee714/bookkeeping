@@ -1,4 +1,11 @@
-import type { ApiResponse, MonthlySummary, NoteRankItem, TrendPoint } from '../types';
+import type {
+  ApiResponse,
+  BreakdownDimension,
+  BreakdownResponse,
+  MonthlySummary,
+  NoteRankItem,
+  TrendPoint,
+} from '../types';
 import client, { unwrap } from './client';
 
 /** 分类默认配色(与 Web 端一致,图表/分类展示用)。 */
@@ -116,5 +123,30 @@ export const fetchNoteTrend = async (options: {
   const response = await client.get<ApiResponse<TrendPoint[]>>('/stats/note-trend', {
     params: { note, months, end_month: formatMonth(endMonth), target },
   });
+  return unwrap(response.data);
+};
+
+/** 商家 / 菜品排行。dimension 必填；target 默认 self，type 默认 expense。 */
+export const fetchBreakdown = async (options: {
+  dimension: BreakdownDimension;
+  month: string;
+  target: SummaryTarget;
+  type?: NoteType;
+  limit?: number;
+  /** 只统计某个分类；商家/菜品排行固定传「餐饮」。 */
+  category?: string;
+}): Promise<BreakdownResponse> => {
+  const {
+    dimension,
+    month,
+    target,
+    type = 'expense',
+    limit = 20,
+    category,
+  } = options;
+  const response = await client.get<ApiResponse<BreakdownResponse>>(
+    '/stats/breakdown',
+    { params: { dimension, month, target, type, limit, category } },
+  );
   return unwrap(response.data);
 };

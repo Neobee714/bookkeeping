@@ -1,4 +1,6 @@
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -11,26 +13,40 @@ import Svg, {
 } from 'react-native-svg';
 
 import { extractErrorMessage } from '../api/client';
+import { fetchReports } from '../api/reports';
 import {
   CATEGORY_COLORS,
+  fetchBreakdown,
   fetchMonthlySummary,
   fetchMonthlyTrendSeries,
-  fetchNoteRanking,
-  fetchNoteTrend,
   fetchPartnerMonthlySummary,
-  type NoteType,
 } from '../api/stats';
 import EmptyView from '../components/EmptyView';
 import ErrorView from '../components/ErrorView';
+import GradientView from '../components/GradientView';
 import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { cacheKey, readCache, writeCache } from '../offline/cache';
 import { isOnlineNow } from '../offline/network';
 import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme, type ThemeColors , useSkin} from '../theme';
-import type { MonthlySummary, NoteRankItem, TrendPoint } from '../types';
+import type {
+  BreakdownDimension,
+  BreakdownResponse,
+  MonthlySummary,
+  ReportListItem,
+  ReportListResponse,
+  TrendPoint,
+} from '../types';
 
 type SummaryTab = 'self' | 'partner';
+
+/** 支出分布三档：分类沿用汇总，商家 / 菜品走 /stats/breakdown。 */
+type DistributionDimension = 'category' | BreakdownDimension;
+
+type TabNavigation = BottomTabNavigationProp<MainTabParamList>;
+type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 /** 分类 emoji(与 Web 端分类对应,缺失时兜底)。 */
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -265,6 +281,7 @@ export default function StatsScreen() {
   const colors = useTheme();
   const skin = useSkin();
   const isFocused = useIsFocused();
+  const navigation = useNavigation<TabNavigation>();
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const partner = useAuthStore((state) => state.user?.partner);
   const partnerLabel = partner?.nickname?.trim() || '伴侣';
@@ -277,12 +294,16 @@ export default function StatsScreen() {
   const [error, setError] = useState<unknown>(null);
   const [fromCache, setFromCache] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-  const [noteType, setNoteType] = useState<NoteType>('expense');
-  const [noteRanking, setNoteRanking] = useState<NoteRankItem[]>([]);
-  const [selectedNote, setSelectedNote] = useState<string | null>(null);
-  const [noteTrend, setNoteTrend] = useState<TrendPoint[]>([]);
-  const [noteTrendLoading, setNoteTrendLoading] = useState(false);
-  const [noteTrendError, setNoteTrendError] = useState<unknown>(null);
+  const [dimension, setDimension] = useState<DistributionDimension>('category');
+  const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
+  const [breakdownLoading, setBreakdownLoading] = useState(false);
+  const [breakdownFromCache, setBreakdownFromCache] = useState(false);
+  const [breakdownFailed, setBreakdownFailed] = useState(false);
+  /** 财报入口：未读数 + 最新一期（失败静默，只用于入口提示）。 */
+  const [reportHint, setReportHint] = useState<{
+    unread: number;
+    item: ReportListItem | null;
+  }>({ unread: 0, item: null });
 
   const monthKey = formatMonthKey(currentMonth);
   const requestKey = `${tab}:${monthKey}`;
@@ -290,16 +311,8 @@ export default function StatsScreen() {
   useEffect(() => {
     requestKeyRef.current = requestKey;
   }, [requestKey]);
-
-  const noteTypeRef = useRef(noteType);
-  useEffect(() => {
-    noteTypeRef.current = noteType;
-  }, [noteType]);
-
-  const selectedNoteRef = useRef(selectedNote);
-  useEffect(() => {
-    selectedNoteRef.current = selectedNote;
-  }, [selectedNote]);
+  /** 商家 / 菜品请求令牌：切维度或月份时丢弃过期响应。 */
+  const breakdownRequestRef = useRef(0);
 
   const load = useCallback(async () => {
     const key = requestKeyRef.current;
@@ -396,65 +409,130 @@ export default function StatsScreen() {
     void load();
   }, [isFocused, requestKey, reloadTick, load]);
 
-  /** 备注排行:跟随 tab/月份/收支类型,失败不阻断整页(页面级错误由 load 处理)。 */
-  const loadNoteRanking = useCallback(async () => {
-    const key = requestKeyRef.current;
-    const [activeTab, activeMonth] = key.split(':') as [SummaryTab, string];
-    const type = noteTypeRef.current;
-    try {
-      const data = await fetchNoteRanking({ month: activeMonth, target: activeTab, type });
-      if (requestKeyRef.current === key && noteTypeRef.current === type) {
-        setNoteRanking(data);
-      }
-    } catch {
-      // 保持已有排行数据,避免伴侣未绑定等场景下整页抖动
+  /**
+   * 商家 / 菜品排行：只在对应档位加载；失败静默降级为「暂无」，
+   * 绝不把整页打成错误态。缓存 key 按 ARCH 3.4 固定。
+   */
+  useEffect(() => {
+    if (dimension === 'category') {
+      breakdownRequestRef.current += 1;
+      setBreakdown(null);
+      setBreakdownLoading(false);
+      setBreakdownFromCache(false);
+      setBreakdownFailed(false);
+      return;
     }
-  }, []);
+    if (!isFocused || !userId) {
+      return;
+    }
+
+    const requestId = breakdownRequestRef.current + 1;
+    breakdownRequestRef.current = requestId;
+    const activeDimension = dimension;
+    const cache = cacheKey(userId, 'breakdown', activeDimension, tab, monthKey);
+    let cancelled = false;
+
+    const run = async () => {
+      setBreakdownLoading(true);
+      setBreakdownFailed(false);
+      const cached = await readCache<BreakdownResponse>(cache);
+      if (cancelled || breakdownRequestRef.current !== requestId) {
+        return;
+      }
+      if (cached) {
+        setBreakdown(cached);
+        setBreakdownFromCache(true);
+      } else {
+        setBreakdown(null);
+        setBreakdownFromCache(false);
+      }
+
+      if (!isOnlineNow()) {
+        setBreakdownFailed(!cached);
+        setBreakdownLoading(false);
+        return;
+      }
+
+      try {
+        const data = await fetchBreakdown({
+          dimension: activeDimension,
+          month: monthKey,
+          target: tab,
+          category: '餐饮',
+        });
+        if (cancelled || breakdownRequestRef.current !== requestId) {
+          return;
+        }
+        setBreakdown(data);
+        setBreakdownFromCache(false);
+        setBreakdownFailed(false);
+        writeCache(cache, data).catch(() => undefined);
+      } catch {
+        if (cancelled || breakdownRequestRef.current !== requestId) {
+          return;
+        }
+        // 有缓存时保持缓存内容；没有缓存则展示空态，不覆盖整页错误。
+        setBreakdownFailed(true);
+      } finally {
+        if (!cancelled && breakdownRequestRef.current === requestId) {
+          setBreakdownLoading(false);
+        }
+      }
+    };
+
+    run().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isFocused, dimension, tab, monthKey, reloadTick, userId]);
+
+  const reload = useCallback(() => setReloadTick((value) => value + 1), []);
+
+  /**
+   * 财报入口数据：只取最新 1 条用于未读提示，失败静默（读缓存 / 保持原值），
+   * 与统计主流程互不阻塞。这里刻意不写列表缓存，避免把列表截成 1 条。
+   */
+  const loadReportHint = useCallback(async () => {
+    const key = userId ? cacheKey(userId, 'reports') : null;
+    const readCached = async () => {
+      if (!key) {
+        return;
+      }
+      const cached = await readCache<ReportListResponse>(key);
+      if (cached) {
+        setReportHint({
+          unread: cached.unread_count,
+          item: cached.items[0] ?? null,
+        });
+      }
+    };
+
+    if (!isOnlineNow()) {
+      await readCached();
+      return;
+    }
+
+    try {
+      const data = await fetchReports(1);
+      setReportHint({
+        unread: data.unread_count,
+        item: data.items[0] ?? null,
+      });
+    } catch {
+      await readCached();
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (!isFocused) {
       return;
     }
-    loadNoteRanking();
-  }, [isFocused, requestKey, noteType, reloadTick, loadNoteRanking]);
+    loadReportHint().catch(() => undefined);
+  }, [isFocused, reloadTick, loadReportHint]);
 
-  /** 单备注月度趋势:点击备注行后加载,跟随 tab/月份重取。 */
-  const loadNoteTrend = useCallback(async () => {
-    const note = selectedNoteRef.current;
-    if (!note) {
-      return;
-    }
-    const key = requestKeyRef.current;
-    const [activeTab, activeMonth] = key.split(':') as [SummaryTab, string];
-    const [year, monthIndex] = activeMonth.split('-').map(Number);
-    const endMonth = new Date(year, monthIndex - 1, 1);
-    setNoteTrendLoading(true);
-    setNoteTrendError(null);
-    try {
-      const data = await fetchNoteTrend({ note, months: 6, endMonth, target: activeTab });
-      if (requestKeyRef.current === key && selectedNoteRef.current === note) {
-        setNoteTrend(data);
-      }
-    } catch (trendError) {
-      if (requestKeyRef.current === key && selectedNoteRef.current === note) {
-        setNoteTrendError(trendError);
-        setNoteTrend([]);
-      }
-    } finally {
-      if (requestKeyRef.current === key && selectedNoteRef.current === note) {
-        setNoteTrendLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isFocused || !selectedNote) {
-      return;
-    }
-    loadNoteTrend();
-  }, [isFocused, requestKey, reloadTick, selectedNote, loadNoteTrend]);
-
-  const reload = useCallback(() => setReloadTick((value) => value + 1), []);
+  const openReports = useCallback(() => {
+    navigation.getParent<RootNavigation>()?.navigate('Reports');
+  }, [navigation]);
 
   const categoryRows = useMemo(() => {
     if (!summary) {
@@ -472,26 +550,61 @@ export default function StatsScreen() {
       .sort((a, b) => b.value - a.value);
   }, [summary, colors.primary]);
 
-  const noteRows = useMemo(() => {
-    if (noteRanking.length === 0) {
+  const breakdownRows = useMemo(() => {
+    if (!breakdown || breakdown.dimension !== dimension) {
       return [];
     }
-    const total = noteRanking.reduce((sum, item) => sum + item.amount, 0);
-    const barColor = noteType === 'expense' ? colors.expense : colors.income;
-    return noteRanking.map((item) => ({
-      note: item.note,
-      amount: item.amount,
-      count: item.count,
-      color: barColor,
-      percent: total > 0 ? Math.round((item.amount / total) * 100) : 0,
+    const items = breakdown.items ?? [];
+    if (items.length === 0) {
+      return [];
+    }
+    const max = items.reduce(
+      (value, candidate) => (candidate.amount > value ? candidate.amount : value),
+      0,
+    );
+    return items.map((candidate) => ({
+      ...candidate,
+      percent: max > 0 ? Math.round((candidate.amount / max) * 100) : 0,
     }));
-  }, [noteRanking, noteType, colors.expense, colors.income]);
+  }, [breakdown, dimension]);
+
+  const legacyNoteCount =
+    breakdown && breakdown.dimension === dimension
+      ? (breakdown.legacy_note_count ?? 0)
+      : 0;
+  const lastCleanup =
+    breakdown && breakdown.dimension === dimension
+      ? (breakdown.last_cleanup ?? null)
+      : null;
+
+  const openNoteCleanup = useCallback(() => {
+    navigation.getParent<RootNavigation>()?.navigate('NoteCleanup');
+  }, [navigation]);
 
   const isPartnerUnavailable =
     tab === 'partner' &&
     axios.isAxiosError(error) &&
     error.response?.status === 403;
   const errorMessage = extractErrorMessage(error, '统计数据加载失败');
+
+  /** 未读提示条：最新一期未读时给标题，否则只报未读份数。 */
+  const latestReport = reportHint.item;
+  const reportBanner =
+    reportHint.unread > 0
+      ? {
+          title:
+            latestReport && !latestReport.read_at
+              ? `${latestReport.label} 已生成`
+              : `有 ${reportHint.unread} 份新财报`,
+          sub: latestReport
+            ? `收入 ¥${formatMoney(
+                latestReport.total_income,
+              )} · 支出 ¥${formatMoney(
+                latestReport.total_expense,
+              )} · 结余 ¥${formatMoney(latestReport.balance)}`
+            : '点击查看财报',
+        }
+      : null;
 
   return (
     <SafeAreaView
@@ -502,7 +615,73 @@ export default function StatsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: colors.textPrimary }]}>图表</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>图表</Text>
+          <Pressable
+            onPress={openReports}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.reportEntry,
+              { backgroundColor: colors.card, borderColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text
+              style={[styles.reportEntryText, { color: colors.textPrimary }]}
+            >
+              📄 财报
+            </Text>
+            {reportHint.unread > 0 ? (
+              <View
+                style={[
+                  styles.reportEntryDot,
+                  { backgroundColor: colors.expense, borderColor: colors.card },
+                ]}
+              />
+            ) : null}
+          </Pressable>
+        </View>
+
+        {reportBanner ? (
+          <Pressable
+            onPress={openReports}
+            style={({ pressed }) => [
+              styles.reportBanner,
+              {
+                backgroundColor: colors.chipSoftBg,
+                borderColor: colors.border,
+              },
+              pressed && styles.pressed,
+            ]}
+          >
+            <GradientView colors={skin.gradient} style={styles.reportBannerIcon}>
+              <Text style={styles.reportBannerEmoji}>📄</Text>
+            </GradientView>
+            <View style={styles.reportBannerMain}>
+              <Text
+                style={[
+                  styles.reportBannerTitle,
+                  { color: colors.chipSoftText },
+                ]}
+                numberOfLines={1}
+              >
+                {reportBanner.title}
+              </Text>
+              <Text
+                style={[
+                  styles.reportBannerSub,
+                  { color: colors.textSecondary },
+                ]}
+                numberOfLines={1}
+              >
+                {reportBanner.sub}
+              </Text>
+            </View>
+            <Text style={[styles.reportBannerGo, { color: colors.primary }]}>
+              查看 ›
+            </Text>
+          </Pressable>
+        ) : null}
 
         <View style={[styles.card, skin.surfaces.card]}>
           <View style={styles.monthRow}>
@@ -581,10 +760,29 @@ export default function StatsScreen() {
         ) : summary ? (
           <>
             <View style={[styles.card, skin.surfaces.card]}>
-              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                支出分布
-              </Text>
-              {categoryRows.length === 0 ? (
+              <View style={styles.distributionHead}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                  支出分布
+                </Text>
+                {dimension !== 'category' && breakdownFromCache ? (
+                  <Text style={[styles.cardMeta, { color: colors.textTertiary }]}>
+                    显示缓存
+                  </Text>
+                ) : null}
+              </View>
+              <View style={styles.dimensionControl}>
+                <SegmentedControl
+                  options={[
+                    { key: 'category', label: '分类' },
+                    { key: 'merchant', label: '商家' },
+                    { key: 'item', label: '菜品' },
+                  ]}
+                  value={dimension}
+                  onChange={(key) => setDimension(key as DistributionDimension)}
+                />
+              </View>
+              {dimension === 'category' ? (
+                categoryRows.length === 0 ? (
                 <View style={styles.emptyWrap}>
                   <EmptyView emoji="🌱" title="本月暂无支出" />
                 </View>
@@ -626,137 +824,102 @@ export default function StatsScreen() {
                     </View>
                   </View>
                 ))
-              )}
-            </View>
-
-            <View style={[styles.card, skin.surfaces.card]}>
-              {selectedNote ? (
-                <>
-                  <View style={styles.noteTrendHeader}>
-                    <Pressable
-                      onPress={() => setSelectedNote(null)}
-                      hitSlop={8}
-                      style={({ pressed }) => [
-                        styles.backButton,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={[styles.backText, { color: colors.primary }]}>
-                        ‹ 返回
-                      </Text>
-                    </Pressable>
-                    <Text
-                      style={[styles.noteTrendTitle, { color: colors.textPrimary }]}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      备注「{selectedNote}」月度趋势
-                    </Text>
-                  </View>
-                  <Text
-                    style={[styles.cardSubtitle, { color: colors.textSecondary }]}
-                  >
-                    近 6 个月
-                  </Text>
-                  {noteTrendLoading ? (
-                    <View style={styles.emptyWrap}>
-                      <LoadingView text="加载趋势…" />
-                    </View>
-                  ) : noteTrendError ? (
-                    <View style={styles.emptyWrap}>
-                      <ErrorView
-                        title="趋势加载失败"
-                        message={extractErrorMessage(noteTrendError)}
-                        onRetry={reload}
-                      />
-                    </View>
-                  ) : noteTrend.length === 0 ? (
-                    <View style={styles.emptyWrap}>
-                      <EmptyView emoji="📈" title="该备注暂无趋势数据" />
-                    </View>
-                  ) : (
-                    <>
-                      <TrendChart data={noteTrend} colors={colors} />
-                      <ChartLegend colors={colors} />
-                    </>
-                  )}
-                </>
+                )
+              ) : breakdownLoading ||
+                (!breakdownFailed && breakdown?.dimension !== dimension) ? (
+                <View style={styles.emptyWrap}>
+                  <LoadingView text="加载排行…" />
+                </View>
+              ) : breakdownRows.length === 0 ? (
+                <View style={styles.emptyWrap}>
+                  <EmptyView
+                    emoji={dimension === 'merchant' ? '🏪' : '🍜'}
+                    title={
+                      dimension === 'merchant'
+                        ? '本月还没有商家数据'
+                        : '本月还没有菜品数据'
+                    }
+                    description={
+                      breakdownFailed
+                        ? '暂时无法加载排行，记账不受影响'
+                        : dimension === 'merchant'
+                          ? '记账时填写「商家」后会出现在这里'
+                          : '记账时选「吃了什么」后会出现在这里'
+                    }
+                  />
+                </View>
               ) : (
                 <>
-                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                    备注排行
-                  </Text>
-                  <View style={styles.noteTypeControl}>
-                    <SegmentedControl
-                      options={[
-                        { key: 'expense', label: '支出' },
-                        { key: 'income', label: '收入' },
-                      ]}
-                      value={noteType}
-                      onChange={(key) => setNoteType(key as NoteType)}
-                    />
-                  </View>
-                  {noteRanking.length === 0 ? (
-                    <View style={styles.emptyWrap}>
-                      <EmptyView
-                        emoji="🏷️"
-                        title={
-                          noteType === 'expense'
-                            ? '本月暂无支出备注'
-                            : '本月暂无收入备注'
-                        }
-                      />
-                    </View>
-                  ) : (
-                    noteRows.map((item) => (
-                      <Pressable
-                        key={item.note}
-                        onPress={() => setSelectedNote(item.note)}
-                        style={({ pressed }) => [
-                          styles.catRow,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <View style={styles.catHeader}>
-                          <Text
-                            style={[styles.catName, { color: colors.textPrimary }]}
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                          >
-                            {item.note}
-                          </Text>
-                          <Text
-                            style={[styles.catAmount, { color: colors.textPrimary }]}
-                          >
-                            ¥{formatMoney(item.amount)}
-                            <Text
-                              style={[
-                                styles.catPercent,
-                                { color: colors.textTertiary },
-                              ]}
-                            >
-                              {' '}· {item.count} 笔
-                            </Text>
-                          </Text>
-                        </View>
-                        <View
-                          style={[styles.track, { backgroundColor: colors.surface }]}
+                  {breakdownRows.map((item) => (
+                    <View
+                      key={`${dimension}:${item.name}`}
+                      style={styles.catRow}
+                    >
+                      <View style={styles.catHeader}>
+                        <Text
+                          style={[styles.catName, { color: colors.textPrimary }]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
                         >
-                          <View
-                            style={[
-                              styles.fill,
-                              {
-                                width: `${item.percent}%`,
-                                backgroundColor: item.color,
-                              },
-                            ]}
-                          />
-                        </View>
-                      </Pressable>
-                    ))
-                  )}
+                          {item.name}
+                        </Text>
+                        <Text
+                          style={[styles.catAmount, { color: colors.textPrimary }]}
+                        >
+                          ¥{formatMoney(item.amount)}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[styles.rankMeta, { color: colors.textTertiary }]}
+                      >
+                        {`${item.count} 次 · 人均 ¥${formatMoney(item.avg)}`}
+                      </Text>
+                      <View
+                        style={[styles.track, { backgroundColor: colors.surface }]}
+                      >
+                        <View
+                          style={[
+                            styles.fill,
+                            {
+                              width: `${item.percent}%`,
+                              backgroundColor:
+                                dimension === 'merchant'
+                                  ? colors.primary
+                                  : colors.secondary,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  ))}
+                  <Text
+                    style={[styles.rankFoot, { color: colors.textTertiary }]}
+                  >
+                    {dimension === 'merchant'
+                      ? '仅统计「餐饮」；未填写「商家」的账单不计入'
+                      : '仅统计「餐饮」；未填写「吃了什么」的账单不计入'}
+                  </Text>
                 </>
               )}
+              {dimension === 'item' &&
+              tab === 'self' &&
+              (legacyNoteCount > 0 || lastCleanup) ? (
+                <Pressable
+                  onPress={openNoteCleanup}
+                  style={({ pressed }) => [
+                    styles.cleanupEntry,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text
+                    style={[styles.cleanupEntryText, { color: colors.primary }]}
+                  >
+                    {legacyNoteCount > 0
+                      ? `旧备注 ${legacyNoteCount} 条未整理 · 去整理 ›`
+                      : `上次整理 ${lastCleanup?.affected_count ?? 0} 条 · 可撤销 ›`}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
 
             <View style={[styles.card, skin.surfaces.card]}>
@@ -798,6 +961,69 @@ const styles = StyleSheet.create({
   title: {
     ...typography.title,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  reportEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  reportEntryText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  reportEntryDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+  },
+  reportBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  reportBannerIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportBannerEmoji: {
+    fontSize: 15,
+  },
+  reportBannerMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  reportBannerTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  reportBannerSub: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+  reportBannerGo: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   card: {
     borderRadius: radius.xl,
     padding: spacing.lg,
@@ -806,31 +1032,41 @@ const styles = StyleSheet.create({
     ...typography.heading,
     marginBottom: spacing.sm,
   },
+  distributionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  dimensionControl: {
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  cardMeta: {
+    fontSize: 10,
+    marginBottom: spacing.sm,
+  },
   cardSubtitle: {
     fontSize: 12,
     marginBottom: spacing.sm,
   },
-  noteTypeControl: {
-    marginBottom: spacing.lg,
-  },
-  noteTrendHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  rankMeta: {
+    fontSize: 11,
+    marginTop: -2,
     marginBottom: spacing.xs,
   },
-  backButton: {
-    paddingVertical: 2,
-    paddingRight: 4,
+  rankFoot: {
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: spacing.xs,
   },
-  backText: {
-    fontSize: 14,
-    fontWeight: '600',
+  cleanupEntry: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  noteTrendTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
+  cleanupEntryText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   monthRow: {
     flexDirection: 'row',

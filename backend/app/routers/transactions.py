@@ -19,12 +19,27 @@ from app.models.note_preset import UserNotePreset
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.transaction import (
+    NoteCandidate,
+    NoteCandidatesResponse,
+    NoteCleanupBatchInfo,
     NotePresetDeleteResponse,
     NotePresetRequest,
     NotePresetResponse,
+    NoteReclassifyRequest,
+    NoteReclassifyResponse,
+    NoteUndoRequest,
+    NoteUndoResponse,
     QuickInputsResponse,
+    QuickNameCandidate,
     TransactionCreateRequest,
     TransactionUpdateRequest,
+)
+from app.services.merchant_stats import suggest_note_kind
+from app.services.note_cleanup import (
+    get_or_create_batch,
+    latest_cleanup_batch,
+    record_item,
+    undo_cleanup_batch,
 )
 
 router = APIRouter(prefix='/transactions', tags=['transactions'])
@@ -72,6 +87,9 @@ def _serialize_transaction(item: Transaction) -> dict:
         'type': item.type.value,
         'category': item.category,
         'note': item.note,
+        'merchant': item.merchant,
+        'item': item.item,
+        'note_kind': item.note_kind,
         'date': item.date.isoformat(),
         'created_at': item.created_at.isoformat() if item.created_at else None,
     }
@@ -172,6 +190,9 @@ def create_transaction(
         type=payload.type,
         category=payload.category,
         note=payload.note,
+        merchant=payload.merchant,
+        item=payload.item,
+        note_kind='evaluation' if payload.note else None,
         date=payload.date,
     )
     db.add(item)
@@ -200,22 +221,63 @@ async def import_transactions(
     await file.seek(0)
     text_stream = io.TextIOWrapper(file.file, encoding='gbk', newline='')
 
+    header_index: dict[str, int] | None = None
+
+    def _header_index_for(*names: str, default: int | None = None) -> int | None:
+        if header_index is None:
+            return default
+        for name in names:
+            index = header_index.get(name.lower())
+            if index is not None:
+                return index
+        return default
+
     try:
         reader = csv.reader(text_stream)
         for row_number, row in enumerate(reader, start=1):
             if not row or not any(column.strip() for column in row):
                 continue
 
-            if row_number == 1 and row[0].strip() == '日期':
+            if row_number == 1 and row[0].strip().lower() in {'日期', 'date'}:
+                header_index = {
+                    cell.strip().lower(): index
+                    for index, cell in enumerate(row)
+                    if cell.strip()
+                }
                 continue
 
-            if len(row) < 5:
+            date_index = _header_index_for('日期', 'date', default=0)
+            note_index = (
+                _header_index_for('备注', '评价', 'note')
+                if header_index is not None
+                else 4
+            )
+            merchant_index = _header_index_for('merchant', '商家')
+            item_index = _header_index_for('item', '项目', '吃了什么', '菜品')
+
+            required_columns = max(
+                5,
+                (date_index or 0) + 1,
+                (note_index + 1) if note_index is not None else 0,
+                (merchant_index + 1) if merchant_index is not None else 0,
+                (item_index + 1) if item_index is not None else 0,
+            )
+            if len(row) < required_columns:
                 skipped_rows.append({'row': row_number, 'reason': '列数不足'})
                 continue
 
-            date_str, type_str, category_str, amount_str, note_str = [
-                column.strip() for column in row[:5]
-            ]
+            def _cell(index: int | None) -> str:
+                if index is None or index >= len(row):
+                    return ''
+                return row[index].strip()
+
+            date_str = _cell(date_index)
+            type_str = _cell(1)
+            category_str = _cell(2)
+            amount_str = _cell(3)
+            note_str = _cell(note_index)
+            merchant_str = _cell(merchant_index)[:50]
+            item_str = _cell(item_index)[:50]
 
             transaction_type = SHARK_TYPE_MAP.get(type_str)
             if transaction_type is None:
@@ -241,6 +303,9 @@ async def import_transactions(
                     type=transaction_type,
                     category=SHARK_CATEGORY_MAP.get(category_str, CategoryEnum.OTHER),
                     note=(note_str[:255] or None),
+                    merchant=(merchant_str or None),
+                    item=(item_str or None),
+                    note_kind='evaluation' if note_str else None,
                     date=parsed_date,
                 )
             )
@@ -282,6 +347,7 @@ def _note_usage_in_window(
         )
         .where(
             Transaction.user_id == user_id,
+            Transaction.note_kind == 'evaluation',
             Transaction.note.is_not(None),
             func.trim(Transaction.note) != '',
             Transaction.date >= window_start,
@@ -293,6 +359,47 @@ def _note_usage_in_window(
         note: (count, last_used)
         for note, count, last_used in db.execute(stmt).all()
     }
+
+
+def _named_usage_by_category(
+    db: Session,
+    user_id: int,
+    column,
+    window_start: date,
+    window_end: date,
+    limit: int,
+) -> dict[str, list[QuickNameCandidate]]:
+    """按分类聚合商家/菜品候选，次数降序、最近使用降序。"""
+    label = func.trim(column)
+    rows = db.execute(
+        select(
+            func.trim(Transaction.category),
+            label,
+            func.count(),
+            func.max(Transaction.date),
+        )
+        .where(
+            Transaction.user_id == user_id,
+            column.is_not(None),
+            label != '',
+            Transaction.date >= window_start,
+            Transaction.date <= window_end,
+        )
+        .group_by(func.trim(Transaction.category), label)
+    ).all()
+
+    grouped: dict[str, list[tuple[int, date, str]]] = {}
+    for category, name, count, last_used in rows:
+        grouped.setdefault(category, []).append((count, last_used, name))
+
+    serialized: dict[str, list[QuickNameCandidate]] = {}
+    for category, entries in grouped.items():
+        entries.sort(key=lambda entry: (-entry[0], -entry[1].toordinal(), entry[2]))
+        serialized[category] = [
+            QuickNameCandidate(name=name, count=count, last_used=last_used)
+            for count, last_used, name in entries[:limit]
+        ]
+    return serialized
 
 
 @router.get('/quick-inputs')
@@ -345,6 +452,7 @@ def get_quick_inputs(
         )
         .where(
             Transaction.user_id == current_user.id,
+            Transaction.note_kind == 'evaluation',
             Transaction.note.is_not(None),
             func.trim(Transaction.note) != '',
             Transaction.date >= window_start,
@@ -372,8 +480,180 @@ def get_quick_inputs(
         last_date=last_item.date if last_item else None,
         pinned=pinned,
         by_category=serialized_categories,
+        merchants_by_category=_named_usage_by_category(
+            db=db,
+            user_id=current_user.id,
+            column=Transaction.merchant,
+            window_start=window_start,
+            window_end=today,
+            limit=min(per_category, 6),
+        ),
+        items_by_category=_named_usage_by_category(
+            db=db,
+            user_id=current_user.id,
+            column=Transaction.item,
+            window_start=window_start,
+            window_end=today,
+            limit=min(per_category, 6),
+        ),
     )
     return success_response(data=data.model_dump(mode='json'))
+
+
+@router.get('/note-candidates')
+def list_note_candidates(
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """列出尚未整理的旧备注，按次数与金额降序。"""
+    label = func.trim(Transaction.note)
+    base_filter = (
+        Transaction.user_id == current_user.id,
+        Transaction.note_kind.is_(None),
+        Transaction.note.is_not(None),
+        label != '',
+    )
+
+    total = int(
+        db.scalar(select(func.count(func.distinct(label))).where(*base_filter)) or 0
+    )
+    amount_sum = func.coalesce(func.sum(Transaction.amount), Decimal('0'))
+    rows = db.execute(
+        select(
+            label,
+            func.count(Transaction.id),
+            amount_sum,
+            func.max(Transaction.date),
+        )
+        .where(*base_filter)
+        .group_by(label)
+        .order_by(
+            func.count(Transaction.id).desc(),
+            amount_sum.desc(),
+            label.asc(),
+        )
+        .limit(limit)
+    ).all()
+
+    items = [
+        NoteCandidate(
+            note=note,
+            count=int(count or 0),
+            total_amount=_to_float(amount),
+            last_used=last_used,
+            suggestion=suggest_note_kind(note),
+        )
+        for note, count, amount, last_used in rows
+    ]
+    last_batch = latest_cleanup_batch(db, current_user.id)
+    last_cleanup = (
+        NoteCleanupBatchInfo(
+            batch_id=last_batch.id,
+            created_at=last_batch.created_at,
+            affected_count=last_batch.affected_count,
+        )
+        if last_batch is not None
+        else None
+    )
+    data = NoteCandidatesResponse(total=total, items=items, last_cleanup=last_cleanup)
+    return success_response(data=data.model_dump(mode='json'))
+
+
+@router.post('/notes/reclassify')
+def reclassify_note(
+    payload: NoteReclassifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """把同名旧备注批量归为商家/菜品/评价；只影响统计字段。"""
+    if payload.action == 'skip':
+        data = NoteReclassifyResponse(affected=0, batch_id=None)
+        return success_response(data=data.model_dump(mode='json'), message='已跳过')
+
+    label = func.trim(Transaction.note)
+    items = list(
+        db.scalars(
+            select(Transaction).where(
+                Transaction.user_id == current_user.id,
+                Transaction.note_kind.is_(None),
+                Transaction.note.is_not(None),
+                label == payload.note,
+            )
+        ).all()
+    )
+    if not items:
+        data = NoteReclassifyResponse(affected=0, batch_id=None)
+        return success_response(data=data.model_dump(mode='json'), message='没有需要整理的旧备注')
+
+    batch = get_or_create_batch(db, current_user.id, payload.batch_key)
+    for item in items:
+        old_merchant = item.merchant
+        old_item = item.item
+        old_note = item.note
+        old_note_kind = item.note_kind
+
+        if payload.action == 'merchant':
+            new_merchant, new_item = payload.merchant, None
+            new_note, new_note_kind = None, None
+        elif payload.action == 'item':
+            new_merchant, new_item = None, payload.item
+            new_note, new_note_kind = None, None
+        elif payload.action == 'both':
+            new_merchant, new_item = payload.merchant, payload.item
+            new_note, new_note_kind = None, None
+        else:  # evaluation
+            new_merchant, new_item = old_merchant, old_item
+            new_note, new_note_kind = old_note, 'evaluation'
+
+        record_item(
+            db,
+            batch,
+            item,
+            old_merchant=old_merchant,
+            old_item=old_item,
+            old_note=old_note,
+            old_note_kind=old_note_kind,
+            new_merchant=new_merchant,
+            new_item=new_item,
+            new_note=new_note,
+            new_note_kind=new_note_kind,
+        )
+        item.merchant = new_merchant
+        item.item = new_item
+        item.note = new_note
+        item.note_kind = new_note_kind
+
+    db.commit()
+    data = NoteReclassifyResponse(affected=len(items), batch_id=batch.id)
+    return success_response(data=data.model_dump(mode='json'), message='整理完成')
+
+
+@router.post('/notes/undo')
+def undo_note_cleanup(
+    payload: NoteUndoRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """撤销最近一次整理；不传 batch_id 时自动撤销最近一批。"""
+    try:
+        result = undo_cleanup_batch(
+            db, current_user.id, payload.batch_id if payload is not None else None
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='没有可撤销的整理'
+        )
+    batch, restored, skipped = result
+    data = NoteUndoResponse(batch_id=batch.id, restored=restored, skipped=skipped)
+    message = f'已撤销 {restored} 条'
+    if skipped:
+        message += f'，{skipped} 条因后续修改跳过'
+    return success_response(data=data.model_dump(mode='json'), message=message)
 
 
 @router.post('/note-presets')
@@ -452,6 +732,8 @@ def update_transaction(
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(item, field, value)
+    if 'note' in updates:
+        item.note_kind = 'evaluation' if updates['note'] else None
 
     db.commit()
     db.refresh(item)

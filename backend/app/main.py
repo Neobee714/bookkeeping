@@ -17,11 +17,12 @@ from app.routers import (
     budget_router,
     categories_router,
     recurring_router,
+    reports_router,
     savings_router,
     stats_router,
     transactions_router,
 )
-from app.services import scheduler as recurring_scheduler
+from app.services import report_scheduler, scheduler as recurring_scheduler
 
 app = FastAPI(title="Bookkeeping API", version="0.1.0")
 logger = logging.getLogger("bookkeeping.api")
@@ -95,17 +96,20 @@ app.include_router(stats_router)
 app.include_router(budget_router)
 app.include_router(savings_router)
 app.include_router(recurring_router)
+app.include_router(reports_router)
 app.include_router(app_updates_router)
 
 
 @app.on_event("startup")
-async def start_recurring_scheduler() -> None:
+async def start_schedulers() -> None:
     recurring_scheduler.start()
+    report_scheduler.start()
 
 
 @app.on_event("shutdown")
-async def stop_recurring_scheduler() -> None:
+async def stop_schedulers() -> None:
     recurring_scheduler.stop()
+    report_scheduler.stop()
 
 
 @app.get("/health")

@@ -36,6 +36,20 @@ export default function TransactionItem({
   const amountColor = isIncome ? colors.income : colors.expense;
   const iconBg = color ? `${color}1A` : colors.surface;
 
+  // v0.18 列表显示优先级（ARCH 3.3）：
+  // 标题 merchant || item || category；
+  // 副标题 商家+菜品时「菜品 · 评价」，否则评价 || 分类。
+  // 旧数据（无 merchant/item）保持原来的「分类 + 备注 / 无备注」。
+  const merchant = item.merchant?.trim() ?? '';
+  const itemName = item.item?.trim() ?? '';
+  const note = item.note?.trim() ?? '';
+  const hasStructured = merchant.length > 0 || itemName.length > 0;
+  const title = merchant || itemName || item.category;
+  const subtitle =
+    merchant && itemName
+      ? `${itemName}${note ? ` · ${note}` : ''}`
+      : note || (hasStructured ? item.category : '无备注');
+
   return (
     <Pressable
       onPress={onPress}
@@ -57,7 +71,7 @@ export default function TransactionItem({
             numberOfLines={1}
             style={[styles.category, { color: colors.textPrimary }]}
           >
-            {item.category}
+            {title}
           </Text>
           {item.recurring_rule_id ? (
             <View
@@ -75,7 +89,7 @@ export default function TransactionItem({
           numberOfLines={1}
           style={[styles.note, { color: colors.textSecondary }]}
         >
-          {item.note || '无备注'}
+          {subtitle}
         </Text>
         {pending ? (
           <View

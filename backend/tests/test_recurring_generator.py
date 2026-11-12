@@ -222,3 +222,32 @@ def test_one_broken_rule_does_not_block_others(
     db.refresh(broken)
     assert broken.next_run_date == date(2026, 2, 28)
     assert broken.last_generated_date is None
+
+
+def test_generated_transactions_mark_note_kind(db: Session) -> None:
+    with_note = _add_rule(db, freq="daily", start_date=date(2026, 2, 27), next_run_date=date(2026, 2, 27))
+    without_note = _add_rule(
+        db,
+        freq="daily",
+        start_date=date(2026, 2, 27),
+        next_run_date=date(2026, 2, 27),
+        category="其他",
+        note=None,
+    )
+
+    created = generate_due(db, today=date(2026, 2, 28))
+
+    assert created == 4
+    rows = list(db.scalars(select(Transaction).order_by(Transaction.id.asc())).all())
+    for row in rows:
+        if row.recurring_rule_id == with_note.id:
+            assert row.note == "房租"
+            assert row.note_kind == "evaluation"
+            assert row.merchant is None
+            assert row.item is None
+        else:
+            assert row.recurring_rule_id == without_note.id
+            assert row.note is None
+            assert row.note_kind is None
+            assert row.merchant is None
+            assert row.item is None

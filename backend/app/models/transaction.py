@@ -48,6 +48,9 @@ class Transaction(Base):
     )
     category: Mapped[str] = mapped_column(String(10), nullable=False)
     note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    merchant: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    item: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    note_kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

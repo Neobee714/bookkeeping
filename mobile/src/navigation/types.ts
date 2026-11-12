@@ -20,4 +20,10 @@ export type RootStackParamList = {
   AdminUsers: undefined;
   /** 外观：主题与明暗模式。 */
   Appearance: undefined;
+  /** 财报列表（仅个人账本）。 */
+  Reports: undefined;
+  /** 财报详情；label 用于加载期间先显示标题。 */
+  ReportDetail: { id: number; label?: string };
+  /** 整理旧备注：把历史备注逐条归类为商家 / 菜品 / 评价。 */
+  NoteCleanup: undefined;
 };

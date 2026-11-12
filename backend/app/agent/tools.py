@@ -347,6 +347,7 @@ def create_transaction_data(
         type=payload.type,
         category=payload.category,
         note=payload.note,
+        note_kind='evaluation' if payload.note else None,
         date=tx_date,
     )
     db.add(item)

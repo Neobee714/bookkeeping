@@ -18,6 +18,7 @@ export type PendingStatus = 'pending' | 'failed';
 /** 一笔待同步的离线新增。 */
 export interface PendingTransaction {
   clientId: string;
+  /** 与创建接口一致的 payload，v0.18 起包含 merchant / item。 */
   payload: TransactionCreatePayload;
   createdAt: string;
   status: PendingStatus;

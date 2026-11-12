@@ -84,6 +84,28 @@ test('超过上限拒绝入队', async () => {
   expect(await readQueue(1)).toHaveLength(QUEUE_LIMIT);
 });
 
+test('队列保留商家、菜品与评价字段', async () => {
+  await enqueue(
+    1,
+    makeItem('m', {
+      payload: {
+        amount: 32,
+        type: 'expense',
+        category: '餐饮',
+        merchant: '和府捞面',
+        item: '面',
+        note: '有点咸',
+        date: '2026-11-12',
+      },
+    }),
+  );
+
+  const [entry] = await readQueue(1);
+  expect(entry.payload.merchant).toBe('和府捞面');
+  expect(entry.payload.item).toBe('面');
+  expect(entry.payload.note).toBe('有点咸');
+});
+
 test('损坏的存储内容自动丢弃', async () => {
   await AsyncStorage.setItem('bk.offline.v1.queue.1', 'not-json');
   expect(await readQueue(1)).toEqual([]);

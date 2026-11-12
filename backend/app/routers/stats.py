@@ -15,6 +15,8 @@ from app.core.security import get_current_user
 from app.models.enums import TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.services.merchant_stats import aggregate_named_dimension, count_legacy_notes
+from app.services.note_cleanup import latest_cleanup_batch
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -242,6 +244,67 @@ def _resolve_target_user_id(current_user: User, target: str) -> int:
             )
         return current_user.partner_id
     return current_user.id
+
+
+BreakdownDimension = Literal["merchant", "item"]
+
+
+@router.get("/breakdown")
+def breakdown(
+    dimension: BreakdownDimension = Query(..., description="merchant=商家, item=菜品"),
+    month: str | None = Query(default=None, description="YYYY-MM"),
+    start_date: str | None = Query(default=None, description="YYYY-MM-DD"),
+    end_date: str | None = Query(default=None, description="YYYY-MM-DD"),
+    target: StatsTarget = Query(default="self", description="self=自己, partner=伴侣"),
+    type: StatsType = Query(default="expense", description="income=收入, expense=支出"),
+    category: str | None = Query(default=None, max_length=10),
+    limit: int = Query(default=20, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """按商家或菜品聚合排行；未填商家/菜品的账单不计入。"""
+    user_id = _resolve_target_user_id(current_user, target)
+    try:
+        _, start, end = resolve_date_window(
+            month=month, start_date=start_date, end_date=end_date
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="日期范围参数错误，month 应为 YYYY-MM，start_date/end_date 应为 YYYY-MM-DD",
+        ) from exc
+
+    tx_type = TransactionType.INCOME if type == "income" else TransactionType.EXPENSE
+    items = aggregate_named_dimension(
+        db,
+        user_id=user_id,
+        dimension=dimension,
+        start=start,
+        end_exclusive=end,
+        tx_type=tx_type,
+        category=category,
+        limit=limit,
+    )
+    last_batch = (
+        latest_cleanup_batch(db, current_user.id) if target == "self" else None
+    )
+    last_cleanup = (
+        {
+            "batch_id": last_batch.id,
+            "created_at": last_batch.created_at.isoformat(),
+            "affected_count": last_batch.affected_count,
+        }
+        if last_batch is not None
+        else None
+    )
+    return success_response(
+        data={
+            "dimension": dimension,
+            "items": items,
+            "legacy_note_count": count_legacy_notes(db, current_user.id),
+            "last_cleanup": last_cleanup,
+        }
+    )
 
 
 @router.get("/notes")

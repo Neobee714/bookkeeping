@@ -18,9 +18,12 @@ import AppearanceScreen from '../screens/AppearanceScreen';
 import CategoryScreen from '../screens/CategoryScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
+import NoteCleanupScreen from '../screens/NoteCleanupScreen';
 import PlanScreen from '../screens/PlanScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ReportDetailScreen from '../screens/ReportDetailScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import StatsScreen from '../screens/StatsScreen';
 import { useAuthStore } from '../store/authStore';
 import { radius, useIsDarkMode, useSkin, useTheme } from '../theme';
@@ -124,6 +127,9 @@ function MainStack() {
       <RootStack.Screen name="Main" component={MainTabs} />
       <RootStack.Screen name="Category" component={CategoryScreen} />
       <RootStack.Screen name="Appearance" component={AppearanceScreen} />
+      <RootStack.Screen name="Reports" component={ReportsScreen} />
+      <RootStack.Screen name="ReportDetail" component={ReportDetailScreen} />
+      <RootStack.Screen name="NoteCleanup" component={NoteCleanupScreen} />
       <RootStack.Screen name="AdminUsers" component={AdminUsersScreen} />
     </RootStack.Navigator>
   );

@@ -42,6 +42,9 @@ def _seed_transactions(session_factory: sessionmaker, rows: list[dict]) -> None:
                     type=TransactionType(row.get("type", "expense")),
                     category=row.get("category", "其他"),
                     note=row.get("note"),
+                    note_kind=row.get(
+                        "note_kind", "evaluation" if row.get("note") else None
+                    ),
                     date=date.fromisoformat(row["date"]),
                     created_at=row.get("created_at") or _next_created_at(),
                 )
@@ -271,6 +274,40 @@ def test_by_category_window_boundary_counts_and_threshold(
             {"note": "早餐", "count": 2, "last_used": today.isoformat()},
         ]
     }
+
+
+def test_by_category_excludes_legacy_notes(
+    client: tuple[TestClient, dict[str, User], sessionmaker],
+) -> None:
+    test_client, holder, session_factory = client
+    today = date.today().isoformat()
+    _seed_transactions(
+        session_factory,
+        [
+            {"user_id": 1, "amount": 1, "category": "餐饮", "note": "好吃", "date": today},
+            {"user_id": 1, "amount": 1, "category": "餐饮", "note": "好吃", "date": today},
+            {
+                "user_id": 1,
+                "amount": 1,
+                "category": "餐饮",
+                "note": "和府捞面",
+                "note_kind": None,
+                "date": today,
+            },
+            {
+                "user_id": 1,
+                "amount": 1,
+                "category": "餐饮",
+                "note": "和府捞面",
+                "note_kind": None,
+                "date": today,
+            },
+        ],
+    )
+
+    data = _fetch_quick_inputs(test_client, holder, 1)
+
+    assert [item["note"] for item in data["by_category"]["餐饮"]] == ["好吃"]
 
 
 def test_by_category_custom_window_parameter(

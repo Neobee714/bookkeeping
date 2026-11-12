@@ -316,6 +316,9 @@ export default function HomeScreen() {
         type: item.payload.type,
         category: item.payload.category,
         note: item.payload.note ?? null,
+        merchant: item.payload.merchant ?? null,
+        item: item.payload.item ?? null,
+        note_kind: item.payload.note ? 'evaluation' : null,
         date: item.payload.date,
         created_at: item.createdAt,
         pending: true,
@@ -441,6 +444,8 @@ export default function HomeScreen() {
         category: payload.category,
         date: payload.date,
         note: payload.note ?? null,
+        merchant: payload.merchant ?? null,
+        item: payload.item ?? null,
       });
       closeSheet();
       await load();

@@ -4,6 +4,7 @@ from app.routers.categories import router as categories_router
 from app.routers.auth import router as auth_router
 from app.routers.budget import router as budget_router
 from app.routers.recurring import router as recurring_router
+from app.routers.reports import router as reports_router
 from app.routers.savings import router as savings_router
 from app.routers.stats import router as stats_router
 from app.routers.transactions import router as transactions_router
@@ -15,6 +16,7 @@ __all__ = [
     "categories_router",
     "budget_router",
     "recurring_router",
+    "reports_router",
     "savings_router",
     "stats_router",
     "transactions_router",
