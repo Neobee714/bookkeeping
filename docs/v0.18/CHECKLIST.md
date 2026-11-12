@@ -56,11 +56,11 @@
 - [x] 主 Agent 审查完整 diff（个人隔离、旧数据未误改、无越界）
 - [x] `build.gradle` 2.8.0 / 234；`app.json` displayName 仍为「拾光」
 - [x] 发布/回滚手册 `docs/v0.18/ROLLBACK.md`
-- [ ] commit + push
-- [ ] 后端部署 + `/reports` nginx 白名单
-- [ ] 构建 release APK（签名/SHA-256 校验）
-- [ ] 发布 OTA 并验证 info.json / latest.apk
-- [ ] 真机验收（更新、记账、整理、撤销、财报）
+- [x] commit + push（`cbf3e27` 代码、`61403c9` docs）
+- [x] 后端部署 + `/reports` nginx 白名单（16:49 部署，16:50 nginx）
+- [x] 构建 release APK（76,987,569 B / SHA-256 `e991fd2f…5b35`）
+- [x] 发布 OTA 并验证 info.json / latest.apk（2.8.0，force false）
+- [ ] 真机验收（发布时无 adb 设备，待补）
 
 ## 主 Agent 复核修正
 

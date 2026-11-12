@@ -10,11 +10,11 @@
 
 | 项 | 状态 |
 | --- | --- |
-| 线上 App | 2.6.1（versionCode 233），`app.xyvora.me/bookkeeping/info.json` |
-| 服务器 APK 归档 | `2.1.2` ～ `2.6.1` 全部保留，共 13 个包，约 1.1G |
+| 线上 App | 2.8.0（versionCode 234），`app.xyvora.me/bookkeeping/info.json` |
+| 服务器 APK 归档 | `2.1.2` ～ `2.8.0` 全部保留，共 14 个包，约 1.2G |
 | 线上后端 | `ce311ac`（2026-11-11 09:35 部署成功） |
 | CI | `bk-deploy.timer` 每 2 分钟轮询 `main`；迁移前自动 `pg_dump`，保留最近 5 份 `pre-deploy_*` |
-| 当前工作区 | 代码已提交 `cbf3e27`；docs 随本次发布提交；版本 2.8.0 / 234 |
+| 当前工作区 | 代码 `cbf3e27`、docs 已提交；App 2.8.0 已发 OTA |
 | 远程开关 | 无。新 UI 是否出现取决于 APK 版本 |
 | 旧备注整理 | 会把 `note` 移到 `merchant/item` 并清空；**有批次日志，可整批撤销** |
 

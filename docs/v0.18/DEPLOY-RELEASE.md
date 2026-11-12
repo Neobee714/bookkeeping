@@ -51,6 +51,21 @@ curl -s -o /dev/null -w '%{http_code}' https://api.neobee.top/health   # 200
 curl -s -o /dev/null -w '%{http_code}' https://api.neobee.top/reports  # 401
 ```
 
+## 本次发布记录（2026-11-12）
+
+| 项 | 结果 |
+| --- | --- |
+| 后端提交 | `61403c9`，CI 2026-11-12 16:49:51 部署成功（总耗时 1m 3s） |
+| 数据库迁移 | `a4b7c2d9e6f1` / `c7f1a2b3d4e5` / `d8e2f4a6b9c1`，`alembic current` = `d8e2f4a6b9c1` |
+| 迁移前快照 | `/opt/bookkeeping/dumps/pre-deploy_61403c9_20261112_164926.sql.gz`，已另存到本机 `~/bookkeeping-backups/` |
+| nginx | `api-neobee` / `bookkeeping` 均加 `reports`；备份 `*.bak.20261112_165010`；`nginx -t` 通过后 reload |
+| 探活 | `/health` 200；`/reports` 401；`POST /transactions/notes/undo` 401（未登录）；`/stats/breakdown` 401 |
+| APK | 76,987,569 字节；versionCode 234 / versionName 2.8.0；label「拾光」 |
+| APK SHA-256 | `e991fd2f75d3b93f784b93729a7af007f978551aa150835177de3084c53c5b35` |
+| 签名 | `CN=Neobee`，证书 SHA-256 `d8d8202e…f6c06c`，与旧版一致 |
+| OTA | `info.json` version 2.8.0、size 76987569、force false；`latest.apk` 与归档 `bookkeeping-2.8.0.apk` 哈希一致 |
+| 真机 | 发布时 `adb devices` 无设备连接，**未完成真机验收**；需在 vivo 上补跑更新、记账、整理、撤销、财报五项 |
+
 ## 回退
 
 完整的回滚矩阵、App 回滚包构建步骤和数据库恢复注意事项见 `docs/v0.18/ROLLBACK.md`。
