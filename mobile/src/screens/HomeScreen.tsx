@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
+  AppState,
   FlatList,
   Pressable,
   RefreshControl,
@@ -202,6 +203,33 @@ export default function HomeScreen() {
       setError(loadError);
     }
   }, [viewMode, monthKey, viewKey, user?.id]);
+
+  // 从「规划 / 循环」等 tab 回到首页时静默刷新一次：
+  // 循环记账由服务端后台生成，首次进入后不会自动出现在已加载的列表里。
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+  const firstFocusRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocusRef.current) {
+        firstFocusRef.current = false;
+        return;
+      }
+      loadRef.current().catch(() => undefined);
+    }, []),
+  );
+
+  // App 从后台回前台时也刷新一次：循环记账可能是在后台期间生成的。
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        loadRef.current().catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   // 分类表:用于账单行的 emoji 图标与主题色;离线时用缓存,保证新增弹层可用。
   const loadCategories = useCallback(async () => {

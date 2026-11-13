@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.recurring import RecurringRule
 from app.models.transaction import Transaction
 from app.services.recurring_dates import (
+    beijing_today,
     due_dates,
     first_occurrence_on_or_after,
     next_occurrence,
@@ -22,7 +23,7 @@ MAX_PER_RUN = 400
 
 def generate_due(db: Session, today: date | None = None) -> int:
     """把到期规则落成真实账单，返回新增条数。幂等。"""
-    reference = today or date.today()
+    reference = today or beijing_today()
     cutoff = reference - timedelta(days=LOOKBACK_DAYS)
 
     rule_ids = list(
@@ -94,4 +95,19 @@ def _generate_rule(db: Session, rule: RecurringRule, today: date, cutoff: date) 
 
     rule.last_generated_date = dates[-1]
     rule.next_run_date = next_occurrence(rule.freq, rule.start_date, dates[-1])
+    return created
+
+
+def generate_rule_now(db: Session, rule: RecurringRule, today: date | None = None) -> int:
+    """创建/修改规则后立即补落今天到期的这一笔，避免等下一轮调度。
+
+    只处理当前规则，不会顺手补其它规则；停机回溯窗口仍由 _generate_rule 控制。
+    """
+    reference = today or beijing_today()
+    if not rule.enabled or rule.next_run_date > reference:
+        return 0
+    created = _generate_rule(
+        db, rule, reference, reference - timedelta(days=LOOKBACK_DAYS)
+    )
+    db.commit()
     return created

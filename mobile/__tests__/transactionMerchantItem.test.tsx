@@ -14,6 +14,7 @@ jest.mock('../src/api/categories', () => ({
   fetchCategories: jest.fn(async () => [
     { id: 1, name: '餐饮', icon: '🍜', color: '#FF9500', type: 'expense' },
     { id: 2, name: '交通', icon: '🚇', color: '#007AFF', type: 'expense' },
+    { id: 3, name: '娱乐', icon: '🎬', color: '#AF52DE', type: 'expense' },
   ]),
 }));
 
@@ -180,6 +181,27 @@ describe('AddTransactionSheet · 商家 / 吃了什么 / 评价', () => {
     expect(texts).toContain('＋自定义');
     expect(texts).toContain('牛肉面');
     expect(texts).toContain('评价(可选)');
+  });
+
+  it('娱乐分类显示「玩了什么」，交通仍用通用项目', async () => {
+    const tree = await render(
+      <AddTransactionSheet
+        visible
+        editingItem={{
+          ...editingItem,
+          category: '娱乐',
+          merchant: null,
+          item: null,
+          note: null,
+        }}
+        onClose={() => undefined}
+        onSubmit={jest.fn(async () => undefined)}
+      />,
+    );
+    const texts = textsOf(tree);
+
+    expect(texts).toContain('玩了什么(可选)');
+    expect(texts).not.toContain('吃了什么(可选)');
   });
 
   it('非餐饮分类把「吃了什么」改为「项目」自由输入', async () => {

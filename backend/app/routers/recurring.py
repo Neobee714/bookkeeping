@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+import logging
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,7 +14,10 @@ from app.models.recurring import RecurringRule
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.recurring import RecurringCreateRequest, RecurringUpdateRequest
-from app.services.recurring_dates import first_occurrence_on_or_after
+from app.services.recurring import generate_rule_now
+from app.services.recurring_dates import beijing_today, first_occurrence_on_or_after
+
+logger = logging.getLogger("bookkeeping.recurring")
 
 router = APIRouter(prefix="/recurring", tags=["recurring"])
 
@@ -107,11 +110,18 @@ def create_recurring(
         freq=payload.freq,
         start_date=payload.start_date,
         next_run_date=first_occurrence_on_or_after(
-            payload.freq, payload.start_date, date.today()
+            payload.freq, payload.start_date, beijing_today()
         ),
     )
     db.add(rule)
     db.commit()
+    db.refresh(rule)
+    try:
+        generate_rule_now(db, rule)
+    except Exception:
+        # 规则已经创建成功；立即补账失败只影响这一次，下一轮调度会重试。
+        db.rollback()
+        logger.exception("循环规则创建后立即生成失败 rule_id=%s", rule.id)
     db.refresh(rule)
     return success_response(data=_serialize_rule(rule), message="循环规则创建成功")
 
@@ -142,10 +152,16 @@ def update_recurring(
     if should_recalculate:
         # 暂停恢复或锚点变化时从今天重新起算，不补暂停期间的账。
         rule.next_run_date = first_occurrence_on_or_after(
-            rule.freq, rule.start_date, date.today()
+            rule.freq, rule.start_date, beijing_today()
         )
 
     db.commit()
+    db.refresh(rule)
+    try:
+        generate_rule_now(db, rule)
+    except Exception:
+        db.rollback()
+        logger.exception("循环规则修改后立即生成失败 rule_id=%s", rule.id)
     db.refresh(rule)
     return success_response(data=_serialize_rule(rule), message="循环规则修改成功")
 

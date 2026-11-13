@@ -53,7 +53,7 @@ const suggestLabel = (suggestion: NoteSuggestion): string | null => {
     case 'merchant':
       return '像店名';
     case 'item':
-      return '像菜品';
+      return '像项目';
     case 'both':
       return '店 + 菜品';
     case 'evaluation':
@@ -97,7 +97,7 @@ const buildDrafts = (
 /**
  * 整理旧备注（ARCH 3.5）。
  *
- * 只处理 note_kind IS NULL 的历史备注：每条可选商家 / 吃了什么（可同选）/
+ * 只处理 note_kind IS NULL 的历史备注：每条可选商家 / 项目（可同选）/
  * 评价 / 跳过，保存时逐条串行调用 reclassify。离线只读，写操作禁用。
  */
 export default function NoteCleanupScreen() {
@@ -453,7 +453,7 @@ export default function NoteCleanupScreen() {
                 </Text>
               ) : null}
               <Text style={[styles.introHint, { color: colors.textTertiary }]}>
-                商家和「吃了什么」可以同时选；选「评价」则只保留备注，不进入排行。
+                商家和「项目」可以同时选；选「评价」则只保留备注，不进入排行。
               </Text>
             </View>
 
@@ -517,7 +517,7 @@ export default function NoteCleanupScreen() {
                       {(
                         [
                           ['merchant', '商家'],
-                          ['item', '吃了什么'],
+                          ['item', '项目'],
                           ['evaluation', '评价'],
                           ['skip', '跳过'],
                         ] as const
@@ -586,7 +586,7 @@ export default function NoteCleanupScreen() {
                         <Text
                           style={[styles.fieldLabel, { color: colors.textTertiary }]}
                         >
-                          吃了什么
+                          项目
                         </Text>
                         <TextInput
                           style={[
@@ -615,12 +615,12 @@ export default function NoteCleanupScreen() {
                           : draft.merchant && draft.item
                             ? `一笔拆成商家「${
                                 draft.merchantName.trim() || candidate.note
-                              }」+ 菜品「${
+                              }」+ 项目「${
                                 draft.itemName.trim() || candidate.note
                               }」`
                             : draft.merchant
                               ? `应用到 ${candidate.count} 笔同名账单`
-                              : '保持为菜品，进入「爱吃的」排行'}
+                              : '作为项目保存，不改金额和日期'}
                     </Text>
                   </View>
                 );

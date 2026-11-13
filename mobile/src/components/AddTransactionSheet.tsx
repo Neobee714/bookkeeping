@@ -84,8 +84,26 @@ const FIXED_ITEM_CHIPS = [
   '饺子',
 ];
 
-/** 只有餐饮分类展示「吃了什么」，其它分类走「项目」自由输入。 */
+/** 只有餐饮分类展示固定菜品 chips；其它分类走自由输入，但按分类换更自然的文案。 */
 const DINING_CATEGORY = '餐饮';
+
+const DEFAULT_ITEM_FIELD = {
+  label: '项目',
+  placeholder: '房租 / 地铁 / 日用品',
+};
+
+const ITEM_FIELD_COPY: Record<string, { label: string; placeholder: string }> = {
+  餐饮: { label: '吃了什么', placeholder: '牛肉面 / 麻辣烫' },
+  零食: { label: '吃了什么', placeholder: '薯片 / 奶茶' },
+  娱乐: { label: '玩了什么', placeholder: '电影 / 桌游 / 演唱会' },
+  购物: { label: '买了什么', placeholder: '衣服 / 日用品' },
+  交通: { label: '项目', placeholder: '地铁 / 打车' },
+  旅游: { label: '项目', placeholder: '机票 / 酒店 / 门票' },
+  医疗: { label: '项目', placeholder: '挂号 / 药品' },
+  教育: { label: '项目', placeholder: '课程 / 书' },
+  居住: { label: '项目', placeholder: '房租 / 水电' },
+  收入: { label: '项目', placeholder: '工资 / 奖金 / 红包' },
+};
 
 /** YYYY-MM-DD -> 本地时区 Date(避免 new Date('YYYY-MM-DD') 的 UTC 偏移)。 */
 const parseDateStr = (value: string): Date => {
@@ -311,6 +329,7 @@ export default function AddTransactionSheet({
   const trimmedMerchant = merchant.trim();
   const trimmedItemName = itemName.trim();
   const isDining = category === DINING_CATEGORY;
+  const itemField = ITEM_FIELD_COPY[category] ?? DEFAULT_ITEM_FIELD;
 
   /** 最近 90 天该分类的高频商家（旧后端不返回时为空数组）。 */
   const merchantChips = useMemo<QuickNameCandidate[]>(
@@ -634,9 +653,9 @@ export default function AddTransactionSheet({
                 </ScrollView>
               ) : null}
 
-              {/* 吃了什么（餐饮 = 固定 chips + 自定义；其它分类 = 项目自由输入） */}
+              {/* 吃了什么 / 玩了什么 / 项目：餐饮 = 固定 chips + 自定义；其它分类 = 自由输入 */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {isDining ? '吃了什么(可选)' : '项目(可选)'}
+                {`${itemField.label}(可选)`}
               </Text>
               {isDining ? (
                 <>
@@ -725,7 +744,7 @@ export default function AddTransactionSheet({
                         style={[styles.fieldInput, { color: colors.textPrimary }]}
                         value={itemName}
                         onChangeText={setItemName}
-                        placeholder="牛肉面 / 麻辣烫"
+                        placeholder={itemField.placeholder}
                         placeholderTextColor={colors.textTertiary}
                         maxLength={50}
                       />
@@ -738,7 +757,7 @@ export default function AddTransactionSheet({
                     style={[styles.fieldInput, { color: colors.textPrimary }]}
                     value={itemName}
                     onChangeText={setItemName}
-                    placeholder="房租 / 地铁 / 日用品"
+                    placeholder={itemField.placeholder}
                     placeholderTextColor={colors.textTertiary}
                     maxLength={50}
                   />

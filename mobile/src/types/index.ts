@@ -108,7 +108,7 @@ export interface Transaction {
   note: string | null;
   /** 商家；为空表示未填。 */
   merchant?: string | null;
-  /** 吃了什么 / 项目；为空表示未填。 */
+  /** 项目 / 吃了什么 / 玩了什么；为空表示未填。 */
   item?: string | null;
   /** evaluation = 已确认的评价；null / undefined = 旧备注未整理。 */
   note_kind?: NoteKind | null;

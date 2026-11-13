@@ -161,7 +161,7 @@ describe('NoteCleanupScreen', () => {
     expect(texts.some((text) => text.includes('去重后 7 个'))).toBe(true);
     expect(texts).toEqual(expect.arrayContaining(['和府捞面', '面', '有点咸']));
     expect(texts).toEqual(
-      expect.arrayContaining(['像店名', '像菜品', '像评价']),
+      expect.arrayContaining(['像店名', '像项目', '像评价']),
     );
     expect(texts.some((text) => text.includes('12 笔 · ¥384'))).toBe(true);
     expect(texts).toContain('保存整理结果（0）');
@@ -192,7 +192,7 @@ describe('NoteCleanupScreen', () => {
     const tree = await render(<NoteCleanupScreen />);
 
     await pressByText(tree, '商家');
-    await pressByText(tree, '吃了什么');
+    await pressByText(tree, '项目');
     await pressByText(tree, '保存整理结果（1）');
 
     expect(mockedReclassify).toHaveBeenCalledWith(

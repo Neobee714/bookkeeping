@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from calendar import monthrange
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 BASE_FREQS = ("daily", "weekly", "monthly", "yearly")
 
@@ -13,6 +13,11 @@ FREQS = BASE_FREQS + WORKDAY_FREQS
 
 # first_occurrence_on_or_after 的防御性迭代上限。
 MAX_ITERATIONS = 500
+
+
+def beijing_today() -> date:
+    """业务日期：固定 Asia/Shanghai（+08:00），不依赖容器本地时区。"""
+    return (datetime.now(timezone.utc) + timedelta(hours=8)).date()
 
 
 def _validate_freq(freq: str) -> None:

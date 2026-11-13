@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -18,6 +18,7 @@ from app.models.enums import TransactionType
 from app.models.recurring import RecurringRule
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.services.recurring_dates import beijing_today
 
 
 @pytest.fixture()
@@ -128,9 +129,19 @@ def test_create_rule_response_contract(
 def test_create_with_past_start_does_not_backfill(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
-    test_client, _holder, _session_factory = client
+    test_client, _holder, session_factory = client
     data = _create(test_client, freq="daily", start_date="2020-01-01")
-    assert data["next_run_date"] == date.today().isoformat()
+    # 创建时立即补今天这一笔，但不回溯 2020 年以来的历史。
+    assert data["next_run_date"] == (beijing_today() + timedelta(days=1)).isoformat()
+
+    db = session_factory()
+    try:
+        rows = list(db.scalars(select(Transaction)).all())
+        assert len(rows) == 1
+        assert rows[0].date == beijing_today()
+        assert rows[0].recurring_rule_id == data["id"]
+    finally:
+        db.close()
 
 
 def test_list_orders_by_enabled_then_next_run(
@@ -237,14 +248,23 @@ def test_patch_amount_keeps_next_run_date(
 def test_patch_freq_recalculates_next_run_date(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
-    test_client, _holder, _session_factory = client
+    test_client, _holder, session_factory = client
     rule = _create(test_client, freq="monthly", start_date="2020-01-15")
 
     response = test_client.patch(f"/recurring/{rule['id']}", json={"freq": "daily"})
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["freq"] == "daily"
-    assert data["next_run_date"] == date.today().isoformat()
+    # 改成每天后，今天这一笔立即补落，下期是明天。
+    assert data["next_run_date"] == (beijing_today() + timedelta(days=1)).isoformat()
+
+    db = session_factory()
+    try:
+        rows = list(db.scalars(select(Transaction)).all())
+        assert len(rows) == 1
+        assert rows[0].date == beijing_today()
+    finally:
+        db.close()
 
 
 def test_patch_enable_restarts_from_next_due_date(
