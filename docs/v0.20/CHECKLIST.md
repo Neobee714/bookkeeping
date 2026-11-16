@@ -29,6 +29,6 @@
 - [x] 开 R8 + shrinkResources（`enableProguardInReleaseBuilds = true`，dex 17.9MB→预计 8-11MB）
 - [x] proguard-rules.pro 补 RN 反射面保留（@ReactMethod、VoiceModule/UpdaterModule/ApkDownloadService）
 - [x] 版本号：versionCode 236→237、versionName 2.9.0→2.9.1
-- [ ] 出包验证（QA x86_64 包模拟器冒烟 → 正式 arm64 包 aapt2/尺寸/sha256/dexdump）
+- [x] 出包验证 ✅ 2026-11-16：QA x86_64 包模拟器冒烟通过（启动无崩溃、弹层按钮初屏可见、markdown 渲染正常）；正式 arm64 包 22.0MB、aapt2=2.9.1(237)、仅 arm64-v8a、签名 d8d8202e… 与旧版一致、包内 JS 含 v0.20 改动且为生产域名；dexdump 确认原生模块反射面保留
 - [ ] 真机（vivo）验证待连接后补
-- [ ] commit + push
+- [x] commit + push ✅ 2026-11-16（fix 9b9b59c / chore ea6302e / docs 82547bd；CI 已记录 82547bd，mobile-only 未重启服务，无 ALERT）
