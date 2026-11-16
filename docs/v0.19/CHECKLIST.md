@@ -27,9 +27,10 @@
 - ✅ 2026-11-16 `cd mobile && npx tsc --noEmit`
 - ✅ 2026-11-16 `cd mobile && npx jest`（18 suites / 134 tests）
 - ✅ 2026-11-16 `cd mobile && npx eslint .`（0 error，警告与基线一致）
-- ✅ 2026-11-16 版本 2.9.0 / versionCode 236（已改；APK 未构建）
+- ✅ 2026-11-16 版本 2.9.0 / versionCode 236（已构建，APK 76,985,005 字节）
 - ✅ 2026-11-16 push `caaa93f`，后端与迁移已上线（last-deployed=caaa93f，无 ALERT）
-- ⬜ APK 构建 / OTA（2.9.0 表单改动需要新 APK，AI 修复已随后端生效）
+- ✅ 2026-11-16 APK 2.9.0 构建并发布 OTA（sha256 `3e542db2…69c8de`，info.json 已更新，force=false）
+- ⬜ 真机验收（用户更新后按 DEPLOY-RELEASE.md 的清单过一遍）
 
 ## 阶段四：AI 助手修复（2026-11-16）
 
