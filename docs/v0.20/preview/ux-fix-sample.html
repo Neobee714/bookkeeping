@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-skin="aurora">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拾光 UX 修复样例（提案）— 记账弹层按钮吸底 · 小光 Markdown</title>
+<style>
+  /* ============ 四套皮肤变量（对齐 mobile/src/theme/skins/*.ts） ============ */
+  :root, [data-skin="aurora"] {
+    --background:#F5F7FB; --card:#FFFFFF; --surface:#F1F3F9;
+    --text-primary:#14161F; --text-secondary:#646B80; --text-tertiary:#98A0B0;
+    --primary:#6D5BFF; --secondary:#1EA88F;
+    --income:#0F9E76; --expense:#E0566E; --border:#E8EBF3;
+    --chip-soft-bg:#EFECFF; --chip-soft-text:#5B4BD6;
+    --on-hero:#FFFFFF; --on-hero-muted:rgba(255,255,255,.82); --on-accent:#FFFFFF;
+    --tab-bar-bg:#FFFFFF; --tab-inactive:#98A0B0;
+    --overlay:rgba(14,16,28,.45);
+    --grad:linear-gradient(135deg,#5B49F5,#17977F);
+    --hero-grad:linear-gradient(135deg,#6D5BFF,#1EA88F);
+    --hero-flat:#FFFFFF; /* heroGradient 为空时的浅色卡（neu） */
+    --shadow:0 8px 22px rgba(20,22,40,.07);
+  }
+  [data-skin="candy"] {
+    --background:#FFF8F5; --card:#FFFFFF; --surface:#FFF1F6;
+    --text-primary:#3D2B36; --text-secondary:#8A7480; --text-tertiary:#B8A3AE;
+    --primary:#F4739B; --secondary:#F49B67;
+    --income:#2FA98A; --expense:#E85E7C; --border:#F7E3EB;
+    --chip-soft-bg:#FFEDF3; --chip-soft-text:#C2557A;
+    --on-hero:#4A2230; --on-hero-muted:rgba(74,34,48,.72); --on-accent:#4A2230;
+    --tab-bar-bg:#FFFFFF; --tab-inactive:#B8A3AE;
+    --overlay:rgba(60,30,40,.42);
+    --grad:linear-gradient(135deg,#F4739B,#F49B67);
+    --hero-grad:linear-gradient(135deg,#F4739B,#F49B67);
+    --shadow:0 8px 22px rgba(120,50,80,.08);
+  }
+  [data-skin="neon"] {
+    --background:#08080F; --card:#111120; --surface:#191927;
+    --text-primary:#EDEDF7; --text-secondary:#9A9AB8; --text-tertiary:#6E6E8C;
+    --primary:#8B6CFF; --secondary:#00E0FF;
+    --income:#3DFFA2; --expense:#FF5C8A; --border:#232338;
+    --chip-soft-bg:#1E1B38; --chip-soft-text:#B9A8FF;
+    --on-hero:#FFFFFF; --on-hero-muted:rgba(255,255,255,.72); --on-accent:#FFFFFF;
+    --tab-bar-bg:#0B0B14; --tab-inactive:#6E6E8C;
+    --overlay:rgba(0,0,0,.66);
+    --grad:linear-gradient(135deg,#6A4BF0,#0093B5);
+    --hero-grad:linear-gradient(135deg,#241B4D,#0C0C18);
+    --shadow:0 8px 22px rgba(0,0,0,.35);
+  }
+  [data-skin="neu"] {
+    --background:#E9EDF4; --card:#E9EDF4; --surface:#E9EDF4;
+    --text-primary:#2B3445; --text-secondary:#6F7A8E; --text-tertiary:#96A0B2;
+    --primary:#4F6BED; --secondary:#7C93FF;
+    --income:#2E9E6B; --expense:#D95555; --border:#DCE3EE;
+    --chip-soft-bg:#E9EDF4; --chip-soft-text:#4F6BED;
+    --on-hero:#2B3445; --on-hero-muted:#6F7A8E; --on-accent:#FFFFFF;
+    --tab-bar-bg:#E9EDF4; --tab-inactive:#96A0B2;
+    --overlay:rgba(30,40,60,.40);
+    --grad:linear-gradient(135deg,#4F6BED,#4F6BED);
+    --hero-grad:none; --hero-flat:#E9EDF4;
+    --shadow:6px 6px 16px rgba(163,177,198,.5), -6px -6px 16px rgba(255,255,255,.9);
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#EDEFF4; color:#222; padding:28px 24px 48px;
+  }
+  .page-head { max-width:1120px; margin:0 auto 8px; }
+  h1 { font-size:21px; }
+  .proposal-tag {
+    display:inline-block; background:#B45309; color:#fff; font-size:12px;
+    padding:2px 10px; border-radius:999px; vertical-align:3px; margin-left:8px;
+  }
+  .page-sub { color:#555; font-size:13px; margin-top:6px; line-height:1.7; }
+  .skin-bar {
+    max-width:1120px; margin:14px auto 22px; display:flex; gap:8px; align-items:center;
+    flex-wrap:wrap;
+  }
+  .skin-bar span { font-size:12px; color:#666; margin-right:4px; }
+  .skin-btn {
+    border:1px solid #C9CEDB; background:#fff; color:#333; font-size:12px;
+    padding:6px 14px; border-radius:999px; cursor:pointer;
+  }
+  .skin-btn.active { background:#222; color:#fff; border-color:#222; }
+
+  section { max-width:1120px; margin:0 auto 40px; }
+  .sec-head { font-size:16px; font-weight:700; margin-bottom:4px; }
+  .sec-head .fixno { color:#B45309; }
+  .sec-desc { font-size:12.5px; color:#555; line-height:1.8; margin-bottom:14px; }
+  .sec-desc b { color:#111; }
+
+  .frames { display:flex; gap:26px; flex-wrap:wrap; }
+  .frame-wrap { width:320px; }
+  .frame-cap {
+    font-size:12px; color:#444; font-weight:600; margin-bottom:8px; line-height:1.5;
+  }
+  .frame-cap i { font-style:normal; color:#B45309; font-weight:500; display:block; margin-top:2px; }
+  .phone {
+    width:320px; height:720px; border-radius:26px; overflow:hidden; position:relative;
+    background:var(--background); border:1px solid rgba(0,0,0,.18);
+    box-shadow:0 12px 30px rgba(20,22,40,.14);
+    font-size:11px;
+  }
+  .screen { position:absolute; inset:0; padding-top:26px; overflow:hidden; }
+  .statusbar {
+    position:absolute; top:0; left:0; right:0; height:26px; display:flex;
+    justify-content:space-between; align-items:center; padding:0 14px;
+    font-size:9.5px; color:var(--text-primary); z-index:5;
+  }
+  [data-skin="neon"] .statusbar { color:#EDEDF7; }
+
+  /* ============ 首页（列表屏） ============ */
+  .home-head { padding:10px 16px 2px; }
+  .hello { font-size:10px; color:var(--text-tertiary); }
+  .appname { font-size:22px; font-weight:800; color:var(--text-primary); }
+  .hero {
+    margin:10px 14px 6px; border-radius:20px; padding:14px 16px 12px;
+    background:var(--hero-grad); color:var(--on-hero); box-shadow:var(--shadow);
+  }
+  [data-skin="neu"] .hero { background:var(--hero-flat); color:var(--on-hero); }
+  .hero-month { display:flex; justify-content:space-between; font-size:10.5px; opacity:.92; }
+  .hero-label { font-size:9.5px; color:var(--on-hero-muted); margin-top:8px; }
+  .hero-amount { font-size:24px; font-weight:800; letter-spacing:.3px; }
+  .hero-split { display:flex; gap:8px; margin-top:9px; }
+  .hero-cell {
+    flex:1; border-radius:12px; padding:7px 10px;
+    background:rgba(255,255,255,.16);
+  }
+  [data-skin="candy"] .hero-cell, [data-skin="neu"] .hero-cell { background:rgba(255,255,255,.5); }
+  [data-skin="neu"] .hero-cell { background:rgba(120,140,180,.12); }
+  .hero-cell .k { font-size:8.5px; color:var(--on-hero-muted); }
+  .hero-cell .v { font-size:12px; font-weight:700; margin-top:1px; }
+
+  .daygroup { margin:8px 14px 0; }
+  .dayrow { display:flex; justify-content:space-between; align-items:baseline; margin:6px 2px 4px; }
+  .dayrow .d { font-size:10.5px; font-weight:700; color:var(--text-primary); }
+  .dayrow .s { font-size:9px; color:var(--text-tertiary); }
+  .tx {
+    display:flex; align-items:center; gap:9px; background:var(--card);
+    border-radius:14px; padding:9px 11px; margin-bottom:7px; box-shadow:var(--shadow);
+  }
+  .tx-icon {
+    width:30px; height:30px; border-radius:9px; background:var(--surface);
+    display:flex; align-items:center; justify-content:center; font-size:14px; flex:none;
+  }
+  .tx-main { flex:1; min-width:0; }
+  .tx-title { font-size:11px; font-weight:600; color:var(--text-primary); }
+  .tx-sub { font-size:8.5px; color:var(--text-tertiary); margin-top:1px; }
+  .tx-amt { font-size:11.5px; font-weight:700; color:var(--expense); white-space:nowrap; }
+
+  .fab {
+    position:absolute; right:16px; bottom:78px; width:48px; height:48px; border-radius:50%;
+    background:var(--grad); color:var(--on-accent); font-size:22px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 20px rgba(109,91,255,.35);
+  }
+  .mic {
+    position:absolute; right:12px; bottom:70px; width:19px; height:19px; border-radius:50%;
+    background:var(--card); border:1px solid var(--border); font-size:9px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tabbar {
+    position:absolute; left:0; right:0; bottom:0; height:56px; display:flex;
+    background:var(--tab-bar-bg); border-top:1px solid var(--border);
+  }
+  .tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  .tab .ic { font-size:14px; }
+  .tab .tx2 { font-size:8px; color:var(--tab-inactive); }
+  .tab.on .tx2 { color:var(--primary); font-weight:700; }
+
+  /* ============ 记账弹层 ============ */
+  .overlay { position:absolute; inset:0; background:var(--overlay); }
+  .sheet {
+    position:absolute; left:0; right:0; bottom:0; background:var(--card);
+    border-radius:22px 22px 0 0; display:flex; flex-direction:column;
+    max-height:92%; overflow:hidden;
+  }
+  [data-skin="neon"] .sheet { background:#121620; }
+  .sheet-handle { width:38px; height:4px; border-radius:2px; background:var(--border); margin:8px auto 2px; }
+  .sheet-head {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 18px 8px;
+  }
+  .sheet-title { font-size:14px; font-weight:800; color:var(--text-primary); }
+  .sheet-close {
+    font-size:9.5px; color:var(--text-secondary); background:var(--surface);
+    padding:5px 11px; border-radius:999px;
+  }
+  .sheet-scroll {
+    flex:1 1 auto; overflow-y:auto; padding:2px 18px 14px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .sheet-scroll::-webkit-scrollbar { width:3px; }
+  .sheet-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .seg { display:flex; gap:6px; margin:4px 0 12px; }
+  .seg div {
+    flex:1; text-align:center; padding:7px 0; border-radius:999px; font-size:11px;
+    font-weight:600; background:var(--surface); color:var(--text-secondary);
+  }
+  .seg div.on { background:var(--grad); color:var(--on-accent); }
+
+  .field-label { font-size:9px; color:var(--text-secondary); margin:10px 0 5px; }
+  .field {
+    background:var(--surface); border-radius:12px; padding:10px 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  [data-skin="neon"] .field { background:#1F2330; }
+  .field .ph { color:var(--text-tertiary); font-size:11px; }
+  .field .val { color:var(--text-primary); font-size:11px; font-weight:600; }
+  .field .r { margin-left:auto; font-size:9px; color:var(--primary); font-weight:600; }
+  .amount-field { padding:13px 12px; }
+  .amount-field .cur { color:var(--primary); font-size:13px; font-weight:700; }
+  .amount-field .num { font-size:17px; font-weight:800; color:var(--text-primary); }
+  .quick-chip {
+    display:inline-block; font-size:8.5px; color:var(--chip-soft-text);
+    background:var(--chip-soft-bg); border-radius:999px; padding:3px 9px; margin-top:5px;
+  }
+
+  .cat-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+  .cat {
+    width:calc((100% - 18px) / 4); border-radius:12px; padding:8px 2px 6px;
+    text-align:center; background:var(--surface); position:relative; overflow:hidden;
+  }
+  [data-skin="neon"] .cat { background:#1F2330; }
+  .cat .e { font-size:13px; display:block; position:relative; z-index:1; }
+  .cat .n { font-size:8px; color:var(--text-primary); display:block; margin-top:2px; position:relative; z-index:1; }
+  /* 选中态：渐变直接铺背景，内容留在正常流 */
+  .cat.on { background:var(--grad); }
+  .cat.on .n { color:var(--on-accent); }
+  .cat.spacer { background:transparent; box-shadow:none; }
+
+  .sheet-note {
+    font-size:8.5px; color:var(--text-tertiary); line-height:1.7;
+    background:var(--surface); border-radius:10px; padding:8px 10px; margin-top:12px;
+  }
+  /* ====== 修复点：按钮移出滚动区，footer 吸底 ====== */
+  .sheet-footer {
+    flex:none; padding:10px 18px 22px; border-top:1px solid var(--border);
+    background:var(--card);
+  }
+  [data-skin="neon"] .sheet-footer { background:#121620; }
+  .save-btn {
+    width:100%; border:none; border-radius:14px; padding:13px 0; font-size:13px;
+    font-weight:800; color:var(--on-accent); background:var(--grad); cursor:pointer;
+    letter-spacing:2px;
+  }
+  .fix-mark {
+    position:absolute; left:10px; right:10px; bottom:10px; top:auto;
+    border:1.5px dashed #B45309; border-radius:18px; pointer-events:none; height:76px;
+  }
+  .fix-tag {
+    position:absolute; left:12px; bottom:92px; background:#B45309; color:#fff;
+    font-size:8.5px; padding:3px 8px; border-radius:999px; z-index:6;
+  }
+
+  /* ============ 小光聊天 ============ */
+  .chat-head { padding:12px 16px 6px; }
+  .chat-title { font-size:17px; font-weight:800; color:var(--text-primary); }
+  .chat-sub { font-size:9px; color:var(--text-tertiary); margin-top:2px; }
+  .chat-body { padding:8px 14px 12px; overflow-y:auto; height:calc(100% - 112px); }
+  .bubble { max-width:88%; border-radius:14px; padding:9px 12px; margin-bottom:10px; font-size:10px; line-height:1.75; }
+  .bubble.user {
+    margin-left:auto; background:var(--grad); color:var(--on-accent);
+    border-bottom-right-radius:4px; font-size:10.5px;
+  }
+  .bubble.ai {
+    background:var(--card); color:var(--text-primary); border-bottom-left-radius:4px;
+    box-shadow:var(--shadow);
+  }
+  [data-skin="neon"] .bubble.ai { background:#171A24; }
+  .raw { white-space:pre-wrap; word-break:break-all; font-family:"SF Mono",Menlo,monospace; font-size:8.8px; }
+  .md b { font-weight:800; }
+  .md ul { padding-left:14px; margin:3px 0; }
+  .md li { margin:1.5px 0; }
+  .md table {
+    border-collapse:collapse; margin:6px 0; width:100%; font-size:8.8px;
+  }
+  .md th, .md td {
+    border:1px solid var(--border); padding:3px 6px; text-align:left;
+    color:var(--text-primary);
+  }
+  .md th { background:var(--surface); font-weight:700; }
+  [data-skin="neon"] .th-fix { background:#1F2330; }
+  .md code {
+    background:var(--surface); border-radius:4px; padding:0 4px;
+    font-family:"SF Mono",Menlo,monospace; font-size:8.8px; color:var(--chip-soft-text);
+  }
+  .chat-input {
+    position:absolute; left:12px; right:12px; bottom:12px;
+    display:flex; gap:8px; align-items:center;
+  }
+  .chat-input .box {
+    flex:1; background:var(--surface); border-radius:999px; padding:9px 14px;
+    font-size:9.5px; color:var(--text-tertiary);
+  }
+  .chat-input .send {
+    width:32px; height:32px; border-radius:50%; background:var(--grad);
+    color:var(--on-accent); display:flex; align-items:center; justify-content:center; font-size:12px;
+  }
+
+  /* ============ 说明区 ============ */
+  .notes {
+    max-width:1120px; margin:0 auto; background:#fff; border:1px solid #D8DCE6;
+    border-radius:14px; padding:18px 22px; font-size:12.5px; line-height:2; color:#333;
+  }
+  .notes h3 { font-size:13px; margin:10px 0 2px; }
+  .notes li { margin-left:18px; }
+  .badge {
+    display:inline-block; font-size:10px; padding:1px 8px; border-radius:999px;
+    background:#FEF3C7; color:#92400E; margin-right:4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>拾光 UX 修复样例<span class="proposal-tag">提案 · 未动代码</span></h1>
+  <div class="page-sub">
+    对象：<b>2.9.0 UX 走查</b>的两个高优先级问题 —— ① 记账弹层初屏没有「确认新增」按钮　② 小光 markdown 原文直出。<br>
+    画的是修复后的预期效果；数字跨屏自洽（弹层里那笔 28.00 就是结果页新增的那条）。切皮肤看四套配色。
+  </div>
+</div>
+
+<div class="skin-bar">
+  <span>皮肤：</span>
+  <button class="skin-btn active" data-set="aurora">流动极光</button>
+  <button class="skin-btn" data-set="candy">糖果马卡龙</button>
+  <button class="skin-btn" data-set="neon">暗夜霓虹</button>
+  <button class="skin-btn" data-set="neu">柔和浮雕</button>
+  <span style="margin-left:10px">（皮肤切换单看配色，与修复内容无关）</span>
+</div>
+
+<!-- ================= 修复 1 ================= -->
+<section>
+  <div class="sec-head"><span class="fixno">修复 1</span> · 记账弹层「确认新增」按钮吸底常驻</div>
+  <div class="sec-desc">
+    现状：按钮是滚动区的最后一个元素，表单超过一屏后掉到折叠线以下。<b>修法：按钮移出滚动区，放在弹层固定 footer；内容区独立滚动，按钮永远在弹层底部</b>。
+    弹层 2 是可交互的 —— 拖动表单内容或点「滚动试试」，按钮不动。
+  </div>
+  <div class="frames">
+
+    <div class="frame-wrap">
+      <div class="frame-cap">① 列表（记账前）<i>入口：右下角 +</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="home-head">
+            <div class="hello">Hi, 洗衣粉</div>
+            <div class="appname">拾光</div>
+          </div>
+          <div class="hero">
+            <div class="hero-month"><span>‹</span><span>2026 年 11 月</span><span>›</span></div>
+            <div class="hero-label">本月结余</div>
+            <div class="hero-amount">¥-70.50</div>
+            <div class="hero-split">
+              <div class="hero-cell"><div class="k">收入</div><div class="v">¥0.00</div></div>
+              <div class="hero-cell"><div class="k">支出</div><div class="v">¥70.50</div></div>
+            </div>
+          </div>
+          <div class="daygroup">
+            <div class="dayrow"><span class="d">今天</span><span class="s">支出 ¥4.00</span></div>
+            <div class="tx">
+              <div class="tx-icon">🚇</div>
+              <div class="tx-main"><div class="tx-title">地铁</div><div class="tx-sub">交通 · 无备注</div></div>
+              <div class="tx-amt">-¥ 4.00</div>
+            </div>
+            <div class="dayrow"><span class="d">11 月 15 日</span><span class="s">支出 ¥66.50</span></div>
+            <div class="tx">
+              <div class="tx-icon">🛒</div>
+              <div class="tx-main"><div class="tx-title">盒马</div><div class="tx-sub">日用 · 周末采购</div></div>
+              <div class="tx-amt">-¥ 66.50</div>
+            </div>
+          </div>
+          <div class="fab">＋</div>
+          <div class="mic">🎙</div>
+          <div class="tabbar">
+            <div class="tab on"><span class="ic">🏠</span><span class="tx2">首页</span></div>
+            <div class="tab"><span class="ic">📊</span><span class="tx2">图表</span></div>
+            <div class="tab"><span class="ic">✨</span><span class="tx2">小光</span></div>
+            <div class="tab"><span class="ic">🎯</span><span class="tx2">规划</span></div>
+            <div class="tab"><span class="ic">👤</span><span class="tx2">我的</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="frame-cap">② 记账弹层（修复后 · 可交互）<i>按钮吸底：滚动内容它也不动</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="home-head">
+            <div class="hello">Hi, 洗衣粉</div>
+            <div class="appname">拾光</div>
+          </div>
+          <div class="overlay"></div>
+          <div class="sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-head">
+              <div class="sheet-title">新增账单</div>
+              <div class="sheet-close">关闭</div>
+            </div>
+            <div class="sheet-scroll" id="sheetScroll">
+              <div class="seg"><div class="on">支出</div><div>收入</div></div>
+              <div class="field-label">金额</div>
+              <div class="field amount-field"><span class="cur">¥</span><span class="num">28.00</span></div>
+              <div class="field-label">商家(可选)</div>
+              <div class="field"><span class="val">和府捞面</span></div>
+              <div class="quick-chip">和府捞面 3 次</div>
+              <div class="field-label">备注(可选)</div>
+              <div class="field"><span class="val">牛肉面</span><span class="r">＋收藏</span></div>
+              <div class="field-label">日期</div>
+              <div class="field"><span class="val">2026-11-16</span><span class="r">选择 ›</span></div>
+              <div class="quick-chip">✔ 同上次 11-16</div>
+              <div class="field-label">分类</div>
+              <div class="cat-grid">
+                <div class="cat on"><span class="e">🍜</span><span class="n">餐饮</span></div>
+                <div class="cat"><span class="e">🚌</span><span class="n">交通</span></div>
+                <div class="cat"><span class="e">🛒</span><span class="n">日用</span></div>
+                <div class="cat"><span class="e">🛍️</span><span class="n">购物</span></div>
+                <div class="cat"><span class="e">🎮</span><span class="n">娱乐</span></div>
+                <div class="cat"><span class="e">💊</span><span class="n">医疗</span></div>
+                <div class="cat"><span class="e">📚</span><span class="n">教育</span></div>
+                <div class="cat"><span class="e">🍰</span><span class="n">零食</span></div>
+                <div class="cat"><span class="e">🏠</span><span class="n">居住</span></div>
+                <div class="cat"><span class="e">📌</span><span class="n">其他</span></div>
+                <div class="cat spacer"></div>
+                <div class="cat spacer"></div>
+              </div>
+              <div class="sheet-note">
+                提交失败不阻塞记账主流程；离线时自动进队列，恢复网络后同步（行为不变）。
+              </div>
+            </div>
+            <div class="sheet-footer">
+              <button class="save-btn" onclick="fakeSave()">确认新增</button>
+            </div>
+          </div>
+          <div class="fix-tag">修复点 · footer 常驻</div>
+          <div class="fix-mark"></div>
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <button class="skin-btn" onclick="scrollSheet()">▶ 滚动试试（按钮不动）</button>
+      </div>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="frame-cap">③ 结果页（记账后）<i>28.00 入账，余额与分组小计即时更新</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="home-head">
+            <div class="hello">Hi, 洗衣粉</div>
+            <div class="appname">拾光</div>
+          </div>
+          <div class="hero">
+            <div class="hero-month"><span>‹</span><span>2026 年 11 月</span><span>›</span></div>
+            <div class="hero-label">本月结余</div>
+            <div class="hero-amount">¥-98.50</div>
+            <div class="hero-split">
+              <div class="hero-cell"><div class="k">收入</div><div class="v">¥0.00</div></div>
+              <div class="hero-cell"><div class="k">支出</div><div class="v">¥98.50</div></div>
+            </div>
+          </div>
+          <div class="daygroup">
+            <div class="dayrow"><span class="d">今天</span><span class="s">支出 ¥32.00</span></div>
+            <div class="tx">
+              <div class="tx-icon">🍜</div>
+              <div class="tx-main"><div class="tx-title">和府捞面</div><div class="tx-sub">餐饮 · 牛肉面</div></div>
+              <div class="tx-amt">-¥ 28.00</div>
+            </div>
+            <div class="tx">
+              <div class="tx-icon">🚇</div>
+              <div class="tx-main"><div class="tx-title">地铁</div><div class="tx-sub">交通 · 无备注</div></div>
+              <div class="tx-amt">-¥ 4.00</div>
+            </div>
+            <div class="dayrow"><span class="d">11 月 15 日</span><span class="s">支出 ¥66.50</span></div>
+            <div class="tx">
+              <div class="tx-icon">🛒</div>
+              <div class="tx-main"><div class="tx-title">盒马</div><div class="tx-sub">日用 · 周末采购</div></div>
+              <div class="tx-amt">-¥ 66.50</div>
+            </div>
+          </div>
+          <div class="fab">＋</div>
+          <div class="mic">🎙</div>
+          <div class="tabbar">
+            <div class="tab on"><span class="ic">🏠</span><span class="tx2">首页</span></div>
+            <div class="tab"><span class="ic">📊</span><span class="tx2">图表</span></div>
+            <div class="tab"><span class="ic">✨</span><span class="tx2">小光</span></div>
+            <div class="tab"><span class="ic">🎯</span><span class="tx2">规划</span></div>
+            <div class="tab"><span class="ic">👤</span><span class="tx2">我的</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= 修复 2 ================= -->
+<section>
+  <div class="sec-head"><span class="fixno">修复 2</span> · 小光回答的 Markdown 渲染</div>
+  <div class="sec-desc">
+    现状：AI 回答用纯文本直出，<code>**加粗**</code> 和表格竖线全是原文。<b>修法：气泡内做轻量 Markdown 渲染 —— 加粗、列表、表格、行内代码、换行；不渲染图片/HTML</b>。
+    左屏是今天的现状，右屏是修复后（内容一字不差，只是渲染）。
+  </div>
+  <div class="frames">
+
+    <div class="frame-wrap">
+      <div class="frame-cap">① 修复前（现状）<i>markdown 原文直出</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="chat-head">
+            <div class="chat-title">小光</div>
+            <div class="chat-sub">AI 记账助手 · 让 AI 帮你记账、查账、总结</div>
+          </div>
+          <div class="chat-body">
+            <div class="bubble user">总结我最近六个月的开销</div>
+            <div class="bubble ai"><div class="raw">📊 最近六个月（2026-05-16 至 2026-11-16）开销总结：
+
+- **总支出**：258.5 元
+- **总收入**：1200 元
+- **结余**：941.5 元
+- **账单笔数**：12 笔
+
+**分类明细**：
+| 分类 | 金额 | 占比 | 笔数 |
+|---|---|---|---|
+| 餐饮 | 128 元 | 50% | 8 |
+| 交通 | 34.5 元 | 13% | 2 |
+| 日用 | 96 元 | 37% | 2 |
+
+这六个月里餐饮占了一半（8 笔）。如果还有别的消费没记上，可以告诉我，我帮你补记～</div></div>
+          </div>
+          <div class="chat-input">
+            <div class="box">问问最近的开销…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="frame-cap">② 修复后<i>粗体 / 列表 / 表格正常渲染</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="chat-head">
+            <div class="chat-title">小光</div>
+            <div class="chat-sub">AI 记账助手 · 让 AI 帮你记账、查账、总结</div>
+          </div>
+          <div class="chat-body">
+            <div class="bubble user">总结我最近六个月的开销</div>
+            <div class="bubble ai">
+              <div class="md">
+                📊 最近六个月（2026-05-16 至 2026-11-16）开销总结：
+                <ul>
+                  <li><b>总支出</b>：258.5 元</li>
+                  <li><b>总收入</b>：1200 元</li>
+                  <li><b>结余</b>：941.5 元</li>
+                  <li><b>账单笔数</b>：12 笔</li>
+                </ul>
+                <b>分类明细</b>：
+                <table>
+                  <tr><th>分类</th><th>金额</th><th>占比</th><th>笔数</th></tr>
+                  <tr><td>餐饮</td><td>128 元</td><td>50%</td><td>8</td></tr>
+                  <tr><td>交通</td><td>34.5 元</td><td>13%</td><td>2</td></tr>
+                  <tr><td>日用</td><td>96 元</td><td>37%</td><td>2</td></tr>
+                </table>
+                这六个月里餐饮占了一半（8 笔）。如果还有别的消费没记上，可以告诉我，我帮你补记～
+              </div>
+            </div>
+            <div class="bubble ai">
+              <div class="md">行内代码也支持，比如 <code>预算:本月</code> 这类查询语法；<b>链接不点按</b>，仅显示文本。</div>
+            </div>
+          </div>
+          <div class="chat-input">
+            <div class="box">问问最近的开销…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="notes">
+  <h3>样例体现的修改点</h3>
+  <li><span class="badge">修复 1</span>「确认新增 / 保存修改」按钮移出 ScrollView，落进弹层固定 footer（内容区独立滚动，按钮位置不变）；键盘弹出时保持现有 KAV 行为。</li>
+  <li><span class="badge">修复 2</span>AI 消息气泡内做轻量 Markdown 渲染：加粗 / 列表 / 表格 / 行内代码 / 换行；不渲染图片、HTML、链接跳转。</li>
+  <h3>假设（不对请指出）</h3>
+  <li>修复 2 用自研轻量解析（几百行 + 单测），不引 react-native-markdown-display 等重型依赖；表格在 320 宽下允许横向滚动。</li>
+  <li>「确认新增」吸底后，弹层高度仍是 92%，输入校验的红字提示位置不变。</li>
+  <li>本轮只动这两处；循环记账弹层的「保存」同为滚动末尾按钮，可顺带吸底（默认不含，要的话说一声）。</li>
+  <h3>非目标</h3>
+  <li>不改 AI 输出风格 / prompt、不改消息气泡布局与配色、不改其余弹层结构、不动后端。</li>
+  <li>JS 改动上线需发 APK（无热更通道），本轮先本地门禁，不发版。</li>
+</div>
+
+<script>
+  document.querySelectorAll('.skin-btn[data-set]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.documentElement.setAttribute('data-skin', btn.dataset.set);
+      document.querySelectorAll('.skin-btn[data-set]').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+  function scrollSheet(){
+    var el = document.getElementById('sheetScroll');
+    if(!el) return;
+    el.scrollTo({ top: el.scrollTop > 10 ? 0 : el.scrollHeight, behavior: 'smooth' });
+  }
+  function fakeSave(){
+    alert('样例演示：实际实现时点击=提交并回到列表页（见屏③）');
+  }
+</script>
+</body>
+</html>
