@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from decimal import Decimal
 
@@ -9,6 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.agent.prompts import build_system_prompt
 from app.agent.tools import (
     AgentToolError,
     CategoryBreakdownInput,
@@ -18,6 +20,7 @@ from app.agent.tools import (
     SummarizeExpensesInput,
     TopExpensesInput,
     build_agent_tools,
+    categories_for_user,
     category_breakdown_data,
     compare_expenses_data,
     create_transaction_data,
@@ -27,6 +30,7 @@ from app.agent.tools import (
     top_expenses_data,
 )
 from app.core.database import Base
+from app.models.category import Category
 from app.models.enums import TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -319,7 +323,9 @@ def test_compare_expenses_data_uses_plan_field_names(db: Session) -> None:
 def test_build_agent_tools_returns_expected_names() -> None:
     current_user = make_user(1)
 
-    tools = build_agent_tools(None, current_user, max_transaction_limit=20)
+    tools = build_agent_tools(
+        None, current_user, max_transaction_limit=20, categories=["餐饮"]
+    )
 
     assert [tool.name for tool in tools] == [
         "summarize_expenses",
@@ -459,3 +465,102 @@ def test_create_transaction_input_rejects_non_positive_amount() -> None:
             category="餐饮",
             date="2026-07-31",
         )
+
+
+def test_create_transaction_input_evaluates_arithmetic_amount() -> None:
+    payload = CreateTransactionInput.model_validate(
+        {
+            "amount": "107+129",
+            "type": "expense",
+            "category": "餐饮",
+            "merchant": "萍姐火锅",
+            "date": "2026-11-15",
+        }
+    )
+
+    assert payload.amount == Decimal("236")
+    assert payload.merchant == "萍姐火锅"
+
+
+def test_create_transaction_input_rejects_garbage_amount_expression() -> None:
+    with pytest.raises(ValidationError):
+        CreateTransactionInput.model_validate(
+            {
+                "amount": "107+a",
+                "type": "expense",
+                "category": "餐饮",
+                "date": "2026-11-15",
+            }
+        )
+
+
+def test_create_transaction_data_accepts_user_custom_category(db: Session) -> None:
+    current_user = make_user(1)
+    db.add(current_user)
+    db.add(
+        Category(
+            user_id=1,
+            name="小摔炮",
+            icon="🧨",
+            color="#FF9500",
+            type="expense",
+        )
+    )
+    db.commit()
+
+    assert "小摔炮" in categories_for_user(db, 1)
+
+    result = create_transaction_data(
+        db,
+        current_user,
+        CreateTransactionInput(
+            amount=Decimal("499"),
+            type=TransactionType.EXPENSE,
+            category="小摔炮",
+            merchant="淘宝",
+            note="羽绒服",
+            date="2026-11-14",
+        ),
+    )
+
+    assert result["category"] == "小摔炮"
+    assert result["merchant"] == "淘宝"
+    assert result["note"] == "羽绒服"
+    stored = db.get(Transaction, result["id"])
+    assert stored is not None and stored.merchant == "淘宝"
+
+
+def test_agent_tools_serialize_parallel_create_calls(db: Session) -> None:
+    """LangGraph 并行执行同一条消息里的工具调用；共用 Session 时不能同时 commit。"""
+    current_user = make_user(1)
+    tools = build_agent_tools(
+        db, current_user, max_transaction_limit=50, categories=["餐饮"]
+    )
+    create_tool = next(tool for tool in tools if tool.name == "create_transaction")
+
+    def create_one(amount: str) -> dict:
+        return create_tool.invoke(
+            {
+                "amount": amount,
+                "type": "expense",
+                "category": "餐饮",
+                "merchant": "萍姐火锅",
+                "note": "火锅",
+                "date": "2026-11-15",
+            }
+        )
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(create_one, ["236", "33.90", "19.10", "8.00"]))
+
+    assert [item["amount"] for item in results] == [236.0, 33.9, 19.1, 8.0]
+    assert db.query(Transaction).count() == 4
+
+
+def test_system_prompt_lists_user_categories_and_arithmetic_rule() -> None:
+    text = build_system_prompt(categories=["餐饮", "小摔炮"])
+
+    assert "小摔炮" in text
+    assert "107+129" in text
+    assert "今天是" in text
+

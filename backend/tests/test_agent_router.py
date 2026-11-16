@@ -125,7 +125,7 @@ def test_run_agent_chat_returns_tool_error_and_sets_request_timeout(
             captured_model_kwargs.update(kwargs)
 
     class FakeAgent:
-        def invoke(self, _payload):
+        def invoke(self, _payload, **_kwargs):
             raise AgentToolError("日期格式不正确，请使用 YYYY-MM-DD")
 
     monkeypatch.setattr("app.agent.graph.ChatOpenAI", FakeChatOpenAI)
@@ -151,7 +151,7 @@ def test_run_agent_chat_returns_friendly_reply_for_validation_error(
             pass
 
     class FakeAgent:
-        def invoke(self, _payload):
+        def invoke(self, _payload, **_kwargs):
             SummarizeExpensesInput(target="self", start_date="2026-01-01")
 
     monkeypatch.setattr("app.agent.graph.ChatOpenAI", FakeChatOpenAI)
@@ -176,7 +176,7 @@ def test_run_agent_chat_returns_friendly_reply_for_provider_failure(
             pass
 
     class FakeAgent:
-        def invoke(self, _payload):
+        def invoke(self, _payload, **_kwargs):
             raise RuntimeError("network unavailable")
 
     monkeypatch.setattr("app.agent.graph.ChatOpenAI", FakeChatOpenAI)

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import ast
+import functools
+import re
+import threading
 from datetime import date
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.date_utils import parse_iso_date
+from app.models.category import Category
 from app.models.enums import CategoryEnum, TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -62,14 +67,91 @@ class CompareExpensesInput(BaseModel):
 
 
 class CreateTransactionInput(BaseModel):
-    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="金额，必须大于 0")
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="金额，必须大于 0；可以用 107+129 这样的算式")
     type: TransactionType = Field(description="账单类型：income 或 expense")
     category: str = Field(min_length=1, max_length=10, description="账单分类")
-    note: str | None = Field(default=None, max_length=255, description="备注，可省略")
+    merchant: str | None = Field(default=None, max_length=50, description="商家/店名，可省略")
+    note: str | None = Field(default=None, max_length=255, description="备注：消费明细或评价，可省略")
     date: str = Field(description="账单日期，格式 YYYY-MM-DD")
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def evaluate_amount_expression(cls, value: object) -> object:
+        """允许模型直接传「107+129」：只放行数字与 + - * / ( )，求值后再交给 Decimal 校验。"""
+        if not isinstance(value, str):
+            return value
+        text = (
+            value.strip()
+            .replace("＋", "+")
+            .replace("－", "-")
+            .replace("×", "*")
+            .replace("÷", "/")
+            .replace("元", "")
+            .replace(" ", "")
+        )
+        if not text or not re.fullmatch(r"[0-9+\-*/().]+", text):
+            return value
+        try:
+            return _eval_amount_expression(ast.parse(text, mode="eval"))
+        except (SyntaxError, ValueError, ZeroDivisionError):
+            return value
+
+
+def _eval_amount_expression(node: ast.AST) -> Decimal:
+    """极小的算术求值器：只支持数字、四则运算、正负号与括号，不用 eval。"""
+    if isinstance(node, ast.Expression):
+        return _eval_amount_expression(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return Decimal(str(node.value))
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        operand = _eval_amount_expression(node.operand)
+        return operand if isinstance(node.op, ast.UAdd) else -operand
+    if isinstance(node, ast.BinOp):
+        left = _eval_amount_expression(node.left)
+        right = _eval_amount_expression(node.right)
+        if isinstance(node.op, ast.Add):
+            return left + right
+        if isinstance(node.op, ast.Sub):
+            return left - right
+        if isinstance(node.op, ast.Mult):
+            return left * right
+        if isinstance(node.op, ast.Div):
+            return left / right
+    raise ValueError("不支持的金额表达式")
 
 
 CATEGORY_VALUES = [category.value for category in CategoryEnum]
+
+
+def categories_for_user(db: Session | None, user_id: int) -> list[str]:
+    """当前用户可用的分类名：优先读用户自己的分类表，读不到时回退到内置枚举。"""
+    if db is None:
+        return list(CATEGORY_VALUES)
+    names = [
+        name
+        for name in db.scalars(
+            select(Category.name)
+            .where(Category.user_id == user_id)
+            .order_by(Category.id.asc())
+        ).all()
+        if name
+    ]
+    return names or CATEGORY_VALUES
+
+
+# LangGraph 会把同一条消息里的多个工具调用放在线程池里并行执行，而这些工具共用同一个
+# SQLAlchemy Session。不串行化就会出现 "commit() is already in progress"（用户看到的
+# 「AI 助手暂时不可用」）。这里按进程加锁，保证同一时刻只有一个工具在碰 Session。
+_TOOL_LOCK = threading.Lock()
+
+
+def _serialized_tool(func: Any) -> Any:
+    @functools.wraps(func)
+    def wrapper(**kwargs: Any) -> Any:
+        with _TOOL_LOCK:
+            return func(**kwargs)
+
+    return wrapper
 
 
 def _to_float(value: Decimal | int | float | None) -> float:
@@ -330,15 +412,17 @@ def create_transaction_data(
     db: Session,
     current_user: User,
     payload: CreateTransactionInput,
+    allowed_categories: list[str] | None = None,
 ) -> dict[str, Any]:
     try:
         tx_date = parse_iso_date(payload.date)
     except ValueError as exc:
         raise AgentToolError("日期格式不正确，请使用 YYYY-MM-DD") from exc
 
-    if payload.category not in CATEGORY_VALUES:
+    allowed = allowed_categories or categories_for_user(db, current_user.id)
+    if payload.category not in allowed:
         raise AgentToolError(
-            f"分类不支持：{payload.category}，可选：{'、'.join(CATEGORY_VALUES)}"
+            f"分类不支持：{payload.category}，可选：{'、'.join(allowed)}"
         )
 
     item = Transaction(
@@ -346,6 +430,7 @@ def create_transaction_data(
         amount=payload.amount,
         type=payload.type,
         category=payload.category,
+        merchant=payload.merchant,
         note=payload.note,
         note_kind='evaluation' if payload.note else None,
         date=tx_date,
@@ -359,6 +444,7 @@ def create_transaction_data(
         "amount": _to_float(item.amount),
         "type": item.type.value,
         "category": item.category,
+        "merchant": item.merchant,
         "note": item.note,
         "date": item.date.isoformat(),
     }
@@ -368,8 +454,11 @@ def build_agent_tools(
     db: Session,
     current_user: User,
     max_transaction_limit: int,
+    categories: list[str] | None = None,
 ) -> list[Any]:
     from langchain_core.tools import StructuredTool
+
+    allowed_categories = categories or categories_for_user(db, current_user.id)
 
     def summarize_expenses(**kwargs: Any) -> dict[str, Any]:
         """Summarize income, expense, balance, categories, and notes for a date window."""
@@ -403,36 +492,41 @@ def build_agent_tools(
 
     def create_transaction(**kwargs: Any) -> dict[str, Any]:
         """Create a transaction for the current user, then return the created record."""
-        return create_transaction_data(db, current_user, CreateTransactionInput(**kwargs))
+        return create_transaction_data(
+            db,
+            current_user,
+            CreateTransactionInput(**kwargs),
+            allowed_categories=allowed_categories,
+        )
 
     return [
         StructuredTool.from_function(
-            func=summarize_expenses,
+            func=_serialized_tool(summarize_expenses),
             name="summarize_expenses",
             args_schema=SummarizeExpensesInput,
         ),
         StructuredTool.from_function(
-            func=category_breakdown,
+            func=_serialized_tool(category_breakdown),
             name="category_breakdown",
             args_schema=CategoryBreakdownInput,
         ),
         StructuredTool.from_function(
-            func=search_transactions,
+            func=_serialized_tool(search_transactions),
             name="search_transactions",
             args_schema=SearchTransactionsInput,
         ),
         StructuredTool.from_function(
-            func=top_expenses,
+            func=_serialized_tool(top_expenses),
             name="top_expenses",
             args_schema=TopExpensesInput,
         ),
         StructuredTool.from_function(
-            func=compare_expenses,
+            func=_serialized_tool(compare_expenses),
             name="compare_expenses",
             args_schema=CompareExpensesInput,
         ),
         StructuredTool.from_function(
-            func=create_transaction,
+            func=_serialized_tool(create_transaction),
             name="create_transaction",
             args_schema=CreateTransactionInput,
         ),

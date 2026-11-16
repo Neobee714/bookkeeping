@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
@@ -7,10 +9,12 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.agent.prompts import build_system_prompt
-from app.agent.tools import AgentToolError, build_agent_tools
+from app.agent.tools import AgentToolError, build_agent_tools, categories_for_user
 from app.core import config
 from app.models.user import User
 from app.schemas.agent import AgentChatMessage
+
+logger = logging.getLogger(__name__)
 
 AI_UNAVAILABLE_REPLY = "AI 助手暂时不可用，请稍后再试"
 TOOL_VALIDATION_REPLY = "工具参数有误，请补充正确的日期或查询条件后再试"
@@ -50,22 +54,35 @@ def run_agent_chat(
         temperature=0.2,
         request_timeout=30,
     )
+    categories = categories_for_user(db, current_user.id)
     tools = build_agent_tools(
         db=db,
         current_user=current_user,
         max_transaction_limit=config.AGENT_TRANSACTION_RESULT_LIMIT,
+        categories=categories,
     )
-    agent = create_react_agent(model, tools, prompt=build_system_prompt())
+    agent = create_react_agent(
+        model, tools, prompt=build_system_prompt(categories=categories)
+    )
     messages = _history_to_messages(history)
     messages.append(HumanMessage(content=message))
 
     try:
-        result = agent.invoke({"messages": messages})
+        result = agent.invoke(
+            {"messages": messages},
+            config={"recursion_limit": config.AGENT_RECURSION_LIMIT},
+        )
     except AgentToolError as exc:
         return {"reply": str(exc), "tool_calls": []}
     except ValidationError:
         return {"reply": TOOL_VALIDATION_REPLY, "tool_calls": []}
     except Exception:
+        # 不要静默吞掉：这里以前只回兜底文案，线上排查时完全看不到原因。
+        logger.exception(
+            "agent chat failed: user_id=%s message_len=%s",
+            current_user.id,
+            len(message),
+        )
         return {"reply": AI_UNAVAILABLE_REPLY, "tool_calls": []}
 
     result_messages = result.get("messages", [])

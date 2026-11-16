@@ -30,6 +30,16 @@
 - ⬜ 版本 2.9.0 / versionCode 236（已改，未构建）
 - ⬜ 用户确认后再 push 与构建 APK / OTA
 
+## 阶段四：AI 助手修复（2026-11-16）
+
+- ✅ 定位：LangGraph 并行 tool_call 共用 Session → `IllegalStateChangeError` → 被兜底成「AI 助手暂时不可用」，且无日志
+- ✅ 工具串行化（`_TOOL_LOCK`）＋异常 `logger.exception`＋`recursion_limit=50`
+- ✅ 金额支持算式（`107+129` → 236，ast 求值，不用 eval）
+- ✅ 支持用户自定义分类；create_transaction 新增 merchant
+- ✅ prompt 使用北京时间、商家/备注分工、金额可计算
+- ✅ `test_agent_tools.py` / `test_agent_router.py` 更新，`pytest` 325 passed
+- ✅ 详见 `PATCH-AI.md`
+
 ## 真机验收（发布时执行）
 
 - ⬜ 记一笔只有商家 + 备注

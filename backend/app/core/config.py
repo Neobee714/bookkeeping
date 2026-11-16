@@ -76,3 +76,5 @@ DEEPSEEK_BASE_URL = (get_env("DEEPSEEK_BASE_URL", "https://api.deepseek.com") or
 DEEPSEEK_MODEL = (get_env("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat").strip()
 AGENT_MAX_HISTORY_MESSAGES = int(get_env("AGENT_MAX_HISTORY_MESSAGES", "12"))
 AGENT_TRANSACTION_RESULT_LIMIT = int(get_env("AGENT_TRANSACTION_RESULT_LIMIT", "50"))
+# 多笔账单一次录入会连续调用工具，默认 25 步容易超出 LangGraph 递归上限。
+AGENT_RECURSION_LIMIT = int(get_env("AGENT_RECURSION_LIMIT", "50"))
