@@ -42,22 +42,16 @@ type CleanupNavigation = NativeStackNavigationProp<RootStackParamList>;
 /** 单条旧备注的整理草稿（内存态，不落盘）。 */
 interface CleanupDraft {
   merchant: boolean;
-  item: boolean;
   evaluation: boolean;
   merchantName: string;
-  itemName: string;
 }
 
 const suggestLabel = (suggestion: NoteSuggestion): string | null => {
   switch (suggestion) {
     case 'merchant':
       return '像店名';
-    case 'item':
-      return '像项目';
-    case 'both':
-      return '店 + 菜品';
     case 'evaluation':
-      return '像评价';
+      return '像备注';
     default:
       return null;
   }
@@ -75,11 +69,9 @@ const formatBatchTime = (value: string): string => {
 
 const emptyDraft = (note: string): CleanupDraft => ({
   merchant: false,
-  item: false,
   evaluation: false,
-  // 商家 / 菜品字段后端上限 50；旧备注可能更长，预填时先截断，用户可再改。
+  // 商家字段后端上限 50；旧备注可能更长，预填时先截断，用户可再改。
   merchantName: note.slice(0, 50),
-  itemName: note.slice(0, 50),
 });
 
 const buildDrafts = (
@@ -97,8 +89,8 @@ const buildDrafts = (
 /**
  * 整理旧备注（ARCH 3.5）。
  *
- * 只处理 note_kind IS NULL 的历史备注：每条可选商家 / 项目（可同选）/
- * 评价 / 跳过，保存时逐条串行调用 reclassify。离线只读，写操作禁用。
+ * 只处理 note_kind IS NULL 的历史备注：每条可选商家 / 备注 / 跳过，
+ * 保存时逐条串行调用 reclassify。离线只读，写操作禁用。
  */
 export default function NoteCleanupScreen() {
   const colors = useTheme();
@@ -184,19 +176,8 @@ export default function NoteCleanupScreen() {
         0,
         50,
       );
-      const itemName = (draft.itemName.trim() || candidate.note).slice(0, 50);
       if (draft.evaluation) {
         return [{ note: candidate.note, action: 'evaluation' as const }];
-      }
-      if (draft.merchant && draft.item) {
-        return [
-          {
-            note: candidate.note,
-            action: 'both' as const,
-            merchant: merchantName,
-            item: itemName,
-          },
-        ];
       }
       if (draft.merchant) {
         return [
@@ -204,15 +185,6 @@ export default function NoteCleanupScreen() {
             note: candidate.note,
             action: 'merchant' as const,
             merchant: merchantName,
-          },
-        ];
-      }
-      if (draft.item) {
-        return [
-          {
-            note: candidate.note,
-            action: 'item' as const,
-            item: itemName,
           },
         ];
       }
@@ -224,14 +196,14 @@ export default function NoteCleanupScreen() {
 
   const toggleKind = (
     note: string,
-    kind: 'merchant' | 'item' | 'evaluation' | 'skip',
+    kind: 'merchant' | 'evaluation' | 'skip',
   ) => {
     setDrafts((previous) => {
       const draft = previous[note] ?? emptyDraft(note);
       if (kind === 'skip') {
         return {
           ...previous,
-          [note]: { ...draft, merchant: false, item: false, evaluation: false },
+          [note]: { ...draft, merchant: false, evaluation: false },
         };
       }
       if (kind === 'evaluation') {
@@ -242,7 +214,6 @@ export default function NoteCleanupScreen() {
             ...draft,
             evaluation,
             merchant: false,
-            item: false,
           },
         };
       }
@@ -250,21 +221,17 @@ export default function NoteCleanupScreen() {
         ...previous,
         [note]: {
           ...draft,
-          [kind]: !draft[kind],
+          merchant: !draft.merchant,
           evaluation: false,
         },
       };
     });
   };
 
-  const updateField = (
-    note: string,
-    field: 'merchantName' | 'itemName',
-    value: string,
-  ) => {
+  const updateField = (note: string, value: string) => {
     setDrafts((previous) => {
       const draft = previous[note] ?? emptyDraft(note);
-      return { ...previous, [note]: { ...draft, [field]: value } };
+      return { ...previous, [note]: { ...draft, merchantName: value } };
     });
   };
 
@@ -287,8 +254,8 @@ export default function NoteCleanupScreen() {
         });
         setProgress(index + 1);
       }
-      // 返回后 StatsScreen 重新获得焦点会自动刷新（包括商家 / 菜品排行），
-      // 并在商家 / 菜品档显示「上次整理 · 可撤销」。
+      // 返回后 StatsScreen 重新获得焦点会自动刷新（包括商家排行），
+      // 并在商家档显示「上次整理 · 可撤销」。
       navigation.goBack();
     } catch (saveFailure) {
       setSaveError(extractErrorMessage(saveFailure, '保存失败，请重试'));
@@ -328,7 +295,7 @@ export default function NoteCleanupScreen() {
     }
     Alert.alert(
       '撤销上次整理？',
-      `会把上次整理的 ${lastCleanup.affected_count} 条账单恢复到整理前的商家 / 菜品 / 备注；整理后又被编辑过的账单会跳过。`,
+      `会把上次整理的 ${lastCleanup.affected_count} 条账单恢复到整理前的商家 / 备注；整理后又被编辑过的账单会跳过。`,
       [
         { text: '取消', style: 'cancel' },
         {
@@ -453,7 +420,7 @@ export default function NoteCleanupScreen() {
                 </Text>
               ) : null}
               <Text style={[styles.introHint, { color: colors.textTertiary }]}>
-                商家和「项目」可以同时选；选「评价」则只保留备注，不进入排行。
+                选「商家」会把这条旧备注归进商家排行并清空备注；选「备注」保留原文，不进入排行。
               </Text>
             </View>
 
@@ -462,7 +429,7 @@ export default function NoteCleanupScreen() {
                 <EmptyView
                   emoji="🧹"
                   title="没有需要整理的旧备注"
-                  description="之后新记的账单会直接按商家 / 菜品 / 评价保存"
+                  description="之后新记的账单会直接按商家 / 备注保存"
                 />
               </View>
             ) : (
@@ -470,7 +437,7 @@ export default function NoteCleanupScreen() {
                 const draft = drafts[candidate.note] ?? emptyDraft(candidate.note);
                 const suggestion = suggestLabel(candidate.suggestion);
                 const isSkip =
-                  !draft.merchant && !draft.item && !draft.evaluation;
+                  !draft.merchant && !draft.evaluation;
                 return (
                   <View
                     key={candidate.note}
@@ -517,8 +484,7 @@ export default function NoteCleanupScreen() {
                       {(
                         [
                           ['merchant', '商家'],
-                          ['item', '项目'],
-                          ['evaluation', '评价'],
+                          ['evaluation', '备注'],
                           ['skip', '跳过'],
                         ] as const
                       ).map(([kind, label]) => {
@@ -572,31 +538,7 @@ export default function NoteCleanupScreen() {
                           ]}
                           value={draft.merchantName}
                           onChangeText={(value) =>
-                            updateField(candidate.note, 'merchantName', value)
-                          }
-                          placeholder={candidate.note}
-                          placeholderTextColor={colors.textTertiary}
-                          maxLength={50}
-                        />
-                      </View>
-                    ) : null}
-
-                    {draft.item ? (
-                      <View style={styles.fieldRow}>
-                        <Text
-                          style={[styles.fieldLabel, { color: colors.textTertiary }]}
-                        >
-                          项目
-                        </Text>
-                        <TextInput
-                          style={[
-                            styles.fieldInput,
-                            skin.surfaces.input,
-                            { color: colors.textPrimary },
-                          ]}
-                          value={draft.itemName}
-                          onChangeText={(value) =>
-                            updateField(candidate.note, 'itemName', value)
+                            updateField(candidate.note, value)
                           }
                           placeholder={candidate.note}
                           placeholderTextColor={colors.textTertiary}
@@ -611,16 +553,10 @@ export default function NoteCleanupScreen() {
                       {isSkip
                         ? '本次不处理这条，账单原样保留'
                         : draft.evaluation
-                          ? '保留为评价，不进入商家 / 菜品排行'
-                          : draft.merchant && draft.item
-                            ? `一笔拆成商家「${
-                                draft.merchantName.trim() || candidate.note
-                              }」+ 项目「${
-                                draft.itemName.trim() || candidate.note
-                              }」`
-                            : draft.merchant
-                              ? `应用到 ${candidate.count} 笔同名账单`
-                              : '作为项目保存，不改金额和日期'}
+                          ? '保留为备注，不进入商家排行'
+                          : `应用到 ${candidate.count} 笔同名账单，商家为「${
+                              draft.merchantName.trim() || candidate.note
+                            }」`}
                     </Text>
                   </View>
                 );

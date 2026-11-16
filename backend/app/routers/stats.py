@@ -15,7 +15,7 @@ from app.core.security import get_current_user
 from app.models.enums import TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
-from app.services.merchant_stats import aggregate_named_dimension, count_legacy_notes
+from app.services.merchant_stats import aggregate_merchants, count_legacy_notes
 from app.services.note_cleanup import latest_cleanup_batch
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -246,12 +246,13 @@ def _resolve_target_user_id(current_user: User, target: str) -> int:
     return current_user.id
 
 
+# 2.9.0 起「菜品」维度下线：item 入参只为兼容尚未升级的 2.8.x App，返回空排行。
 BreakdownDimension = Literal["merchant", "item"]
 
 
 @router.get("/breakdown")
 def breakdown(
-    dimension: BreakdownDimension = Query(..., description="merchant=商家, item=菜品"),
+    dimension: BreakdownDimension = Query(..., description="merchant=商家（item 已下线，仅为兼容旧版 App 返回空排行）"),
     month: str | None = Query(default=None, description="YYYY-MM"),
     start_date: str | None = Query(default=None, description="YYYY-MM-DD"),
     end_date: str | None = Query(default=None, description="YYYY-MM-DD"),
@@ -262,7 +263,7 @@ def breakdown(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """按商家或菜品聚合排行；未填商家/菜品的账单不计入。"""
+    """按商家聚合排行；未填商家的账单不计入（item 仅兼容旧版 App，返回空）。"""
     user_id = _resolve_target_user_id(current_user, target)
     try:
         _, start, end = resolve_date_window(
@@ -275,15 +276,18 @@ def breakdown(
         ) from exc
 
     tx_type = TransactionType.INCOME if type == "income" else TransactionType.EXPENSE
-    items = aggregate_named_dimension(
-        db,
-        user_id=user_id,
-        dimension=dimension,
-        start=start,
-        end_exclusive=end,
-        tx_type=tx_type,
-        category=category,
-        limit=limit,
+    items = (
+        []
+        if dimension == "item"
+        else aggregate_merchants(
+            db,
+            user_id=user_id,
+            start=start,
+            end_exclusive=end,
+            tx_type=tx_type,
+            category=category,
+            limit=limit,
+        )
     )
     last_batch = (
         latest_cleanup_batch(db, current_user.id) if target == "self" else None

@@ -79,7 +79,6 @@ def _seed_transactions(session_factory: sessionmaker, rows: list[dict]) -> None:
                     category=row.get("category", "餐饮"),
                     note=row.get("note"),
                     merchant=row.get("merchant"),
-                    item=row.get("item"),
                     note_kind=row.get(
                         "note_kind", "evaluation" if row.get("note") else None
                     ),
@@ -110,7 +109,7 @@ def _fetch(
     return response.json()["data"]
 
 
-def test_empty_history_returns_empty_merchant_and_item_maps(
+def test_empty_history_returns_empty_merchant_map(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, holder, _session_factory = client
@@ -118,8 +117,9 @@ def test_empty_history_returns_empty_merchant_and_item_maps(
     data = _fetch(test_client, holder)
 
     assert data["merchants_by_category"] == {}
-    assert data["items_by_category"] == {}
     assert data["by_category"] == {}
+    # 2.9.0 起「吃了什么/项目」维度下线，接口不再返回 items_by_category
+    assert "items_by_category" not in data
 
 
 def test_groups_by_category_and_sorts_by_count_then_recent(
@@ -134,13 +134,13 @@ def test_groups_by_category_and_sorts_by_count_then_recent(
     _seed_transactions(
         session_factory,
         [
-            {"user_id": 1, "merchant": "和府捞面", "item": "面", "date": day(30)},
-            {"user_id": 1, "merchant": "和府捞面", "item": "面", "date": day(20)},
-            {"user_id": 1, "merchant": "和府捞面", "item": "饭", "date": day(10)},
-            {"user_id": 1, "merchant": "麦当劳", "item": "汉堡", "date": day(25)},
-            {"user_id": 1, "merchant": "麦当劳", "item": "汉堡", "date": day(5)},
-            {"user_id": 1, "category": "交通", "merchant": "地铁", "item": "地铁", "date": day(6)},
-            {"user_id": 1, "category": "交通", "merchant": "地铁", "item": "地铁", "date": day(4)},
+            {"user_id": 1, "merchant": "和府捞面", "date": day(30)},
+            {"user_id": 1, "merchant": "和府捞面", "date": day(20)},
+            {"user_id": 1, "merchant": "和府捞面", "date": day(10)},
+            {"user_id": 1, "merchant": "麦当劳", "date": day(25)},
+            {"user_id": 1, "merchant": "麦当劳", "date": day(5)},
+            {"user_id": 1, "category": "交通", "merchant": "地铁", "date": day(6)},
+            {"user_id": 1, "category": "交通", "merchant": "地铁", "date": day(4)},
         ],
     )
 
@@ -153,14 +153,7 @@ def test_groups_by_category_and_sorts_by_count_then_recent(
         ],
         "交通": [{"name": "地铁", "count": 2, "last_used": day(4)}],
     }
-    assert data["items_by_category"] == {
-        "餐饮": [
-            {"name": "汉堡", "count": 2, "last_used": day(5)},
-            {"name": "面", "count": 2, "last_used": day(20)},
-            {"name": "饭", "count": 1, "last_used": day(10)},
-        ],
-        "交通": [{"name": "地铁", "count": 2, "last_used": day(4)}],
-    }
+    assert "items_by_category" not in data
 
 
 def test_90_day_window_boundary(
@@ -173,17 +166,16 @@ def test_90_day_window_boundary(
     _seed_transactions(
         session_factory,
         [
-            {"user_id": 1, "merchant": "在窗内", "item": "面", "date": in_window.isoformat()},
-            {"user_id": 1, "merchant": "在窗内", "item": "面", "date": today.isoformat()},
-            {"user_id": 1, "merchant": "窗外", "item": "饭", "date": out_of_window.isoformat()},
-            {"user_id": 1, "merchant": "窗外", "item": "饭", "date": out_of_window.isoformat()},
+            {"user_id": 1, "merchant": "在窗内", "date": in_window.isoformat()},
+            {"user_id": 1, "merchant": "在窗内", "date": today.isoformat()},
+            {"user_id": 1, "merchant": "窗外", "date": out_of_window.isoformat()},
+            {"user_id": 1, "merchant": "窗外", "date": out_of_window.isoformat()},
         ],
     )
 
     data = _fetch(test_client, holder)
 
     assert [item["name"] for item in data["merchants_by_category"]["餐饮"]] == ["在窗内"]
-    assert [item["name"] for item in data["items_by_category"]["餐饮"]] == ["面"]
 
 
 def test_custom_days_parameter_shrinks_window(
@@ -197,10 +189,9 @@ def test_custom_days_parameter_shrinks_window(
             {
                 "user_id": 1,
                 "merchant": "老店",
-                "item": "面",
                 "date": (today - timedelta(days=10)).isoformat(),
             },
-            {"user_id": 1, "merchant": "老店", "item": "面", "date": today.isoformat()},
+            {"user_id": 1, "merchant": "老店", "date": today.isoformat()},
         ],
     )
 
@@ -220,11 +211,11 @@ def test_trims_and_excludes_blank_names(
     _seed_transactions(
         session_factory,
         [
-            {"user_id": 1, "merchant": " 和府捞面 ", "item": " 面 ", "date": today.isoformat()},
-            {"user_id": 1, "merchant": "和府捞面", "item": "面", "date": today.isoformat()},
-            {"user_id": 1, "merchant": None, "item": None, "date": today.isoformat()},
-            {"user_id": 1, "merchant": "", "item": "", "date": today.isoformat()},
-            {"user_id": 1, "merchant": "   ", "item": "   ", "date": today.isoformat()},
+            {"user_id": 1, "merchant": " 和府捞面 ", "date": today.isoformat()},
+            {"user_id": 1, "merchant": "和府捞面", "date": today.isoformat()},
+            {"user_id": 1, "merchant": None, "date": today.isoformat()},
+            {"user_id": 1, "merchant": "", "date": today.isoformat()},
+            {"user_id": 1, "merchant": "   ", "date": today.isoformat()},
         ],
     )
 
@@ -232,9 +223,6 @@ def test_trims_and_excludes_blank_names(
 
     assert data["merchants_by_category"] == {
         "餐饮": [{"name": "和府捞面", "count": 2, "last_used": today.isoformat()}]
-    }
-    assert data["items_by_category"] == {
-        "餐饮": [{"name": "面", "count": 2, "last_used": today.isoformat()}]
     }
 
 
@@ -250,7 +238,6 @@ def test_truncates_each_category(
                 {
                     "user_id": 1,
                     "merchant": f"店{index}",
-                    "item": f"菜{index}",
                     "date": same_day,
                 }
             )
@@ -265,11 +252,13 @@ def test_truncates_each_category(
         "店6",
     ]
     limited = _fetch(test_client, holder, per_category=2)
-    assert [item["name"] for item in limited["items_by_category"]["餐饮"]] == ["菜1", "菜2"]
+    assert [item["name"] for item in limited["merchants_by_category"]["餐饮"]] == [
+        "店1",
+        "店2",
+    ]
 
     capped = _fetch(test_client, holder, per_category=20)
     assert len(capped["merchants_by_category"]["餐饮"]) == 6
-    assert len(capped["items_by_category"]["餐饮"]) == 6
 
 
 def test_isolated_per_user_and_counts_all_note_kinds(
@@ -283,7 +272,6 @@ def test_isolated_per_user_and_counts_all_note_kinds(
             {
                 "user_id": 1,
                 "merchant": "我的店",
-                "item": "我的菜",
                 "note": "旧备注",
                 "note_kind": None,
                 "date": today,
@@ -291,7 +279,6 @@ def test_isolated_per_user_and_counts_all_note_kinds(
             {
                 "user_id": 1,
                 "merchant": "我的店",
-                "item": "我的菜",
                 "note": "好吃",
                 "note_kind": "evaluation",
                 "date": today,
@@ -299,7 +286,6 @@ def test_isolated_per_user_and_counts_all_note_kinds(
             {
                 "user_id": 2,
                 "merchant": "对方的店",
-                "item": "对方的菜",
                 "date": today,
             },
         ],
@@ -307,9 +293,7 @@ def test_isolated_per_user_and_counts_all_note_kinds(
 
     user1 = _fetch(test_client, holder, 1)
     assert [item["name"] for item in user1["merchants_by_category"]["餐饮"]] == ["我的店"]
-    assert [item["name"] for item in user1["items_by_category"]["餐饮"]] == ["我的菜"]
     assert user1["merchants_by_category"]["餐饮"][0]["count"] == 2
 
     user2 = _fetch(test_client, holder, 2)
     assert [item["name"] for item in user2["merchants_by_category"]["餐饮"]] == ["对方的店"]
-    assert [item["name"] for item in user2["items_by_category"]["餐饮"]] == ["对方的菜"]

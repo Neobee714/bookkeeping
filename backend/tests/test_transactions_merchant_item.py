@@ -81,7 +81,6 @@ def _seed_transactions(session_factory: sessionmaker, rows: list[dict]) -> None:
                     category=row.get("category", "餐饮"),
                     note=row.get("note"),
                     merchant=row.get("merchant"),
-                    item=row.get("item"),
                     note_kind=row.get("note_kind"),
                     date=date.fromisoformat(row["date"]),
                 )
@@ -102,32 +101,31 @@ def _stored(session_factory: sessionmaker) -> list[Transaction]:
 # --- 创建 ------------------------------------------------------------------
 
 
-def test_create_with_all_three_fields_trims_and_marks_evaluation(
+def test_create_trims_merchant_and_note_and_marks_evaluation(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
 
     response = test_client.post(
         "/transactions",
-        json=_payload(merchant=" 和府捞面 ", item=" 面 ", note=" 有点咸 "),
+        json=_payload(merchant=" 和府捞面 ", note=" 有点咸 "),
     )
 
     assert response.status_code == 200, response.text
     data = response.json()["data"]
     assert data["merchant"] == "和府捞面"
-    assert data["item"] == "面"
     assert data["note"] == "有点咸"
     assert data["note_kind"] == "evaluation"
+    assert "item" not in data
 
     rows = _stored(session_factory)
     assert len(rows) == 1
     assert rows[0].merchant == "和府捞面"
-    assert rows[0].item == "面"
     assert rows[0].note == "有点咸"
     assert rows[0].note_kind == "evaluation"
 
 
-def test_create_without_note_leaves_note_kind_null(
+def test_create_ignores_legacy_item_field(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
@@ -137,10 +135,33 @@ def test_create_without_note_leaves_note_kind_null(
         json=_payload(merchant="麦当劳", item="汉堡"),
     )
 
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["merchant"] == "麦当劳"
+    assert data["note"] is None
+    assert data["note_kind"] is None
+    assert "item" not in data
+
+    rows = _stored(session_factory)
+    assert len(rows) == 1
+    assert rows[0].merchant == "麦当劳"
+    assert rows[0].note is None
+    assert rows[0].note_kind is None
+
+
+def test_create_without_note_leaves_note_kind_null(
+    client: tuple[TestClient, dict[str, User], sessionmaker],
+) -> None:
+    test_client, _holder, session_factory = client
+
+    response = test_client.post(
+        "/transactions",
+        json=_payload(merchant="麦当劳"),
+    )
+
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["merchant"] == "麦当劳"
-    assert data["item"] == "汉堡"
     assert data["note"] is None
     assert data["note_kind"] is None
 
@@ -155,19 +176,17 @@ def test_create_blank_optional_fields_become_null(
 
     response = test_client.post(
         "/transactions",
-        json=_payload(merchant="   ", item="", note="   "),
+        json=_payload(merchant="   ", note="   "),
     )
 
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["merchant"] is None
-    assert data["item"] is None
     assert data["note"] is None
     assert data["note_kind"] is None
 
     rows = _stored(session_factory)
     assert rows[0].merchant is None
-    assert rows[0].item is None
     assert rows[0].note is None
 
 
@@ -181,10 +200,6 @@ def test_create_rejects_overlong_fields(
         == 422
     )
     assert (
-        test_client.post("/transactions", json=_payload(item="菜" * 51)).status_code
-        == 422
-    )
-    assert (
         test_client.post("/transactions", json=_payload(note="评" * 256)).status_code
         == 422
     )
@@ -193,28 +208,42 @@ def test_create_rejects_overlong_fields(
 # --- 更新 ------------------------------------------------------------------
 
 
-def test_update_sets_and_clears_merchant_item(
+def test_update_sets_and_clears_merchant(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, _session_factory = client
     created = test_client.post("/transactions", json=_payload()).json()["data"]
 
+    # 老客户端仍带 item，服务端应忽略而不是报错
     updated = test_client.put(
         f"/transactions/{created['id']}",
         json={"merchant": " 肯德基 ", "item": " 炸鸡 "},
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["data"]["merchant"] == "肯德基"
-    assert updated.json()["data"]["item"] == "炸鸡"
+    assert "item" not in updated.json()["data"]
     assert updated.json()["data"]["note_kind"] is None
 
     cleared = test_client.put(
         f"/transactions/{created['id']}",
-        json={"merchant": None, "item": "  "},
+        json={"merchant": None},
     )
     assert cleared.status_code == 200
     assert cleared.json()["data"]["merchant"] is None
-    assert cleared.json()["data"]["item"] is None
+
+
+def test_update_with_only_legacy_item_is_rejected(
+    client: tuple[TestClient, dict[str, User], sessionmaker],
+) -> None:
+    test_client, _holder, _session_factory = client
+    created = test_client.post("/transactions", json=_payload()).json()["data"]
+
+    response = test_client.put(
+        f"/transactions/{created['id']}", json={"item": "炸鸡"}
+    )
+
+    # item 不是可更新字段，等价于空请求体
+    assert response.status_code == 422
 
 
 def test_update_note_syncs_note_kind(
@@ -324,7 +353,7 @@ def test_update_cannot_touch_other_users_transaction(
 # --- 序列化 / 隔离 ----------------------------------------------------------
 
 
-def test_list_serializes_merchant_item_note_kind(
+def test_list_serializes_merchant_and_note_kind(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
@@ -335,7 +364,6 @@ def test_list_serializes_merchant_item_note_kind(
                 "user_id": 1,
                 "amount": 20,
                 "merchant": "和府捞面",
-                "item": "面",
                 "note": "有点咸",
                 "note_kind": "evaluation",
                 "date": "2026-10-02",
@@ -356,9 +384,10 @@ def test_list_serializes_merchant_item_note_kind(
     items = response.json()["data"]
     assert [item["note_kind"] for item in items] == ["evaluation", None]
     assert items[0]["merchant"] == "和府捞面"
-    assert items[0]["item"] == "面"
+    assert items[0]["note"] == "有点咸"
     assert items[1]["merchant"] is None
-    assert items[1]["item"] is None
+    assert items[1]["note"] == "旧备注"
+    assert all("item" not in item for item in items)
 
 
 def test_list_only_returns_own_transactions(
@@ -390,7 +419,7 @@ def _import_csv(test_client: TestClient, text: str) -> dict:
     return response.json()["data"]
 
 
-def test_import_reads_merchant_and_item_columns(
+def test_import_merges_item_column_into_note(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
@@ -405,11 +434,32 @@ def test_import_reads_merchant_and_item_columns(
     assert data["imported"] == 2
     rows = _stored(session_factory)
     assert rows[0].merchant == "和府捞面"
-    assert rows[0].item == "面"
+    assert rows[0].note == "面 · 有点咸"
     assert rows[0].note_kind == "evaluation"
     assert rows[1].merchant is None
-    assert rows[1].item is None
+    assert rows[1].note is None
     assert rows[1].note_kind is None
+
+
+@pytest.mark.parametrize("header", ["项目", "吃了什么", "菜品", "item"])
+def test_import_recognizes_legacy_item_header_aliases(
+    client: tuple[TestClient, dict[str, User], sessionmaker],
+    header: str,
+) -> None:
+    test_client, _holder, session_factory = client
+    csv_text = (
+        f"日期,类型,分类,金额,商家,{header}\n"
+        "2026年10月01日,支出,餐饮,32.50,和府捞面,面\n"
+    )
+
+    data = _import_csv(test_client, csv_text)
+
+    assert data["imported"] == 1
+    rows = _stored(session_factory)
+    assert rows[0].merchant == "和府捞面"
+    # 只有项目时直接作为备注
+    assert rows[0].note == "面"
+    assert rows[0].note_kind == "evaluation"
 
 
 def test_import_without_optional_columns_keeps_legacy_shape(
@@ -428,16 +478,15 @@ def test_import_without_optional_columns_keeps_legacy_shape(
     assert rows[0].note == "好吃"
     assert rows[0].note_kind == "evaluation"
     assert rows[0].merchant is None
-    assert rows[0].item is None
 
 
-def test_import_header_without_note_column_keeps_note_empty(
+def test_import_blank_note_and_item_yields_null_note(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
     csv_text = (
-        "日期,类型,分类,金额,商家,项目\n"
-        "2026年10月01日,支出,餐饮,32.50,和府捞面,面\n"
+        "日期,类型,分类,金额,备注,商家,项目\n"
+        "2026年10月01日,支出,餐饮,32.50,,和府捞面,\n"
     )
 
     data = _import_csv(test_client, csv_text)
@@ -445,7 +494,6 @@ def test_import_header_without_note_column_keeps_note_empty(
     assert data["imported"] == 1
     rows = _stored(session_factory)
     assert rows[0].merchant == "和府捞面"
-    assert rows[0].item == "面"
     assert rows[0].note is None
     assert rows[0].note_kind is None
 

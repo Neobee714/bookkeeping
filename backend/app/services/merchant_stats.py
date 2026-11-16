@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Literal
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -10,8 +10,6 @@ from sqlalchemy.orm import Session
 from app.models.enums import TransactionType
 from app.models.transaction import Transaction
 from app.schemas.transaction import NoteSuggestion
-
-Dimension = Literal["merchant", "item"]
 
 MERCHANT_SUFFIXES = (
     "店",
@@ -27,28 +25,6 @@ MERCHANT_SUFFIXES = (
     "铺",
     "屋",
     "记",
-)
-
-ITEM_WORDS = (
-    "面",
-    "粉",
-    "饭",
-    "火锅",
-    "烧烤",
-    "咖啡",
-    "奶茶",
-    "甜品",
-    "饺子",
-    "包子",
-    "粥",
-    "汤",
-    "烤肉",
-    "炸鸡",
-    "汉堡",
-    "披萨",
-    "寿司",
-    "米线",
-    "麻辣烫",
 )
 
 EVALUATION_WORDS = (
@@ -75,20 +51,9 @@ def suggest_note_kind(note: str | None) -> NoteSuggestion | None:
     if not text:
         return None
 
-    merchant_hit = any(text.endswith(suffix) for suffix in MERCHANT_SUFFIXES)
-    item_hit = any(word in text for word in ITEM_WORDS)
-    evaluation_hit = any(word in text for word in EVALUATION_WORDS)
-
-    if merchant_hit and item_hit:
-        return "both"
-    if merchant_hit:
+    if any(text.endswith(suffix) for suffix in MERCHANT_SUFFIXES):
         return "merchant"
-    if item_hit:
-        # 精确命中菜品词（面/粉/饭…）或很短（牛肉面/酸辣粉）才当菜品；
-        # 「和府捞面」这类长词可能是店名，宁可返回 None 让用户自己选。
-        if text in ITEM_WORDS or len(text) <= 3:
-            return "item"
-    if evaluation_hit:
+    if any(word in text for word in EVALUATION_WORDS):
         return "evaluation"
     return None
 
@@ -103,27 +68,25 @@ def _avg(amount: Decimal, count: int) -> float:
     return float((amount / Decimal(count)).quantize(_CENT, rounding=ROUND_HALF_UP))
 
 
-def aggregate_named_dimension(
+def aggregate_merchants(
     db: Session,
     *,
     user_id: int,
-    dimension: Dimension,
     start: date,
     end_exclusive: date,
     tx_type: TransactionType = TransactionType.EXPENSE,
     category: str | None = None,
     limit: int | None = 20,
 ) -> list[dict[str, Any]]:
-    """按商家/菜品聚合金额与次数，金额降序；空值不计入。"""
-    column = Transaction.merchant if dimension == "merchant" else Transaction.item
-    label = func.trim(column)
+    """按商家聚合金额与次数，金额降序；空值不计入。"""
+    label = func.trim(Transaction.merchant)
 
     filters = [
         Transaction.user_id == user_id,
         Transaction.date >= start,
         Transaction.date < end_exclusive,
         Transaction.type == tx_type,
-        column.is_not(None),
+        Transaction.merchant.is_not(None),
         label != "",
     ]
     if category:

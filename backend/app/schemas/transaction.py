@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.models.enums import TransactionType
 
-ReclassifyAction = Literal["merchant", "item", "both", "evaluation", "skip"]
-NoteSuggestion = Literal["merchant", "item", "both", "evaluation"]
+ReclassifyAction = Literal["merchant", "evaluation", "skip"]
+NoteSuggestion = Literal["merchant", "evaluation"]
 
 
 def _clean_optional_text(value: object) -> object:
@@ -32,12 +32,11 @@ class TransactionCreateRequest(BaseModel):
     category: str = Field(min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     merchant: str | None = Field(default=None, max_length=50)
-    item: str | None = Field(default=None, max_length=50)
     date: DateValue
     # 离线新增幂等键：同一用户重复提交同一 client_id 只会落一条。
     client_id: str | None = Field(default=None, min_length=8, max_length=64)
 
-    @field_validator("note", "merchant", "item", mode="before")
+    @field_validator("note", "merchant", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         return _clean_optional_text(value)
@@ -54,10 +53,9 @@ class TransactionUpdateRequest(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     merchant: str | None = Field(default=None, max_length=50)
-    item: str | None = Field(default=None, max_length=50)
     date: DateValue | None = None
 
-    @field_validator("note", "merchant", "item", mode="before")
+    @field_validator("note", "merchant", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         return _clean_optional_text(value)
@@ -69,10 +67,10 @@ class TransactionUpdateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_non_empty(self) -> "TransactionUpdateRequest":
-        # 用 fields_set 判断“是否提供了字段”，这样显式 null 可以清空评价/商家/项目。
+        # 用 fields_set 判断“是否提供了字段”，这样显式 null 可以清空备注/商家。
         if not self.model_fields_set:
             raise ValueError("至少提供一个需要更新的字段")
-        # 金额/类型/分类/日期不可置空；只有评价、商家、项目允许显式 null。
+        # 金额/类型/分类/日期不可置空；只有备注、商家允许显式 null。
         for field in ("amount", "type", "category", "date"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} 不能为空")
@@ -98,7 +96,6 @@ class QuickInputsResponse(BaseModel):
     merchants_by_category: dict[str, list[QuickNameCandidate]] = Field(
         default_factory=dict
     )
-    items_by_category: dict[str, list[QuickNameCandidate]] = Field(default_factory=dict)
 
 
 class NotePresetRequest(BaseModel):
@@ -148,11 +145,10 @@ class NoteReclassifyRequest(BaseModel):
     note: str = Field(min_length=1, max_length=255)
     action: ReclassifyAction
     merchant: str | None = Field(default=None, max_length=50)
-    item: str | None = Field(default=None, max_length=50)
     # App 在一次保存里给多条 reclassify 传同一个 key，便于整批撤销。
     batch_key: str | None = Field(default=None, max_length=64)
 
-    @field_validator("note", "merchant", "item", "batch_key", mode="before")
+    @field_validator("note", "merchant", "batch_key", mode="before")
     @classmethod
     def normalize_text(cls, value: object) -> object:
         return _clean_optional_text(value)
@@ -161,13 +157,10 @@ class NoteReclassifyRequest(BaseModel):
     def validate_action_fields(self) -> "NoteReclassifyRequest":
         if not self.note:
             raise ValueError("备注不能为空")
-        if self.action in ("merchant", "both") and not self.merchant:
+        if self.action == "merchant" and not self.merchant:
             raise ValueError("请填写商家")
-        if self.action in ("item", "both") and not self.item:
-            raise ValueError("请填写项目")
         if self.action in ("evaluation", "skip"):
             self.merchant = None
-            self.item = None
         return self
 
 

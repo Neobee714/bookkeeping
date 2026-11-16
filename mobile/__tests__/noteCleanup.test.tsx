@@ -1,5 +1,5 @@
 /**
- * 整理旧备注：候选渲染、商家/菜品可同选、串行保存与离线只读。
+ * 整理旧备注：候选渲染、商家/备注互斥、串行保存与离线只读。
  * 网络与导航全部 mock。
  */
 import React from 'react';
@@ -55,7 +55,7 @@ const fixture: NoteCandidateList = {
       count: 8,
       total_amount: 128,
       last_used: '2026-10-30',
-      suggestion: 'item',
+      suggestion: null,
     },
     {
       note: '有点咸',
@@ -160,9 +160,9 @@ describe('NoteCleanupScreen', () => {
     expect(texts.some((text) => text.includes('共 22 条'))).toBe(true);
     expect(texts.some((text) => text.includes('去重后 7 个'))).toBe(true);
     expect(texts).toEqual(expect.arrayContaining(['和府捞面', '面', '有点咸']));
-    expect(texts).toEqual(
-      expect.arrayContaining(['像店名', '像项目', '像评价']),
-    );
+    expect(texts).toEqual(expect.arrayContaining(['像店名', '像备注']));
+    expect(texts).not.toContain('像项目');
+    expect(texts).not.toContain('像评价');
     expect(texts.some((text) => text.includes('12 笔 · ¥384'))).toBe(true);
     expect(texts).toContain('保存整理结果（0）');
   });
@@ -185,32 +185,33 @@ describe('NoteCleanupScreen', () => {
         batch_key: expect.any(String),
       }),
     );
+    const payload = mockedReclassify.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('item');
     expect(mockGoBack).toHaveBeenCalled();
   });
 
-  it('商家与吃了什么可同选，保存为 both', async () => {
+  it('商家与备注互斥：点了备注会取消商家，保存为 evaluation', async () => {
     const tree = await render(<NoteCleanupScreen />);
 
     await pressByText(tree, '商家');
-    await pressByText(tree, '项目');
+    await pressByText(tree, '备注');
     await pressByText(tree, '保存整理结果（1）');
 
     expect(mockedReclassify).toHaveBeenCalledWith(
       expect.objectContaining({
         note: '和府捞面',
-        action: 'both',
-        merchant: '和府捞面',
-        item: '和府捞面',
+        action: 'evaluation',
         batch_key: expect.any(String),
       }),
     );
+    expect(textsOf(tree)).not.toContain('项目');
   });
 
-  it('选「评价」时只保留备注，不要求商家 / 菜品字段', async () => {
+  it('选「备注」时只保留备注，不要求商家字段', async () => {
     const tree = await render(<NoteCleanupScreen />);
 
-    // 第三个候选是「有点咸」；评价按钮在每张卡里都有，取第三张。
-    await pressByText(tree, '评价', 2);
+    // 第三个候选是「有点咸」；备注按钮在每张卡里都有，取第三张。
+    await pressByText(tree, '备注', 2);
     await pressByText(tree, '保存整理结果（1）');
 
     expect(mockedReclassify).toHaveBeenCalledWith(

@@ -130,7 +130,7 @@ beforeEach(async () => {
   });
 });
 
-describe('StatsScreen · 支出分布三档', () => {
+describe('StatsScreen · 支出分布两档', () => {
   it('切到商家档调用 fetchBreakdown 并显示金额 / 次数 / 人均', async () => {
     mockedFetchBreakdown.mockResolvedValue({
       dimension: 'merchant',
@@ -153,17 +153,17 @@ describe('StatsScreen · 支出分布三档', () => {
     expect(texts).toContain('仅统计「餐饮」；未填写「商家」的账单不计入');
   });
 
-  it('切到菜品档显示旧备注整理入口并跳转 NoteCleanup', async () => {
+  it('商家档显示旧备注整理入口并跳转 NoteCleanup', async () => {
     mockedFetchBreakdown.mockResolvedValue({
-      dimension: 'item',
-      items: [{ name: '面', amount: 130, count: 5, avg: 26 }],
+      dimension: 'merchant',
+      items: [{ name: '和府捞面', amount: 130, count: 5, avg: 26 }],
       legacy_note_count: 3,
     });
     const tree = await renderStats();
-    await pressByText(tree, '菜品');
+    await pressByText(tree, '商家');
 
     const texts = textsOf(tree);
-    expect(texts).toContain('面');
+    expect(texts).toContain('和府捞面');
     expect(texts).toContain('5 次 · 人均 ¥26');
     expect(
       texts.some((text) => text.includes('旧备注 3 条未整理 · 去整理')),
@@ -174,6 +174,19 @@ describe('StatsScreen · 支出分布三档', () => {
       texts.find((text) => text.includes('去整理')) as string,
     );
     expect(mockRootNavigate).toHaveBeenCalledWith('NoteCleanup');
+  });
+
+  it('支出分布只剩「分类 / 商家」两档', async () => {
+    mockedFetchBreakdown.mockResolvedValue({
+      dimension: 'merchant',
+      items: [],
+      legacy_note_count: 0,
+    });
+    const tree = await renderStats();
+    const texts = textsOf(tree);
+    expect(texts).toContain('分类');
+    expect(texts).toContain('商家');
+    expect(texts).not.toContain('菜品');
   });
 
   it('breakdown 失败时保留整页并显示空态，不报页面错误', async () => {

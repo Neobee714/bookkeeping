@@ -1,5 +1,5 @@
 /**
- * 四套皮肤渲染：记一笔（商家 / 菜品 / 评价）、整理旧备注、财报吃喝卡。
+ * 四套皮肤渲染：记一笔（商家 / 备注）、整理旧备注、财报吃喝卡。
  * 只验证渲染路径和关键文案，不断言具体色值（颜色全部来自 skin token）。
  */
 import React from 'react';
@@ -36,9 +36,6 @@ jest.mock('../src/api/quickInputs', () => ({
     by_category: {},
     merchants_by_category: {
       餐饮: [{ name: '和府捞面', count: 3, last_used: '2026-11-10' }],
-    },
-    items_by_category: {
-      餐饮: [{ name: '面', count: 5, last_used: '2026-11-09' }],
     },
   })),
   setNotePreset: jest.fn(),
@@ -86,7 +83,6 @@ jest.mock('../src/api/reports', () => ({
       top_expenses: [],
       insights: ['餐饮花了 ¥312'],
       merchants: [{ name: '和府捞面', amount: 96, count: 3, avg: 32 }],
-      items: [{ name: '面', amount: 130, count: 5, avg: 26 }],
       dining: { count: 12, amount: 312, avg: 26 },
       dining_insights: ['最常去 和府捞面，3 次共 ¥96'],
       trend: { unit: 'week', points: [{ label: 'W1', expense: 1120 }] },
@@ -142,7 +138,6 @@ const editingItem: Transaction = {
   category: '餐饮',
   note: '有点咸',
   merchant: '和府捞面',
-  item: '面',
   note_kind: 'evaluation',
   date: '2026-11-12',
   created_at: '2026-11-12T12:00:00+08:00',
@@ -188,8 +183,7 @@ describe('v0.18 界面 · 四套皮肤', () => {
         ),
       );
       expect(sheetTexts).toContain('商家(可选)');
-      expect(sheetTexts).toContain('吃了什么(可选)');
-      expect(sheetTexts).toContain('评价(可选)');
+      expect(sheetTexts).toContain('备注(可选)');
       expect(sheetTexts.some((text) => text.includes('和府捞面'))).toBe(true);
 
       const cleanupTexts = textsOf(await render(<NoteCleanupScreen />));

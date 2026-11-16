@@ -56,11 +56,9 @@ def record_item(
     transaction: Transaction,
     *,
     old_merchant: str | None,
-    old_item: str | None,
     old_note: str | None,
     old_note_kind: str | None,
     new_merchant: str | None,
-    new_item: str | None,
     new_note: str | None,
     new_note_kind: str | None,
 ) -> None:
@@ -69,11 +67,9 @@ def record_item(
             batch_id=batch.id,
             transaction_id=transaction.id,
             old_merchant=old_merchant,
-            old_item=old_item,
             old_note=old_note,
             old_note_kind=old_note_kind,
             new_merchant=new_merchant,
-            new_item=new_item,
             new_note=new_note,
             new_note_kind=new_note_kind,
         )
@@ -113,13 +109,11 @@ def undo_cleanup_batch(
             continue
         current = (
             transaction.merchant,
-            transaction.item,
             transaction.note,
             transaction.note_kind,
         )
         expected = (
             item.new_merchant,
-            item.new_item,
             item.new_note,
             item.new_note_kind,
         )
@@ -128,7 +122,6 @@ def undo_cleanup_batch(
             skipped += 1
             continue
         transaction.merchant = item.old_merchant
-        transaction.item = item.old_item
         transaction.note = item.old_note
         transaction.note_kind = item.old_note_kind
         restored += 1

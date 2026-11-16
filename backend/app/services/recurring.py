@@ -85,7 +85,6 @@ def _generate_rule(db: Session, rule: RecurringRule, today: date, cutoff: date) 
                 category=rule.category,
                 note=rule.note,
                 merchant=None,
-                item=None,
                 note_kind='evaluation' if rule.note else None,
                 date=due_date,
                 recurring_rule_id=rule.id,

@@ -403,7 +403,7 @@ export default function ReportDetailScreen() {
                 吃喝
               </Text>
               <Text style={[styles.cardMeta, { color: colors.textTertiary }]}>
-                来自商家 + 吃了什么
+                来自商家和餐饮账单
               </Text>
             </View>
             {diningInsights.map((text, index) => (
@@ -643,20 +643,14 @@ export default function ReportDetailScreen() {
                     style={[styles.topTitle, { color: colors.textPrimary }]}
                     numberOfLines={1}
                   >
-                    {item.item?.trim() ||
-                      item.merchant?.trim() ||
+                    {item.merchant?.trim() ||
                       item.note?.trim() ||
                       item.category}
                   </Text>
                   <Text style={[styles.topSub, { color: colors.textTertiary }]}>
                     {[
-                      item.merchant?.trim() && item.merchant !== item.item
-                        ? item.merchant.trim()
-                        : '',
                       item.category,
-                      item.note?.trim() &&
-                      item.note !== item.item &&
-                      item.note !== item.merchant
+                      item.note?.trim() && item.note !== item.merchant
                         ? item.note.trim()
                         : '',
                       formatMonthDay(item.date),

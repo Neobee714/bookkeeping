@@ -72,39 +72,6 @@ const quickDate = (offset: number): string => {
   return toDateString(date);
 };
 
-/** 「吃了什么」固定 chips：保证「面 / 粉 / 饭」等口径稳定。 */
-const FIXED_ITEM_CHIPS = [
-  '面',
-  '粉',
-  '饭',
-  '火锅',
-  '烧烤',
-  '咖啡',
-  '奶茶',
-  '饺子',
-];
-
-/** 只有餐饮分类展示固定菜品 chips；其它分类走自由输入，但按分类换更自然的文案。 */
-const DINING_CATEGORY = '餐饮';
-
-const DEFAULT_ITEM_FIELD = {
-  label: '项目',
-  placeholder: '房租 / 地铁 / 日用品',
-};
-
-const ITEM_FIELD_COPY: Record<string, { label: string; placeholder: string }> = {
-  餐饮: { label: '吃了什么', placeholder: '牛肉面 / 麻辣烫' },
-  零食: { label: '吃了什么', placeholder: '薯片 / 奶茶' },
-  娱乐: { label: '玩了什么', placeholder: '电影 / 桌游 / 演唱会' },
-  购物: { label: '买了什么', placeholder: '衣服 / 日用品' },
-  交通: { label: '项目', placeholder: '地铁 / 打车' },
-  旅游: { label: '项目', placeholder: '机票 / 酒店 / 门票' },
-  医疗: { label: '项目', placeholder: '挂号 / 药品' },
-  教育: { label: '项目', placeholder: '课程 / 书' },
-  居住: { label: '项目', placeholder: '房租 / 水电' },
-  收入: { label: '项目', placeholder: '工资 / 奖金 / 红包' },
-};
-
 /** YYYY-MM-DD -> 本地时区 Date(避免 new Date('YYYY-MM-DD') 的 UTC 偏移)。 */
 const parseDateStr = (value: string): Date => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -157,9 +124,6 @@ export default function AddTransactionSheet({
   const [category, setCategory] = useState('');
   const [dateStr, setDateStr] = useState(quickDate(0));
   const [merchant, setMerchant] = useState('');
-  const [itemName, setItemName] = useState('');
-  /** 「吃了什么」处于自定义输入态：固定 chips 未命中或用户主动点「+ 自定义」。 */
-  const [customItem, setCustomItem] = useState(false);
   const [note, setNote] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -185,11 +149,6 @@ export default function AddTransactionSheet({
       setCategory(editingItem.category);
       setDateStr(isValidDateString(editingItem.date) ? editingItem.date : quickDate(0));
       setMerchant(editingItem.merchant ?? '');
-      const editingItemName = editingItem.item ?? '';
-      setItemName(editingItemName);
-      setCustomItem(
-        editingItemName.length > 0 && !FIXED_ITEM_CHIPS.includes(editingItemName),
-      );
       setNote(editingItem.note ?? '');
     } else if (initialDraft) {
       setType(initialDraft.type);
@@ -199,8 +158,6 @@ export default function AddTransactionSheet({
         isValidDateString(initialDraft.date) ? initialDraft.date : quickDate(0),
       );
       setMerchant('');
-      setItemName('');
-      setCustomItem(false);
       setNote(initialDraft.note ?? '');
     } else {
       setType('expense');
@@ -208,8 +165,6 @@ export default function AddTransactionSheet({
       setCategory('');
       setDateStr(quickDate(0));
       setMerchant('');
-      setItemName('');
-      setCustomItem(false);
       setNote('');
     }
     setErrorMessage('');
@@ -327,27 +282,12 @@ export default function AddTransactionSheet({
 
   const trimmedNote = note.trim();
   const trimmedMerchant = merchant.trim();
-  const trimmedItemName = itemName.trim();
-  const isDining = category === DINING_CATEGORY;
-  const itemField = ITEM_FIELD_COPY[category] ?? DEFAULT_ITEM_FIELD;
 
   /** 最近 90 天该分类的高频商家（旧后端不返回时为空数组）。 */
   const merchantChips = useMemo<QuickNameCandidate[]>(
     () => quickInputs?.merchants_by_category?.[category] ?? [],
     [quickInputs, category],
   );
-
-  /** 固定菜品 chips + 最近自定义菜品（去重、固定项在前）。 */
-  const itemChips = useMemo<string[]>(() => {
-    const recent = (quickInputs?.items_by_category?.[category] ?? []).map(
-      (candidate) => candidate.name,
-    );
-    const merged = [
-      ...FIXED_ITEM_CHIPS,
-      ...recent.filter((name) => !FIXED_ITEM_CHIPS.includes(name)),
-    ];
-    return merged.slice(0, 12);
-  }, [quickInputs, category]);
 
   const pinnedNotes = useMemo(
     () => new Set((quickInputs?.pinned ?? []).map((item) => item.note)),
@@ -485,7 +425,6 @@ export default function AddTransactionSheet({
         category,
         date: dateStr,
         merchant: trimmedMerchant || undefined,
-        item: trimmedItemName || undefined,
         note: trimmedNote || undefined,
       });
     } catch (error) {
@@ -653,127 +592,16 @@ export default function AddTransactionSheet({
                 </ScrollView>
               ) : null}
 
-              {/* 吃了什么 / 玩了什么 / 项目：餐饮 = 固定 chips + 自定义；其它分类 = 自由输入 */}
+              {/* 备注：消费明细/评价都写这里（v2.9.0 起取消「吃了什么」单独字段） */}
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {`${itemField.label}(可选)`}
-              </Text>
-              {isDining ? (
-                <>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    style={styles.itemChipRow}
-                    contentContainerStyle={styles.chipRowContent}
-                  >
-                    {itemChips.map((name) => {
-                      const active = !customItem && trimmedItemName === name;
-                      return (
-                        <Pressable
-                          key={`item:${name}`}
-                          style={[
-                            styles.noteChip,
-                            active
-                              ? {
-                                  backgroundColor: colors.card,
-                                  borderColor: colors.primary,
-                                }
-                              : [
-                                  styles.noteChipAuto,
-                                  { backgroundColor: colors.chipSoftBg },
-                                ],
-                          ]}
-                          onPress={() => {
-                            if (active) {
-                              setItemName('');
-                              return;
-                            }
-                            setItemName(name);
-                            setCustomItem(false);
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.noteChipText,
-                              active ? styles.noteChipTextPinned : null,
-                              {
-                                color: active
-                                  ? colors.primary
-                                  : colors.chipSoftText,
-                              },
-                            ]}
-                          >
-                            {name}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                    <Pressable
-                      style={[
-                        styles.noteChip,
-                        customItem
-                          ? {
-                              backgroundColor: colors.card,
-                              borderColor: colors.primary,
-                            }
-                          : [
-                              styles.noteChipAuto,
-                              { backgroundColor: colors.chipSoftBg },
-                            ],
-                      ]}
-                      onPress={() => setCustomItem(true)}
-                    >
-                      <Text
-                        style={[
-                          styles.noteChipText,
-                          customItem ? styles.noteChipTextPinned : null,
-                          {
-                            color: customItem
-                              ? colors.primary
-                              : colors.chipSoftText,
-                          },
-                        ]}
-                      >
-                        ＋自定义
-                      </Text>
-                    </Pressable>
-                  </ScrollView>
-                  {customItem ? (
-                    <View style={[styles.fieldBox, skin.surfaces.input]}>
-                      <TextInput
-                        style={[styles.fieldInput, { color: colors.textPrimary }]}
-                        value={itemName}
-                        onChangeText={setItemName}
-                        placeholder={itemField.placeholder}
-                        placeholderTextColor={colors.textTertiary}
-                        maxLength={50}
-                      />
-                    </View>
-                  ) : null}
-                </>
-              ) : (
-                <View style={[styles.fieldBox, skin.surfaces.input]}>
-                  <TextInput
-                    style={[styles.fieldInput, { color: colors.textPrimary }]}
-                    value={itemName}
-                    onChangeText={setItemName}
-                    placeholder={itemField.placeholder}
-                    placeholderTextColor={colors.textTertiary}
-                    maxLength={50}
-                  />
-                </View>
-              )}
-
-              {/* 评价（原备注） */}
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                评价(可选)
+                备注(可选)
               </Text>
               <View style={[styles.noteRow, skin.surfaces.input]}>
                 <TextInput
                   style={[styles.noteInput, { color: colors.textPrimary }]}
                   value={note}
                   onChangeText={setNote}
-                  placeholder="好吃 / 有点咸 / 环境不错"
+                  placeholder="牛肉面 / 卤味 / 有点咸"
                   placeholderTextColor={colors.textTertiary}
                   maxLength={255}
                 />
@@ -1117,7 +945,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     fontSize: 14,
   },
-  /** 商家 / 项目输入框：与备注同圆角节奏，但单独一行。 */
+  /** 商家输入框：与备注同圆角节奏，但单独一行。 */
   fieldBox: {
     borderRadius: 14,
     paddingHorizontal: spacing.lg,
@@ -1126,10 +954,6 @@ const styles = StyleSheet.create({
   fieldInput: {
     paddingVertical: spacing.md,
     fontSize: 14,
-  },
-  /** 菜品 chips 行：与下方自定义输入框保持紧凑间距。 */
-  itemChipRow: {
-    marginBottom: spacing.sm,
   },
   chipCount: {
     fontSize: 10,

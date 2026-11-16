@@ -88,7 +88,6 @@ def _serialize_transaction(item: Transaction) -> dict:
         'category': item.category,
         'note': item.note,
         'merchant': item.merchant,
-        'item': item.item,
         'note_kind': item.note_kind,
         'date': item.date.isoformat(),
         'created_at': item.created_at.isoformat() if item.created_at else None,
@@ -191,7 +190,6 @@ def create_transaction(
         category=payload.category,
         note=payload.note,
         merchant=payload.merchant,
-        item=payload.item,
         note_kind='evaluation' if payload.note else None,
         date=payload.date,
     )
@@ -278,6 +276,9 @@ async def import_transactions(
             note_str = _cell(note_index)
             merchant_str = _cell(merchant_index)[:50]
             item_str = _cell(item_index)[:50]
+            # 2.9.0 起「项目」字段下线：旧 CSV 若还有项目列，合并进备注，避免丢信息。
+            if item_str:
+                note_str = f'{item_str} · {note_str}' if note_str else item_str
 
             transaction_type = SHARK_TYPE_MAP.get(type_str)
             if transaction_type is None:
@@ -304,7 +305,6 @@ async def import_transactions(
                     category=SHARK_CATEGORY_MAP.get(category_str, CategoryEnum.OTHER),
                     note=(note_str[:255] or None),
                     merchant=(merchant_str or None),
-                    item=(item_str or None),
                     note_kind='evaluation' if note_str else None,
                     date=parsed_date,
                 )
@@ -369,7 +369,7 @@ def _named_usage_by_category(
     window_end: date,
     limit: int,
 ) -> dict[str, list[QuickNameCandidate]]:
-    """按分类聚合商家/菜品候选，次数降序、最近使用降序。"""
+    """按分类聚合商家候选，次数降序、最近使用降序。"""
     label = func.trim(column)
     rows = db.execute(
         select(
@@ -488,14 +488,6 @@ def get_quick_inputs(
             window_end=today,
             limit=min(per_category, 6),
         ),
-        items_by_category=_named_usage_by_category(
-            db=db,
-            user_id=current_user.id,
-            column=Transaction.item,
-            window_start=window_start,
-            window_end=today,
-            limit=min(per_category, 6),
-        ),
     )
     return success_response(data=data.model_dump(mode='json'))
 
@@ -566,7 +558,7 @@ def reclassify_note(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """把同名旧备注批量归为商家/菜品/评价；只影响统计字段。"""
+    """把同名旧备注批量归为商家或保留为备注；只影响统计字段。"""
     if payload.action == 'skip':
         data = NoteReclassifyResponse(affected=0, batch_id=None)
         return success_response(data=data.model_dump(mode='json'), message='已跳过')
@@ -589,21 +581,14 @@ def reclassify_note(
     batch = get_or_create_batch(db, current_user.id, payload.batch_key)
     for item in items:
         old_merchant = item.merchant
-        old_item = item.item
         old_note = item.note
         old_note_kind = item.note_kind
 
         if payload.action == 'merchant':
-            new_merchant, new_item = payload.merchant, None
-            new_note, new_note_kind = None, None
-        elif payload.action == 'item':
-            new_merchant, new_item = None, payload.item
-            new_note, new_note_kind = None, None
-        elif payload.action == 'both':
-            new_merchant, new_item = payload.merchant, payload.item
+            new_merchant = payload.merchant
             new_note, new_note_kind = None, None
         else:  # evaluation
-            new_merchant, new_item = old_merchant, old_item
+            new_merchant = old_merchant
             new_note, new_note_kind = old_note, 'evaluation'
 
         record_item(
@@ -611,16 +596,13 @@ def reclassify_note(
             batch,
             item,
             old_merchant=old_merchant,
-            old_item=old_item,
             old_note=old_note,
             old_note_kind=old_note_kind,
             new_merchant=new_merchant,
-            new_item=new_item,
             new_note=new_note,
             new_note_kind=new_note_kind,
         )
         item.merchant = new_merchant
-        item.item = new_item
         item.note = new_note
         item.note_kind = new_note_kind
 

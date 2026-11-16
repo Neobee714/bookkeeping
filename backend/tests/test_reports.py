@@ -105,7 +105,6 @@ def _add_tx(
     tx_date: date,
     note: str | None = None,
     merchant: str | None = None,
-    item: str | None = None,
     note_kind: str | None = None,
 ) -> None:
     db.add(
@@ -116,7 +115,6 @@ def _add_tx(
             category=category,
             note=note,
             merchant=merchant,
-            item=item,
             note_kind=note_kind,
             date=tx_date,
         )
@@ -211,7 +209,6 @@ def test_generate_now_aggregates_only_current_user(
             "category": "居住",
             "note": "房租",
             "merchant": None,
-            "item": None,
             "date": "2026-10-01",
         },
         {
@@ -219,7 +216,6 @@ def test_generate_now_aggregates_only_current_user(
             "category": "购物",
             "note": "羽绒服",
             "merchant": None,
-            "item": None,
             "date": "2026-10-21",
         },
         {
@@ -227,7 +223,6 @@ def test_generate_now_aggregates_only_current_user(
             "category": "餐饮",
             "note": "午饭",
             "merchant": None,
-            "item": None,
             "date": "2026-10-05",
         },
     ]
@@ -235,6 +230,11 @@ def test_generate_now_aggregates_only_current_user(
     assert content["insights"][0] == "居住花了 ¥2,000，占支出的 50%，是本期最大开销"
     assert content["insights"][1] == "最大单笔是 10 月 1 日的「房租」¥2,000"
     assert content["insights"][2] == "收入 ¥8,420，支出 ¥3,999，结余 ¥4,421（储蓄率 53%）"
+    # 2.9.0 起不再有「菜品」维度，商家/餐饮卡片照常。
+    assert "items" not in content
+    assert content["merchants"] == []
+    assert content["dining"] == {"count": 3, "amount": 1000.0, "avg": 333.33}
+    assert content["dining_insights"] == ["餐饮 3 次，平均每次 ¥333"]
     assert content["trend"]["unit"] == "week"
     assert [point["label"] for point in content["trend"]["points"]] == [
         "W1",
@@ -332,6 +332,9 @@ def test_empty_period_still_generates(
     assert content["daily_expense"] == 0.0
     assert content["categories"] == []
     assert content["top_expenses"] == []
+    assert content["merchants"] == []
+    assert content["dining"] == {"count": 0, "amount": 0.0, "avg": 0.0}
+    assert content["dining_insights"] == []
     assert content["insights"] == []
     assert len(content["trend"]["points"]) == 5
     assert all(point["expense"] == 0.0 for point in content["trend"]["points"])
@@ -355,6 +358,31 @@ def test_overspend_headline(
     assert content["balance"] == -500.0
     assert content["headline"] == "10 月，你超支了 ¥500"
     assert any("超支 ¥500" in insight for insight in content["insights"])
+
+
+def test_top_expense_insight_falls_back_to_category(
+    env: tuple[TestClient, sessionmaker, dict[str, int]],
+) -> None:
+    client, session_factory, _holder = env
+    db = session_factory()
+    try:
+        _add_tx(db, 1, "80.00", TransactionType.EXPENSE, "交通", date(2026, 10, 3))
+        db.commit()
+    finally:
+        db.close()
+
+    content = _generate_now(client)["content"]
+
+    assert content["top_expenses"] == [
+        {
+            "amount": 80.0,
+            "category": "交通",
+            "note": None,
+            "merchant": None,
+            "date": "2026-10-03",
+        }
+    ]
+    assert content["insights"][1] == "最大单笔是 10 月 3 日的「交通」¥80"
 
 
 @pytest.mark.parametrize(
@@ -836,7 +864,7 @@ def test_report_content_stored_as_readable_json(
         db.close()
 
 
-def test_report_content_includes_merchant_item_dining(
+def test_report_content_includes_merchants_and_dining(
     env: tuple[TestClient, sessionmaker, dict[str, int]],
 ) -> None:
     client, session_factory, _holder = env
@@ -851,7 +879,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 5),
             None,
             merchant="和府捞面",
-            item="面",
         )
         _add_tx(
             db,
@@ -862,7 +889,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 6),
             None,
             merchant="和府捞面",
-            item="面",
         )
         _add_tx(
             db,
@@ -873,7 +899,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 7),
             None,
             merchant="和府捞面",
-            item="饭",
         )
         _add_tx(
             db,
@@ -884,7 +909,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 8),
             None,
             merchant="麦当劳",
-            item="汉堡",
         )
         _add_tx(
             db,
@@ -895,7 +919,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 9),
             None,
             merchant="咖啡店",
-            item="咖啡",
         )
         _add_tx(
             db,
@@ -906,7 +929,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 10),
             None,
             merchant="   ",
-            item="   ",
         )
         _add_tx(
             db,
@@ -915,7 +937,7 @@ def test_report_content_includes_merchant_item_dining(
             TransactionType.EXPENSE,
             "购物",
             date(2026, 10, 11),
-            None,
+            "零食",
             merchant="超市",
         )
         _add_tx(
@@ -937,7 +959,6 @@ def test_report_content_includes_merchant_item_dining(
             date(2026, 10, 5),
             None,
             merchant="和府捞面",
-            item="面",
         )
         db.commit()
     finally:
@@ -945,23 +966,21 @@ def test_report_content_includes_merchant_item_dining(
 
     content = _generate_now(client)["content"]
 
+    assert "items" not in content
     assert content["merchants"] == [
         {"name": "和府捞面", "amount": 96.0, "count": 3, "avg": 32.0},
         {"name": "麦当劳", "amount": 50.0, "count": 1, "avg": 50.0},
         {"name": "咖啡店", "amount": 20.0, "count": 1, "avg": 20.0},
     ]
-    assert content["items"] == [
-        {"name": "面", "amount": 64.0, "count": 2, "avg": 32.0},
-        {"name": "汉堡", "amount": 50.0, "count": 1, "avg": 50.0},
-        {"name": "饭", "amount": 32.0, "count": 1, "avg": 32.0},
-        {"name": "咖啡", "amount": 20.0, "count": 1, "avg": 20.0},
-    ]
+    # 空白商家不计入排行，但仍算一顿餐饮。
     assert content["dining"] == {"count": 6, "amount": 181.0, "avg": 30.17}
+    # 2.9.0：洞察最多两条，「最常吃 …」随菜品维度一起下线。
     assert content["dining_insights"] == [
         "最常去 和府捞面，3 次共 ¥96",
-        "最常吃 面，2 次共 ¥64",
         "餐饮 6 次，平均每次 ¥30",
     ]
+    # 最大单笔的标签优先级：merchant > note > category。
+    assert content["insights"][1] == "最大单笔是 10 月 11 日的「超市」¥100"
 
 
 def test_report_content_without_dining_data_is_empty(
@@ -972,12 +991,12 @@ def test_report_content_without_dining_data_is_empty(
     content = _generate_now(client)["content"]
 
     assert content["merchants"] == []
-    assert content["items"] == []
+    assert "items" not in content
     assert content["dining"] == {"count": 0, "amount": 0.0, "avg": 0.0}
     assert content["dining_insights"] == []
 
 
-def test_report_merchant_and_item_top5(
+def test_report_merchant_top5(
     env: tuple[TestClient, sessionmaker, dict[str, int]],
 ) -> None:
     client, session_factory, _holder = env
@@ -993,7 +1012,6 @@ def test_report_merchant_and_item_top5(
                 date(2026, 10, index),
                 None,
                 merchant=f"店{index}",
-                item=f"菜{index}",
             )
         # 常客金额低、进不了 Top5，但次数最多，洞察应基于全量商家。
         for day in range(10, 15):
@@ -1020,11 +1038,7 @@ def test_report_merchant_and_item_top5(
         "店4",
         "店3",
     ]
-    assert [item["name"] for item in content["items"]] == [
-        "菜7",
-        "菜6",
-        "菜5",
-        "菜4",
-        "菜3",
+    assert content["dining_insights"] == [
+        "最常去 常客，5 次共 ¥5",
+        "餐饮 12 次，平均每次 ¥24",
     ]
-    assert content["dining_insights"][0] == "最常去 常客，5 次共 ¥5"

@@ -71,7 +71,6 @@ def _seed(session_factory: sessionmaker, rows: list[dict]) -> None:
                     category=row.get("category", "餐饮"),
                     note=row.get("note"),
                     merchant=row.get("merchant"),
-                    item=row.get("item"),
                     note_kind=row.get("note_kind"),
                     date=date.fromisoformat(row.get("date", "2026-08-01")),
                 )
@@ -176,17 +175,43 @@ def test_candidates_sort_by_count_then_amount_and_respect_limit(
     assert test_client.get("/transactions/note-candidates", params={"limit": 201}).status_code == 422
 
 
+def test_candidates_suggestion_can_be_null(
+    client: tuple[TestClient, dict[str, User], sessionmaker],
+) -> None:
+    test_client, _holder, session_factory = client
+    _seed(
+        session_factory,
+        [
+            {"amount": 10, "note": "面馆", "date": "2026-08-01"},
+            {"amount": 20, "note": "有点咸", "date": "2026-08-02"},
+            {"amount": 30, "note": "牛肉面", "date": "2026-08-03"},
+        ],
+    )
+
+    data = _candidates(test_client)
+
+    assert data["total"] == 3
+    assert {item["note"]: item["suggestion"] for item in data["items"]} == {
+        "面馆": "merchant",
+        "有点咸": "evaluation",
+        "牛肉面": None,
+    }
+
+
 @pytest.mark.parametrize(
     ("note", "expected"),
     [
         ("小馆", "merchant"),
-        ("牛肉面", "item"),
-        ("面馆", "both"),
+        ("张记", "merchant"),
+        ("面馆", "merchant"),
+        ("便利店", "merchant"),
+        ("牛肉面", None),
+        ("面", None),
+        ("和府捞面", None),
         ("有点咸", "evaluation"),
         ("环境不错", "evaluation"),
+        ("牛肉面很好吃", "evaluation"),
         ("随便", None),
-        ("咖啡", "both"),
-        ("和府捞面", None),
         ("  ", None),
         (None, None),
     ],
@@ -266,52 +291,24 @@ def test_action_merchant_clears_note_and_keeps_other_fields(
     assert _candidates(test_client)["total"] == 0
 
 
-def test_action_item_writes_item_and_clears_note(
+def test_action_merchant_overwrites_existing_merchant(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
     _seed(
         session_factory,
         [
-            {"amount": 20, "note": "牛肉面", "note_kind": None},
-            {"amount": 30, "note": "牛肉面", "note_kind": None},
+            {"amount": 20, "note": "张记", "merchant": "老张记", "note_kind": None},
         ],
     )
 
-    data = _reclassify(test_client, note="牛肉面", action="item", item="面")
+    data = _reclassify(test_client, note="张记", action="merchant", merchant=" 张记面馆 ")
 
-    assert data["affected"] == 2
-    assert data["batch_id"] is not None
+    assert data["affected"] == 1
     rows = _rows(session_factory)
-    assert [row.item for row in rows] == ["面", "面"]
-    assert [row.merchant for row in rows] == [None, None]
-    assert [row.note for row in rows] == [None, None]
-    assert [row.note_kind for row in rows] == [None, None]
-
-
-def test_action_both_writes_merchant_and_item(
-    client: tuple[TestClient, dict[str, User], sessionmaker],
-) -> None:
-    test_client, _holder, session_factory = client
-    _seed(
-        session_factory,
-        [
-            {"amount": 20, "note": "面馆", "note_kind": None},
-            {"amount": 30, "note": " 面馆 ", "note_kind": None},
-        ],
-    )
-
-    data = _reclassify(
-        test_client, note="面馆", action="both", merchant="张记面馆", item="面"
-    )
-
-    assert data["affected"] == 2
-    assert data["batch_id"] is not None
-    rows = _rows(session_factory)
-    assert [row.merchant for row in rows] == ["张记面馆", "张记面馆"]
-    assert [row.item for row in rows] == ["面", "面"]
-    assert [row.note for row in rows] == [None, None]
-    assert [row.note_kind for row in rows] == [None, None]
+    assert rows[0].merchant == "张记面馆"
+    assert rows[0].note is None
+    assert rows[0].note_kind is None
 
 
 def test_action_evaluation_keeps_note_and_marks_kind(
@@ -334,7 +331,6 @@ def test_action_evaluation_keeps_note_and_marks_kind(
     assert [row.note for row in rows] == ["有点咸", "有点咸"]
     assert [row.note_kind for row in rows] == ["evaluation", "evaluation"]
     assert [row.merchant for row in rows] == [None, None]
-    assert [row.item for row in rows] == [None, None]
     assert _candidates(test_client)["total"] == 0
 
 
@@ -386,7 +382,9 @@ def test_only_null_note_kind_rows_are_updated(
     "payload",
     [
         {"note": "小馆", "action": "merchant"},
+        # 2.9.0 起 item/both 已下线，老客户端再传应被拒绝
         {"note": "小馆", "action": "item"},
+        {"note": "小馆", "action": "item", "item": "面"},
         {"note": "小馆", "action": "both", "merchant": "小馆"},
         {"note": "小馆", "action": "both", "item": "面"},
         {"note": "小馆", "action": "unknown"},
@@ -482,11 +480,11 @@ def test_same_batch_key_groups_multiple_reclassify_calls(
     second = _reclassify(
         test_client,
         note="牛肉面",
-        action="item",
-        item="面",
+        action="evaluation",
         batch_key="cleanup-save-1",
     )
     assert first["batch_id"] == second["batch_id"]
+    assert second["affected"] == 2
 
     candidates = _candidates(test_client)
     assert candidates["last_cleanup"]["affected_count"] == 4
@@ -500,7 +498,7 @@ def test_same_batch_key_groups_multiple_reclassify_calls(
     rows = _rows(session_factory)
     assert [row.note for row in rows] == ["小馆", "小馆", "牛肉面", "牛肉面"]
     assert [row.merchant for row in rows] == [None, None, None, None]
-    assert [row.item for row in rows] == [None, None, None, None]
+    assert [row.note_kind for row in rows] == [None, None, None, None]
 
 
 def test_undo_skips_rows_edited_after_cleanup(
@@ -537,6 +535,39 @@ def test_undo_skips_rows_edited_after_cleanup(
     assert rows[1].note == "小馆"
     assert rows[1].merchant is None
     assert rows[1].note_kind is None
+
+
+def test_undo_skips_rows_whose_merchant_changed(
+    client: tuple[TestClient, dict[str, User], sessionmaker],
+) -> None:
+    test_client, _holder, session_factory = client
+    _seed(
+        session_factory,
+        [
+            {"amount": 20, "note": "小馆", "note_kind": None},
+            {"amount": 30, "note": "小馆", "note_kind": None},
+        ],
+    )
+    result = _reclassify(test_client, note="小馆", action="merchant", merchant="小馆")
+
+    db = session_factory()
+    try:
+        first = db.scalars(select(Transaction).order_by(Transaction.id.asc())).first()
+        assert first is not None
+        first.merchant = "换了一家"
+        db.commit()
+    finally:
+        db.close()
+
+    undone = _undo(test_client, result["batch_id"])
+    assert undone["restored"] == 1
+    assert undone["skipped"] == 1
+
+    rows = _rows(session_factory)
+    assert rows[0].merchant == "换了一家"
+    assert rows[0].note is None
+    assert rows[1].merchant is None
+    assert rows[1].note == "小馆"
 
 
 def test_undo_without_batch_or_after_undo_is_rejected(

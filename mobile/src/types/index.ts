@@ -93,7 +93,7 @@ export interface RegisterResult {
 
 // ---------- 交易 ----------
 
-/** 备注类型：evaluation = 用户确认过的评价；null = 旧备注未整理。 */
+/** 备注类型：evaluation = 用户确认过的备注；null = 旧备注未整理。 */
 export type NoteKind = 'evaluation';
 
 export interface Transaction {
@@ -104,13 +104,11 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: Category;
-  /** 自由文本评价；旧数据里是历史备注。 */
+  /** 自由文本备注（消费明细 / 评价）；旧数据里是历史备注。 */
   note: string | null;
   /** 商家；为空表示未填。 */
   merchant?: string | null;
-  /** 项目 / 吃了什么 / 玩了什么；为空表示未填。 */
-  item?: string | null;
-  /** evaluation = 已确认的评价；null / undefined = 旧备注未整理。 */
+  /** evaluation = 已确认的备注；null / undefined = 旧备注未整理。 */
   note_kind?: NoteKind | null;
   date: string;
   created_at: string;
@@ -128,10 +126,9 @@ export interface TransactionCreatePayload {
   amount: number;
   type: TransactionType;
   category: Category;
-  /** 评价；旧字段语义沿用，后端按非空置 note_kind='evaluation'。 */
+  /** 备注；写了消费明细或评价。 */
   note?: string;
   merchant?: string;
-  item?: string;
   date: string;
   /** 离线新增幂等键；在线新增可不传。 */
   client_id?: string;
@@ -143,7 +140,6 @@ export interface TransactionUpdatePayload {
   category?: Category;
   note?: string | null;
   merchant?: string | null;
-  item?: string | null;
   date?: string;
 }
 
@@ -161,7 +157,7 @@ export interface QuickNoteCandidate {
   last_used: string | null;
 }
 
-/** 快捷输入里的商家 / 菜品候选。 */
+/** 快捷输入里的商家候选。 */
 export interface QuickNameCandidate {
   name: string;
   count: number;
@@ -178,8 +174,6 @@ export interface QuickInputs {
   by_category: Record<string, QuickNoteCandidate[]>;
   /** 各分类下最近 90 天高频商家(旧后端可能不返回)。 */
   merchants_by_category?: Record<string, QuickNameCandidate[]>;
-  /** 各分类下最近 90 天高频菜品(旧后端可能不返回)。 */
-  items_by_category?: Record<string, QuickNameCandidate[]>;
 }
 
 // ---------- 预算 ----------
@@ -305,10 +299,10 @@ export interface NoteRankItem {
   count: number;
 }
 
-/** 图表排行维度：商家 / 菜品。 */
-export type BreakdownDimension = 'merchant' | 'item';
+/** 图表排行维度：只剩商家（2.9.0 起菜品维度下线）。 */
+export type BreakdownDimension = 'merchant';
 
-/** 商家 / 菜品排行条目。 */
+/** 商家排行条目。 */
 export interface BreakdownItem {
   name: string;
   amount: number;
@@ -337,7 +331,7 @@ export interface CleanupBatchInfo {
 // ---------- 整理旧备注 ----------
 
 /** 后端根据词表给出的建议，仅作 UI 提示，不自动应用。 */
-export type NoteSuggestion = 'merchant' | 'item' | 'both' | 'evaluation' | null;
+export type NoteSuggestion = 'merchant' | 'evaluation' | null;
 
 /** GET /transactions/note-candidates 的条目。 */
 export interface NoteCandidate {
@@ -358,13 +352,12 @@ export interface NoteCandidateList {
 }
 
 /** POST /transactions/notes/reclassify 的 action。 */
-export type ReclassifyAction = 'merchant' | 'item' | 'both' | 'evaluation' | 'skip';
+export type ReclassifyAction = 'merchant' | 'evaluation' | 'skip';
 
 export interface ReclassifyPayload {
   note: string;
   action: ReclassifyAction;
   merchant?: string | null;
-  item?: string | null;
   /** 同一次保存的多条请求共用一个 key，便于整批撤销。 */
   batch_key?: string;
 }
@@ -496,8 +489,6 @@ export interface ReportTopExpense {
   note: string | null;
   /** v0.18 新增；旧报告没有。 */
   merchant?: string | null;
-  /** v0.18 新增；旧报告没有。 */
-  item?: string | null;
   date: string;
 }
 
@@ -540,8 +531,6 @@ export interface ReportContent {
   trend: ReportTrend;
   /** v0.18 新增：商家 Top5（旧报告没有该字段）。 */
   merchants?: BreakdownItem[];
-  /** v0.18 新增：菜品 Top5（旧报告没有该字段）。 */
-  items?: BreakdownItem[];
   /** v0.18 新增：餐饮支出汇总（旧报告没有该字段）。 */
   dining?: ReportDining | null;
   /** v0.18 新增：最多 3 条吃喝洞察（旧报告没有该字段）。 */

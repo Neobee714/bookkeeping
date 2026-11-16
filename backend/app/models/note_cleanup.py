@@ -51,11 +51,9 @@ class NoteCleanupItem(Base):
         index=True,
     )
     old_merchant: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    old_item: Mapped[str | None] = mapped_column(String(50), nullable=True)
     old_note: Mapped[str | None] = mapped_column(String(255), nullable=True)
     old_note_kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
     new_merchant: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    new_item: Mapped[str | None] = mapped_column(String(50), nullable=True)
     new_note: Mapped[str | None] = mapped_column(String(255), nullable=True)
     new_note_kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
 

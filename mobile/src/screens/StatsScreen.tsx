@@ -42,7 +42,7 @@ import type {
 
 type SummaryTab = 'self' | 'partner';
 
-/** 支出分布三档：分类沿用汇总，商家 / 菜品走 /stats/breakdown。 */
+/** 支出分布两档：分类沿用汇总，商家走 /stats/breakdown（2.9.0 起菜品维度下线）。 */
 type DistributionDimension = 'category' | BreakdownDimension;
 
 type TabNavigation = BottomTabNavigationProp<MainTabParamList>;
@@ -311,7 +311,7 @@ export default function StatsScreen() {
   useEffect(() => {
     requestKeyRef.current = requestKey;
   }, [requestKey]);
-  /** 商家 / 菜品请求令牌：切维度或月份时丢弃过期响应。 */
+  /** 商家排行请求令牌：切维度或月份时丢弃过期响应。 */
   const breakdownRequestRef = useRef(0);
 
   const load = useCallback(async () => {
@@ -410,7 +410,7 @@ export default function StatsScreen() {
   }, [isFocused, requestKey, reloadTick, load]);
 
   /**
-   * 商家 / 菜品排行：只在对应档位加载；失败静默降级为「暂无」，
+   * 商家排行：只在对应档位加载；失败静默降级为「暂无」，
    * 绝不把整页打成错误态。缓存 key 按 ARCH 3.4 固定。
    */
   useEffect(() => {
@@ -775,7 +775,6 @@ export default function StatsScreen() {
                   options={[
                     { key: 'category', label: '分类' },
                     { key: 'merchant', label: '商家' },
-                    { key: 'item', label: '菜品' },
                   ]}
                   value={dimension}
                   onChange={(key) => setDimension(key as DistributionDimension)}
@@ -833,18 +832,12 @@ export default function StatsScreen() {
               ) : breakdownRows.length === 0 ? (
                 <View style={styles.emptyWrap}>
                   <EmptyView
-                    emoji={dimension === 'merchant' ? '🏪' : '🍜'}
-                    title={
-                      dimension === 'merchant'
-                        ? '本月还没有商家数据'
-                        : '本月还没有菜品数据'
-                    }
+                    emoji="🏪"
+                    title="本月还没有商家数据"
                     description={
                       breakdownFailed
                         ? '暂时无法加载排行，记账不受影响'
-                        : dimension === 'merchant'
-                          ? '记账时填写「商家」后会出现在这里'
-                          : '记账时选「吃了什么」后会出现在这里'
+                        : '记账时填写「商家」后会出现在这里'
                     }
                   />
                 </View>
@@ -882,10 +875,7 @@ export default function StatsScreen() {
                             styles.fill,
                             {
                               width: `${item.percent}%`,
-                              backgroundColor:
-                                dimension === 'merchant'
-                                  ? colors.primary
-                                  : colors.secondary,
+                              backgroundColor: colors.primary,
                             },
                           ]}
                         />
@@ -895,13 +885,11 @@ export default function StatsScreen() {
                   <Text
                     style={[styles.rankFoot, { color: colors.textTertiary }]}
                   >
-                    {dimension === 'merchant'
-                      ? '仅统计「餐饮」；未填写「商家」的账单不计入'
-                      : '仅统计「餐饮」；未填写「吃了什么」的账单不计入'}
+                    仅统计「餐饮」；未填写「商家」的账单不计入
                   </Text>
                 </>
               )}
-              {dimension === 'item' &&
+              {dimension === 'merchant' &&
               tab === 'self' &&
               (legacyNoteCount > 0 || lastCleanup) ? (
                 <Pressable

@@ -1,6 +1,6 @@
 /**
- * v0.18 商家 / 吃了什么 / 评价：表单回填、提交 payload 与列表展示优先级。
- * 网络层全部 mock，不依赖后端。
+ * v2.9.0 商家 / 备注：表单回填、提交 payload 与列表展示优先级。
+ * 「吃了什么 / 项目」已下线，备注承担消费明细；网络层全部 mock，不依赖后端。
  */
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AddTransactionSheet from '../src/components/AddTransactionSheet';
 import TransactionItem from '../src/components/TransactionItem';
-import type { Transaction } from '../src/types';
+import type { Transaction, TransactionCreatePayload } from '../src/types';
 
 jest.mock('../src/api/categories', () => ({
   fetchCategories: jest.fn(async () => [
@@ -28,9 +28,6 @@ jest.mock('../src/api/quickInputs', () => ({
         { name: '和府捞面', count: 3, last_used: '2026-11-10' },
         { name: '麦当劳', count: 2, last_used: '2026-11-09' },
       ],
-    },
-    items_by_category: {
-      餐饮: [{ name: '牛肉面', count: 2, last_used: '2026-11-09' }],
     },
   })),
   setNotePreset: jest.fn(),
@@ -104,15 +101,16 @@ const editingItem: Transaction = {
   category: '餐饮',
   note: '有点咸',
   merchant: '和府捞面',
-  item: '面',
   note_kind: 'evaluation',
   date: '2026-11-12',
   created_at: '2026-11-12T12:00:00+08:00',
 };
 
-describe('AddTransactionSheet · 商家 / 吃了什么 / 评价', () => {
-  it('编辑时回填三个字段，标签改为评价，提交 payload 带 merchant/item', async () => {
-    const onSubmit = jest.fn(async () => undefined);
+describe('AddTransactionSheet · 商家 / 备注', () => {
+  it('编辑时回填商家与备注，提交 payload 只带 merchant/note', async () => {
+    const onSubmit = jest.fn(
+      async (_payload: TransactionCreatePayload) => undefined,
+    );
     const tree = await render(
       <AddTransactionSheet
         visible
@@ -125,46 +123,34 @@ describe('AddTransactionSheet · 商家 / 吃了什么 / 评价', () => {
 
     expect(texts).toContain('编辑账单');
     expect(texts).toContain('商家(可选)');
-    expect(texts).toContain('吃了什么(可选)');
-    expect(texts).toContain('评价(可选)');
+    expect(texts).toContain('备注(可选)');
+    expect(texts).not.toContain('评价(可选)');
+    expect(texts).not.toContain('吃了什么(可选)');
 
     const values = tree.root
       .findAllByType('TextInput' as never)
       .map((node) => node.props.value);
     expect(values).toEqual(expect.arrayContaining(['和府捞面', '有点咸']));
-    expect(texts).toContain('面');
 
     await pressByText(tree, '保存修改');
-    expect(onSubmit).toHaveBeenCalledWith(
+    const payload = onSubmit.mock.calls[0][0] as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(payload).toEqual(
       expect.objectContaining({
         amount: 32,
         type: 'expense',
         category: '餐饮',
         date: '2026-11-12',
         merchant: '和府捞面',
-        item: '面',
         note: '有点咸',
       }),
     );
+    expect(payload).not.toHaveProperty('item');
   });
 
-  it('编辑自定义菜品时直接以文本输入回填', async () => {
-    const tree = await render(
-      <AddTransactionSheet
-        visible
-        editingItem={{ ...editingItem, item: '牛肉面' }}
-        onClose={() => undefined}
-        onSubmit={jest.fn(async () => undefined)}
-      />,
-    );
-    const values = tree.root
-      .findAllByType('TextInput' as never)
-      .map((node) => node.props.value);
-
-    expect(values).toContain('牛肉面');
-  });
-
-  it('新增时展示最近商家 chips、固定菜品 chips 与自定义入口', async () => {
+  it('新增时展示商家 chips 与备注 chips，不再有菜品 chips / 自定义入口', async () => {
     const tree = await render(
       <AddTransactionSheet
         visible
@@ -177,47 +163,36 @@ describe('AddTransactionSheet · 商家 / 吃了什么 / 评价', () => {
 
     expect(texts.some((text) => text.includes('和府捞面'))).toBe(true);
     expect(texts.some((text) => text.includes('麦当劳'))).toBe(true);
-    expect(texts).toEqual(expect.arrayContaining(['面', '粉', '饭', '火锅']));
-    expect(texts).toContain('＋自定义');
-    expect(texts).toContain('牛肉面');
-    expect(texts).toContain('评价(可选)');
+    expect(texts).toContain('有点咸');
+    expect(texts).toContain('备注(可选)');
+    expect(texts).not.toContain('＋自定义');
   });
 
-  it('娱乐分类显示「玩了什么」，交通仍用通用项目', async () => {
-    const tree = await render(
-      <AddTransactionSheet
-        visible
-        editingItem={{
-          ...editingItem,
-          category: '娱乐',
-          merchant: null,
-          item: null,
-          note: null,
-        }}
-        onClose={() => undefined}
-        onSubmit={jest.fn(async () => undefined)}
-      />,
-    );
-    const texts = textsOf(tree);
+  it.each(['餐饮', '娱乐', '交通'])(
+    '%s 分类都只显示「商家 + 备注」，没有项目类字段',
+    async (category) => {
+      const tree = await render(
+        <AddTransactionSheet
+          visible
+          editingItem={{
+            ...editingItem,
+            category: category as Transaction['category'],
+            merchant: null,
+            note: null,
+          }}
+          onClose={() => undefined}
+          onSubmit={jest.fn(async () => undefined)}
+        />,
+      );
+      const texts = textsOf(tree);
 
-    expect(texts).toContain('玩了什么(可选)');
-    expect(texts).not.toContain('吃了什么(可选)');
-  });
-
-  it('非餐饮分类把「吃了什么」改为「项目」自由输入', async () => {
-    const tree = await render(
-      <AddTransactionSheet
-        visible
-        editingItem={{ ...editingItem, category: '交通', merchant: null, item: null, note: null }}
-        onClose={() => undefined}
-        onSubmit={jest.fn(async () => undefined)}
-      />,
-    );
-    const texts = textsOf(tree);
-
-    expect(texts).toContain('项目(可选)');
-    expect(texts).not.toContain('吃了什么(可选)');
-  });
+      expect(texts).toContain('商家(可选)');
+      expect(texts).toContain('备注(可选)');
+      for (const removed of ['吃了什么(可选)', '玩了什么(可选)', '项目(可选)']) {
+        expect(texts).not.toContain(removed);
+      }
+    },
+  );
 });
 
 describe('TransactionItem · 展示优先级', () => {
@@ -242,42 +217,37 @@ describe('TransactionItem · 展示优先级', () => {
       />,
     );
 
-  it('商家优先做标题，副标题为「菜品 · 评价」', async () => {
-    const tree = await renderItem({
-      ...base,
-      note: '有点咸',
-      merchant: '和府捞面',
-      item: '面',
-      note_kind: 'evaluation',
-    });
-    const texts = textsOf(tree);
+  it('商家做标题，副标题为备注', async () => {
+    const texts = textsOf(
+      await renderItem({
+        ...base,
+        note: '有点咸',
+        merchant: '和府捞面',
+        note_kind: 'evaluation',
+      }),
+    );
     expect(texts).toContain('和府捞面');
-    expect(texts).toContain('面 · 有点咸');
+    expect(texts).toContain('有点咸');
     expect(texts).not.toContain('餐饮');
   });
 
-  it('只有菜品时标题为菜品，副标题回退到分类', async () => {
-    const tree = await renderItem({
-      ...base,
-      note: null,
-      merchant: null,
-      item: '面',
-      note_kind: null,
-    });
-    const texts = textsOf(tree);
-    expect(texts).toContain('面');
+  it('只有商家没有备注时，副标题回退到分类', async () => {
+    const texts = textsOf(
+      await renderItem({ ...base, note: null, merchant: '和府捞面' }),
+    );
+    expect(texts).toContain('和府捞面');
     expect(texts).toContain('餐饮');
   });
 
   it('旧数据保持「分类 + 备注 / 无备注」', async () => {
     const withNote = textsOf(
-      await renderItem({ ...base, note: '老备注', merchant: null, item: null }),
+      await renderItem({ ...base, note: '老备注', merchant: null }),
     );
     expect(withNote).toContain('餐饮');
     expect(withNote).toContain('老备注');
 
     const withoutNote = textsOf(
-      await renderItem({ ...base, note: null, merchant: null, item: null }),
+      await renderItem({ ...base, note: null, merchant: null }),
     );
     expect(withoutNote).toContain('无备注');
   });

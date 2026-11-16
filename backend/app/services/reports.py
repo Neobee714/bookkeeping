@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.models.enums import TransactionType
 from app.models.report import Report, ReportSchedule
 from app.models.transaction import Transaction
-from app.services.merchant_stats import aggregate_named_dimension, dining_summary
+from app.services.merchant_stats import aggregate_merchants, dining_summary
 from app.services.report_periods import (
     beijing_now,
     next_run_at,
@@ -144,7 +144,6 @@ def _build_top_expenses(
             Transaction.category,
             Transaction.note,
             Transaction.merchant,
-            Transaction.item,
             Transaction.date,
         )
         .where(
@@ -167,19 +166,17 @@ def _build_top_expenses(
             "category": category,
             "note": note,
             "merchant": merchant,
-            "item": item,
             "date": tx_date.isoformat(),
         }
-        for amount, category, note, merchant, item, tx_date in rows
+        for amount, category, note, merchant, tx_date in rows
     ]
 
 
 def _build_dining_insights(
     merchants: list[dict[str, Any]],
-    items: list[dict[str, Any]],
     dining: dict[str, Any],
 ) -> list[str]:
-    """最多三条吃喝洞察；没有数据时返回空数组。"""
+    """最多两条吃喝洞察（商家 + 餐饮汇总）；没有数据时返回空数组。"""
     insights: list[str] = []
 
     if merchants:
@@ -189,12 +186,6 @@ def _build_dining_insights(
         insights.append(
             f"最常去 {top_merchant['name']}，{top_merchant['count']} 次"
             f"共 ¥{top_merchant['amount']:,.0f}"
-        )
-
-    if items:
-        top_item = max(items, key=lambda item: (item["count"], item["amount"], item["name"]))
-        insights.append(
-            f"最常吃 {top_item['name']}，{top_item['count']} 次共 ¥{top_item['amount']:,.0f}"
         )
 
     if dining["count"] > 0:
@@ -304,7 +295,7 @@ def _build_insights(
         top = top_expenses[0]
         tx_date = date.fromisoformat(top["date"])
         note = (
-            (top.get("item") or top.get("merchant") or top.get("note") or "").strip()
+            (top.get("merchant") or top.get("note") or "").strip()
             or top["category"]
         )
         insights.append(
@@ -373,26 +364,15 @@ def build_content(
     top_expenses = _build_top_expenses(db, user_id, start, end)
     prev_label, prev = _build_prev(db, user_id, kind, start, income, expense)
     end_exclusive = end + timedelta(days=1)
-    merchants_all = aggregate_named_dimension(
+    merchants_all = aggregate_merchants(
         db,
         user_id=user_id,
-        dimension="merchant",
-        start=start,
-        end_exclusive=end_exclusive,
-        category="餐饮",
-        limit=None,
-    )
-    items_all = aggregate_named_dimension(
-        db,
-        user_id=user_id,
-        dimension="item",
         start=start,
         end_exclusive=end_exclusive,
         category="餐饮",
         limit=None,
     )
     merchants = merchants_all[:MAX_TOP_NAMED]
-    items = items_all[:MAX_TOP_NAMED]
     dining = dining_summary(
         db, user_id=user_id, start=start, end_exclusive=end_exclusive
     )
@@ -414,9 +394,8 @@ def build_content(
         "categories": categories,
         "top_expenses": top_expenses,
         "merchants": merchants,
-        "items": items,
         "dining": dining,
-        "dining_insights": _build_dining_insights(merchants_all, items_all, dining),
+        "dining_insights": _build_dining_insights(merchants_all, dining),
         "insights": _build_insights(
             transaction_count=transaction_count,
             total_income=total_income,

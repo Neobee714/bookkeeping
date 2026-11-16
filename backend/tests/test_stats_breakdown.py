@@ -70,7 +70,6 @@ def _seed_transactions(session_factory: sessionmaker, rows: list[dict]) -> None:
                     category=row.get("category", "餐饮"),
                     note=row.get("note"),
                     merchant=row.get("merchant"),
-                    item=row.get("item"),
                     note_kind=row.get("note_kind"),
                     date=date.fromisoformat(row["date"]),
                 )
@@ -144,26 +143,27 @@ def test_breakdown_filters_category(
     assert all_expenses["items"][0]["name"] == "超市"
 
 
-def test_item_breakdown_aggregates_and_sorts(
+def test_item_breakdown_is_legacy_and_returns_empty_ranking(
     client: tuple[TestClient, dict[str, User], sessionmaker],
 ) -> None:
     test_client, _holder, session_factory = client
     _seed_transactions(
         session_factory,
         [
-            {"user_id": 1, "amount": 20, "item": "面", "date": "2026-08-01"},
-            {"user_id": 1, "amount": 40, "item": "面", "date": "2026-08-02"},
-            {"user_id": 1, "amount": 50, "item": "饭", "date": "2026-08-03"},
-            {"user_id": 1, "amount": 10, "item": None, "date": "2026-08-04"},
+            {"user_id": 1, "amount": 20, "merchant": "面馆", "date": "2026-08-01"},
+            {"user_id": 1, "amount": 40, "merchant": "面馆", "date": "2026-08-02"},
+            {"user_id": 1, "amount": 50, "merchant": "饭店", "date": "2026-08-03"},
         ],
     )
 
     data = _breakdown(test_client, dimension="item", month="2026-08")
 
-    assert data["items"] == [
-        {"name": "面", "amount": 60.0, "count": 2, "avg": 30.0},
-        {"name": "饭", "amount": 50.0, "count": 1, "avg": 50.0},
-    ]
+    assert data["dimension"] == "item"
+    # 2.9.0 起菜品维度下线，仅为兼容旧版 App 保留空排行。
+    assert data["items"] == []
+    # 旧版 App 依赖的整理入口字段照常返回。
+    assert "legacy_note_count" in data
+    assert "last_cleanup" in data
 
 
 def test_breakdown_date_window_month_and_explicit_range(
@@ -371,8 +371,8 @@ def test_legacy_note_count_counts_distinct_unclassified_notes_only(
         ],
     )
 
-    august = _breakdown(test_client, dimension="item", month="2026-08")
-    september = _breakdown(test_client, dimension="item", month="2026-09")
+    august = _breakdown(test_client, dimension="merchant", month="2026-08")
+    september = _breakdown(test_client, dimension="merchant", month="2026-09")
 
     assert august["legacy_note_count"] == 2
     # 不随月份变化
@@ -415,7 +415,7 @@ def test_breakdown_exposes_last_cleanup_for_undo(
     assert response.status_code == 200, response.text
     batch_id = response.json()["data"]["batch_id"]
 
-    data = _breakdown(test_client, dimension="item", month="2026-08")
+    data = _breakdown(test_client, dimension="merchant", month="2026-08")
     assert data["last_cleanup"]["batch_id"] == batch_id
     assert data["last_cleanup"]["affected_count"] == 2
     assert data["last_cleanup"]["created_at"]

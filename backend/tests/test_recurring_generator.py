@@ -244,10 +244,8 @@ def test_generated_transactions_mark_note_kind(db: Session) -> None:
             assert row.note == "房租"
             assert row.note_kind == "evaluation"
             assert row.merchant is None
-            assert row.item is None
         else:
             assert row.recurring_rule_id == without_note.id
             assert row.note is None
             assert row.note_kind is None
             assert row.merchant is None
-            assert row.item is None
