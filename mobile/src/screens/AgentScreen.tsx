@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { extractErrorMessage } from '../api/client';
 import { sendAgentMessage } from '../api/agent';
 import GradientView from '../components/GradientView';
+import MarkdownText from '../components/MarkdownText';
 import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme, type ThemeColors , useSkin} from '../theme';
 import type { AgentChatRole, AgentToolCallSummary } from '../types';
@@ -126,9 +127,13 @@ function MessageBubble({
             <Text style={styles.confirmBadgeText}>✅ 记账成功</Text>
           </View>
         ) : null}
-        <Text style={[styles.aiText, { color: colors.textPrimary }]}>
-          {message.content}
-        </Text>
+        <MarkdownText
+          content={message.content}
+          color={colors.textPrimary}
+          baseStyle={styles.aiText}
+          surfaceColor={colors.surface}
+          borderColor={colors.border}
+        />
         {message.toolCalls && message.toolCalls.length > 0 ? (
           <View style={styles.toolWrap}>
             {message.toolCalls.map((call, index) => (

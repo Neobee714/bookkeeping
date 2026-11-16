@@ -119,6 +119,9 @@ export default function AddTransactionSheet({
   const skin = useSkin();
   const insets = useSafeAreaInsets();
 
+  /** sheet 底部留白；footer 用同值负 margin 抵消，让分隔线通栏、按钮贴住弹层底沿(FR-1 吸底)。 */
+  const sheetBottomPad = spacing.xl + Math.max(insets.bottom, 56);
+
   const [type, setType] = useState<TransactionType>('expense');
   const [amountInput, setAmountInput] = useState('');
   const [category, setCategory] = useState('');
@@ -452,7 +455,7 @@ export default function AddTransactionSheet({
               styles.sheet,
               skin.surfaces.sheet,
               {
-                paddingBottom: spacing.xl + Math.max(insets.bottom, 56),
+                paddingBottom: sheetBottomPad,
               },
             ]}
           >
@@ -795,6 +798,20 @@ export default function AddTransactionSheet({
                 </View>
               )}
 
+            </ScrollView>
+
+            {/* v0.20 FR-1 吸底 footer：确认按钮与提交错误移出滚动区，始终可见。 */}
+            <View
+              style={[
+                styles.sheetFooter,
+                {
+                  borderTopColor: colors.border,
+                  marginBottom: -sheetBottomPad,
+                  // 底距 = 22px + 安全区：按钮与手势区之间始终留出样例约定的 20–24px。
+                  paddingBottom: 22 + insets.bottom,
+                },
+              ]}
+            >
               {errorMessage ? (
                 <View style={[styles.errorBox, { backgroundColor: colors.surface }]}>
                   <Text style={[styles.errorText, { color: colors.expense }]}>
@@ -807,9 +824,8 @@ export default function AddTransactionSheet({
                 title={submitting ? '提交中…' : buttonText}
                 onPress={() => void handleConfirm()}
                 disabled={submitting}
-                style={styles.saveButton}
               />
-            </ScrollView>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -1098,7 +1114,15 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
   },
-  saveButton: {
-    marginTop: spacing.xs,
+  /** v0.20 吸底 footer：按钮外边距收敛到这里；flex: none，不随内容区滚动/压缩。 */
+  sheetFooter: {
+    flexGrow: 0,
+    flexShrink: 0,
+    borderTopWidth: 1,
+    paddingTop: 10,
+    paddingHorizontal: 18,
+    // paddingBottom 在使用处按 insets.bottom 运行时计算（22 + 安全区）。
+    // 通栏吸底：抵消 sheet 的横向内边距，分隔线拉满、按钮宽度与原先一致。
+    marginHorizontal: -spacing.xl,
   },
 });
