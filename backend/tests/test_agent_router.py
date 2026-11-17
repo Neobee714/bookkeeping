@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.agent.graph import run_agent_chat
 from app.agent.tools import AgentToolError, SummarizeExpensesInput
+from app.core import config
 from app.core.database import Base, get_db
 from app.core.security import get_current_user
 from app.main import app
@@ -139,7 +140,7 @@ def test_run_agent_chat_returns_tool_error_and_sets_request_timeout(
         history=[],
     )
 
-    assert captured_model_kwargs["request_timeout"] == 30
+    assert captured_model_kwargs["request_timeout"] == config.DEEPSEEK_TIMEOUT_SECONDS
     assert result == {"reply": "日期格式不正确，请使用 YYYY-MM-DD", "tool_calls": []}
 
 

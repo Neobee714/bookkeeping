@@ -24,6 +24,14 @@ from app.routers import (
 )
 from app.services import report_scheduler, scheduler as recurring_scheduler
 
+# v0.20 日志修复：此前 root logger 没有任何 handler，logger.exception 的堆栈全部丢失。
+# 统一配一次 basicConfig，app.* 的日志（含异常堆栈）才会进 stdout → docker logs。
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 app = FastAPI(title="Bookkeeping API", version="0.1.0")
 logger = logging.getLogger("bookkeeping.api")
 

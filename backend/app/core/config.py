@@ -74,6 +74,8 @@ APP_RELEASES_MAX_APK_MB = int(get_env("APP_RELEASES_MAX_APK_MB", "100"))
 DEEPSEEK_API_KEY = (get_env("DEEPSEEK_API_KEY", "") or "").strip()
 DEEPSEEK_BASE_URL = (get_env("DEEPSEEK_BASE_URL", "https://api.deepseek.com") or "").strip().rstrip("/")
 DEEPSEEK_MODEL = (get_env("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat").strip()
+# 单次模型请求超时（秒）；nginx proxy_read_timeout 为 120s，别超过它。
+DEEPSEEK_TIMEOUT_SECONDS = int(get_env("DEEPSEEK_TIMEOUT_SECONDS", "60") or "60")
 AGENT_MAX_HISTORY_MESSAGES = int(get_env("AGENT_MAX_HISTORY_MESSAGES", "12"))
 AGENT_TRANSACTION_RESULT_LIMIT = int(get_env("AGENT_TRANSACTION_RESULT_LIMIT", "50"))
 # 多笔账单一次录入会连续调用工具，默认 25 步容易超出 LangGraph 递归上限。

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import ast
 import functools
+import logging
 import re
 import threading
+import time
 from datetime import date
 from decimal import Decimal
 from typing import Any, Literal
@@ -19,6 +21,16 @@ from app.models.transaction import Transaction
 from app.models.user import User
 
 Target = Literal["self", "partner", "both"]
+
+logger = logging.getLogger(__name__)
+
+
+def _brief(value: Any, limit: int = 240) -> str:
+    """日志用的短摘要：repr 截断，避免把整段查询结果打进日志。"""
+    text = repr(value)
+    if len(text) > limit:
+        return f"{text[:limit]}…(+{len(text) - limit})"
+    return text
 
 
 class AgentToolError(ValueError):
@@ -146,10 +158,33 @@ _TOOL_LOCK = threading.Lock()
 
 
 def _serialized_tool(func: Any) -> Any:
+    name = getattr(func, "__name__", "tool")
+
     @functools.wraps(func)
     def wrapper(**kwargs: Any) -> Any:
+        logger.info("tool %s start args=%s", name, _brief(kwargs))
+        wait_started = time.monotonic()
         with _TOOL_LOCK:
-            return func(**kwargs)
+            lock_wait_ms = int((time.monotonic() - wait_started) * 1000)
+            started = time.monotonic()
+            try:
+                result = func(**kwargs)
+            except Exception:
+                logger.exception(
+                    "tool %s failed elapsed_ms=%d lock_wait_ms=%d",
+                    name,
+                    int((time.monotonic() - started) * 1000),
+                    lock_wait_ms,
+                )
+                raise
+            logger.info(
+                "tool %s ok elapsed_ms=%d lock_wait_ms=%d result=%s",
+                name,
+                int((time.monotonic() - started) * 1000),
+                lock_wait_ms,
+                _brief(result),
+            )
+            return result
 
     return wrapper
 

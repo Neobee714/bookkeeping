@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
@@ -40,6 +41,10 @@ def _extract_tool_calls(messages: list[BaseMessage]) -> list[dict[str, str | Non
     return calls
 
 
+def _elapsed_ms(started: float) -> int:
+    return int((time.monotonic() - started) * 1000)
+
+
 def run_agent_chat(
     *,
     db: Session,
@@ -47,12 +52,13 @@ def run_agent_chat(
     message: str,
     history: list[AgentChatMessage],
 ) -> dict:
+    request_timeout = config.DEEPSEEK_TIMEOUT_SECONDS
     model = ChatOpenAI(
         api_key=config.DEEPSEEK_API_KEY,
         base_url=config.DEEPSEEK_BASE_URL,
         model=config.DEEPSEEK_MODEL,
         temperature=0.2,
-        request_timeout=30,
+        request_timeout=request_timeout,
     )
     categories = categories_for_user(db, current_user.id)
     tools = build_agent_tools(
@@ -67,26 +73,59 @@ def run_agent_chat(
     messages = _history_to_messages(history)
     messages.append(HumanMessage(content=message))
 
+    logger.info(
+        "agent chat start user=%s model=%s msg_len=%s history=%s timeout=%ss recursion_limit=%s",
+        current_user.id,
+        config.DEEPSEEK_MODEL,
+        len(message),
+        len(history),
+        request_timeout,
+        config.AGENT_RECURSION_LIMIT,
+    )
+    started = time.monotonic()
+
     try:
         result = agent.invoke(
             {"messages": messages},
             config={"recursion_limit": config.AGENT_RECURSION_LIMIT},
         )
     except AgentToolError as exc:
+        logger.warning(
+            "agent tool error user=%s elapsed_ms=%d: %s",
+            current_user.id,
+            _elapsed_ms(started),
+            exc,
+        )
         return {"reply": str(exc), "tool_calls": []}
-    except ValidationError:
+    except ValidationError as exc:
+        logger.warning(
+            "agent tool validation user=%s elapsed_ms=%d: %s",
+            current_user.id,
+            _elapsed_ms(started),
+            exc,
+        )
         return {"reply": TOOL_VALIDATION_REPLY, "tool_calls": []}
     except Exception:
         # 不要静默吞掉：这里以前只回兜底文案，线上排查时完全看不到原因。
         logger.exception(
-            "agent chat failed: user_id=%s message_len=%s",
+            "agent chat failed: user_id=%s message_len=%s history=%s elapsed_ms=%d",
             current_user.id,
             len(message),
+            len(history),
+            _elapsed_ms(started),
         )
         return {"reply": AI_UNAVAILABLE_REPLY, "tool_calls": []}
 
     result_messages = result.get("messages", [])
+    tool_calls = _extract_tool_calls(result_messages)
+    logger.info(
+        "agent chat done user=%s elapsed_ms=%d steps=%d tool_calls=%s",
+        current_user.id,
+        _elapsed_ms(started),
+        len(result_messages),
+        ",".join(call["name"] or "" for call in tool_calls) or "-",
+    )
     final_message = result_messages[-1] if result_messages else AIMessage(content="没有生成回复")
     content = final_message.content
     reply = content if isinstance(content, str) else str(content)
-    return {"reply": reply, "tool_calls": _extract_tool_calls(result_messages)}
+    return {"reply": reply, "tool_calls": tool_calls}
