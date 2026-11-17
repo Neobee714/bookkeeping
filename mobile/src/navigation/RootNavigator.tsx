@@ -19,6 +19,7 @@ import CategoryScreen from '../screens/CategoryScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import NoteCleanupScreen from '../screens/NoteCleanupScreen';
+import CategoryDetailScreen from '../screens/CategoryDetailScreen';
 import PlanScreen from '../screens/PlanScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -130,6 +131,11 @@ function MainStack() {
       <RootStack.Screen name="Reports" component={ReportsScreen} />
       <RootStack.Screen name="ReportDetail" component={ReportDetailScreen} />
       <RootStack.Screen name="NoteCleanup" component={NoteCleanupScreen} />
+      <RootStack.Screen
+        name="CategoryDetail"
+        component={CategoryDetailScreen}
+        options={{ headerShown: false }}
+      />
       <RootStack.Screen name="AdminUsers" component={AdminUsersScreen} />
     </RootStack.Navigator>
   );

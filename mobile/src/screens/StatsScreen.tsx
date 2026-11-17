@@ -28,6 +28,7 @@ import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { cacheKey, readCache, writeCache } from '../offline/cache';
+import { getCategoryEmoji } from '../utils/categoryMeta';
 import { isOnlineNow } from '../offline/network';
 import { useAuthStore } from '../store/authStore';
 import { radius, spacing, typography, useTheme, type ThemeColors , useSkin} from '../theme';
@@ -44,26 +45,8 @@ type SummaryTab = 'self' | 'partner';
 
 /** 支出分布两档：分类沿用汇总，商家走 /stats/breakdown（2.9.0 起菜品维度下线）。 */
 type DistributionDimension = 'category' | BreakdownDimension;
-
 type TabNavigation = BottomTabNavigationProp<MainTabParamList>;
 type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
-
-/** 分类 emoji(与 Web 端分类对应,缺失时兜底)。 */
-const CATEGORY_EMOJI: Record<string, string> = {
-  餐饮: '🍜',
-  交通: '🚇',
-  日用: '🛒',
-  娱乐: '🎮',
-  医疗: '💊',
-  教育: '📚',
-  购物: '🛍️',
-  零食: '🍿',
-  收入: '💰',
-  生活费: '💵',
-  其他: '📌',
-};
-
-const getCategoryEmoji = (name: string): string => CATEGORY_EMOJI[name] ?? '🏷️';
 
 const startOfMonth = (value: Date): Date =>
   new Date(value.getFullYear(), value.getMonth(), 1);
@@ -581,6 +564,19 @@ export default function StatsScreen() {
     navigation.getParent<RootNavigation>()?.navigate('NoteCleanup');
   }, [navigation]);
 
+  /** v0.21：点分类/商家行进明细页，携带当前维度、月份与我的/伴侣档位。 */
+  const openCategoryDetail = useCallback(
+    (dimensionValue: 'category' | 'merchant', nameValue: string) => {
+      navigation.getParent<RootNavigation>()?.navigate('CategoryDetail', {
+        dimension: dimensionValue,
+        name: nameValue,
+        month: formatMonthKey(currentMonth),
+        tab,
+      });
+    },
+    [navigation, currentMonth, tab],
+  );
+
   const isPartnerUnavailable =
     tab === 'partner' &&
     axios.isAxiosError(error) &&
@@ -787,7 +783,14 @@ export default function StatsScreen() {
                 </View>
               ) : (
                 categoryRows.map((item) => (
-                  <View key={item.name} style={styles.catRow}>
+                  <Pressable
+                    key={item.name}
+                    style={({ pressed }) => [
+                      styles.catRow,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => openCategoryDetail('category', item.name)}
+                  >
                     <View style={styles.catHeader}>
                       <View style={styles.catNameWrap}>
                         <Text style={styles.catEmoji}>
@@ -799,17 +802,22 @@ export default function StatsScreen() {
                           {item.name}
                         </Text>
                       </View>
-                      <Text
-                        style={[styles.catAmount, { color: colors.textPrimary }]}
-                      >
-                        ¥{formatMoney(item.value)}
+                      <View style={styles.catRight}>
                         <Text
-                          style={[styles.catPercent, { color: colors.textTertiary }]}
+                          style={[styles.catAmount, { color: colors.textPrimary }]}
                         >
-                          {' '}
-                          · {item.percent}%
+                          ¥{formatMoney(item.value)}
+                          <Text
+                            style={[styles.catPercent, { color: colors.textTertiary }]}
+                          >
+                            {' '}
+                            · {item.percent}%
+                          </Text>
                         </Text>
-                      </Text>
+                        <Text style={[styles.catChev, { color: colors.textTertiary }]}>
+                          ›
+                        </Text>
+                      </View>
                     </View>
                     <View
                       style={[styles.track, { backgroundColor: colors.surface }]}
@@ -821,7 +829,7 @@ export default function StatsScreen() {
                         ]}
                       />
                     </View>
-                  </View>
+                  </Pressable>
                 ))
                 )
               ) : breakdownLoading ||
@@ -844,9 +852,13 @@ export default function StatsScreen() {
               ) : (
                 <>
                   {breakdownRows.map((item) => (
-                    <View
+                    <Pressable
                       key={`${dimension}:${item.name}`}
-                      style={styles.catRow}
+                      style={({ pressed }) => [
+                        styles.catRow,
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => openCategoryDetail('merchant', item.name)}
                     >
                       <View style={styles.catHeader}>
                         <Text
@@ -856,11 +868,16 @@ export default function StatsScreen() {
                         >
                           {item.name}
                         </Text>
-                        <Text
-                          style={[styles.catAmount, { color: colors.textPrimary }]}
-                        >
-                          ¥{formatMoney(item.amount)}
-                        </Text>
+                        <View style={styles.catRight}>
+                          <Text
+                            style={[styles.catAmount, { color: colors.textPrimary }]}
+                          >
+                            ¥{formatMoney(item.amount)}
+                          </Text>
+                          <Text style={[styles.catChev, { color: colors.textTertiary }]}>
+                            ›
+                          </Text>
+                        </View>
                       </View>
                       <Text
                         style={[styles.rankMeta, { color: colors.textTertiary }]}
@@ -880,7 +897,7 @@ export default function StatsScreen() {
                           ]}
                         />
                       </View>
-                    </View>
+                    </Pressable>
                   ))}
                   <Text
                     style={[styles.rankFoot, { color: colors.textTertiary }]}
@@ -1134,6 +1151,16 @@ const styles = StyleSheet.create({
   catPercent: {
     fontSize: 12,
     fontWeight: '400',
+  },
+  /** v0.21：分类/商家行右侧「金额 + ›」。 */
+  catRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  catChev: {
+    fontSize: 16,
+    lineHeight: 18,
   },
   track: {
     height: 8,

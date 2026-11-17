@@ -95,8 +95,8 @@ android {
         applicationId "com.neobee.bookkeeping"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 238
-        versionName "2.9.2"
+        versionCode 239
+        versionName "2.9.3"
         // v0.20 APK 瘦身：只打 arm64-v8a（四套 .so 占包体 74%）。
         // 架构由 android/gradle.properties 的 reactNativeArchitectures 控制（RN 打包不认 ndk.abiFilters）；
         // 模拟器验证用 -PreactNativeArchitectures=x86_64 出 QA 包。

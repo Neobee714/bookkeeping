@@ -26,4 +26,13 @@ export type RootStackParamList = {
   ReportDetail: { id: number; label?: string };
   /** 整理旧备注：把历史备注逐条归类为商家 / 备注。 */
   NoteCleanup: undefined;
+  /** 分类/商家明细（v0.21）：从图表页支出分布点入，按分类或商家过滤当月账单。 */
+  CategoryDetail: {
+    dimension: 'category' | 'merchant';
+    name: string;
+    /** YYYY-MM，继承图表页月份。 */
+    month: string;
+    /** 继承图表页的我的/伴侣档位。 */
+    tab: 'self' | 'partner';
+  };
 };
