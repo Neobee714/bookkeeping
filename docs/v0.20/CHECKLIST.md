@@ -41,4 +41,11 @@
 - [x] 工具层 `_serialized_tool`：每次调用记 start(args)/ok(elapsed_ms、lock_wait_ms、result 摘要)/failed(堆栈)
 - [x] `DEEPSEEK_TIMEOUT_SECONDS`（默认 60，env 可调；nginx proxy_read_timeout=120s）
 - [x] 测试：test_agent_logging.py 4 例（caplog 断言 start/ok/failed/done 与 exc_info）；既有 timeout 断言改为跟随配置；backend pytest 329 全过
-- [x] commit + push ✅ 2026-11-16（fix 9b9b59c / chore ea6302e / docs 82547bd；CI 已记录 82547bd，mobile-only 未重启服务，无 ALERT）
+
+## 追加：AI 助手暂时不可用 根因修复（2026-11-17）
+
+- 根因：①后端 DeepSeek 请求超时硬编码 30s，多笔录入一轮 20 次工具调用易超时 → 兜底文案；②客户端 axios 全局 30s，慢请求 App 先报错。
+- 修复：后端 `DEEPSEEK_TIMEOUT_SECONDS` 默认 60s（已达上限，nginx 120s）；客户端 agent 请求单独 `AGENT_TIMEOUT_MS=90s`（2.9.2 起）。
+- 复现验证：10 笔账单一次录入 24 步 / 20 次工具调用 / 10.1s 成功返回，日志全链路可见；复现数据已清理。
+- 版本：2.9.2（versionCode 238）。
+- [x] commit + push ✅ 2026-11-17（cb1f0fa 日志 / 38565cb docs；瘦身与 v0.20 修复见上；CI 已部署 backend 并验证日志落盘，无 ALERT）
