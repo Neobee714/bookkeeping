@@ -13,6 +13,10 @@ export const API_BASE_URL = 'https://api.neobee.top';
 /** 请求超时(毫秒)。 */
 export const API_TIMEOUT_MS = 30000;
 
+// AI 助手单次请求可能连续多轮工具调用（多笔账单一次录入实测 10s+），
+// 后端 DEEPSEEK_TIMEOUT_SECONDS=60s，客户端给到 90s，避免 App 先于后端超时报错。
+export const AGENT_TIMEOUT_MS = 90000;
+
 // ---------- 更新检查(OTA) ----------
 
 /**
