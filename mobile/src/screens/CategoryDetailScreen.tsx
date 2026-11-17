@@ -38,6 +38,9 @@ const formatMonthLabel = (month: string): string => {
 
 const noop = () => undefined;
 
+/** 备注行最多展示的商家 chip 数（多余的折成「+N」）。 */
+const MAX_NOTE_MERCHANTS = 2;
+
 /**
  * 分类/商家明细页（v0.21）：图表页支出分布点入。
  * 汇总卡 + 「明细 / 备注」两档；数据用整月账单（我的/伴侣）本地过滤聚合，先缓存后联网。
@@ -261,9 +264,53 @@ export default function CategoryDetailScreen() {
                       ¥{formatMoney(row.amount)}
                     </Text>
                   </View>
-                  <Text style={[styles.noteMeta, { color: colors.textTertiary }]}>
-                    {`${row.count} 次 · 平均 ¥${formatMoney(row.avg)}`}
-                  </Text>
+                  <View style={styles.noteMetaRow}>
+                    {row.merchants.length === 0 ? (
+                      <View
+                        style={[
+                          styles.mChip,
+                          styles.mChipGhost,
+                          { borderColor: colors.border },
+                        ]}
+                      >
+                        <Text style={[styles.mChipText, { color: colors.textTertiary }]}>
+                          未填商家
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        {row.merchants.slice(0, MAX_NOTE_MERCHANTS).map((merchant) => (
+                          <View
+                            key={merchant}
+                            style={[styles.mChip, { backgroundColor: colors.chipSoftBg }]}
+                          >
+                            <Text
+                              style={[styles.mChipText, { color: colors.chipSoftText }]}
+                              numberOfLines={1}
+                            >
+                              {`🏪 ${merchant}`}
+                            </Text>
+                          </View>
+                        ))}
+                        {row.merchants.length > MAX_NOTE_MERCHANTS ? (
+                          <View
+                            style={[
+                              styles.mChip,
+                              styles.mChipGhost,
+                              { borderColor: colors.border },
+                            ]}
+                          >
+                            <Text style={[styles.mChipText, { color: colors.textTertiary }]}>
+                              {`+${row.merchants.length - MAX_NOTE_MERCHANTS}`}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </>
+                    )}
+                    <Text style={[styles.noteMetaText, { color: colors.textTertiary }]}>
+                      {`${row.count} 次 · 平均 ¥${formatMoney(row.avg)}`}
+                    </Text>
+                  </View>
                   <View style={[styles.noteTrack, { backgroundColor: colors.surface }]}>
                     <View
                       style={[
@@ -398,9 +445,34 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '700',
   },
-  noteMeta: {
-    ...typography.caption,
-    marginTop: 2,
+  noteMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+    marginTop: 3,
+  },
+  /** 商家 chip（备注行副行）；未填商家用虚线幽灵样式。 */
+  mChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    flexShrink: 1,
+    /** 长商家名防挤压：超宽截断，右侧「次数/平均」保持完整。 */
+    maxWidth: 150,
+  },
+  mChipGhost: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  mChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  noteMetaText: {
+    fontSize: 10,
   },
   noteTrack: {
     height: 4,

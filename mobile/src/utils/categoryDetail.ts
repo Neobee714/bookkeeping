@@ -15,6 +15,8 @@ export interface NoteAggregate {
   amount: number;
   count: number;
   avg: number;
+  /** 该备注下出现过的商家（去重、按出现次数降序，不包含空商家）。 */
+  merchants: string[];
 }
 
 export const UNLABELED_NOTE = '未备注';
@@ -55,15 +57,26 @@ export function buildDayGroups(transactions: Transaction[]): DayGroup[] {
 
 /**
  * 按备注聚合（trim 后相同文本归一组），金额降序。
- * 未填写备注的账单统一归入「未备注」。
+ * 未填写备注的账单统一归入「未备注」；每行附带商家列表（次数降序、最多不过滤，由 UI 截断）。
  */
 export function aggregateNotes(transactions: Transaction[]): NoteAggregate[] {
-  const buckets = new Map<string, { amount: number; count: number }>();
+  const buckets = new Map<
+    string,
+    { amount: number; count: number; merchants: Map<string, number> }
+  >();
   transactions.forEach((tx) => {
     const note = (tx.note ?? '').trim() || UNLABELED_NOTE;
-    const bucket = buckets.get(note) ?? { amount: 0, count: 0 };
+    const bucket = buckets.get(note) ?? {
+      amount: 0,
+      count: 0,
+      merchants: new Map<string, number>(),
+    };
     bucket.amount += tx.amount;
     bucket.count += 1;
+    const merchant = (tx.merchant ?? '').trim();
+    if (merchant) {
+      bucket.merchants.set(merchant, (bucket.merchants.get(merchant) ?? 0) + 1);
+    }
     buckets.set(note, bucket);
   });
   return [...buckets.entries()]
@@ -72,6 +85,9 @@ export function aggregateNotes(transactions: Transaction[]): NoteAggregate[] {
       amount: round2(bucket.amount),
       count: bucket.count,
       avg: round2(bucket.amount / bucket.count),
+      merchants: [...bucket.merchants.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([merchant]) => merchant),
     }))
     .sort((a, b) => b.amount - a.amount || a.note.localeCompare(b.note));
 }

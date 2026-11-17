@@ -89,6 +89,22 @@ describe('aggregateNotes', () => {
     const sum = aggregateNotes(txs).reduce((acc, row) => acc + row.amount, 0);
     expect(Math.round(sum * 100) / 100).toBe(0.6);
   });
+
+  it('附带商家列表：去重、按出现次数降序、空商家不计入', () => {
+    const txs = [
+      makeTx({ note: '聚餐', merchant: '萍姐火锅', amount: 236 }),
+      makeTx({ note: '聚餐', merchant: ' 萍姐火锅 ', amount: 236 }),
+      makeTx({ note: '聚餐', merchant: '老拾烧烤', amount: 100 }),
+      makeTx({ note: '聚餐', merchant: null, amount: 50 }),
+    ];
+    const row = aggregateNotes(txs)[0];
+    expect(row.merchants).toEqual(['萍姐火锅', '老拾烧烤']);
+  });
+
+  it('全部未填商家时商家列表为空数组', () => {
+    const row = aggregateNotes([makeTx({ note: null, merchant: null })])[0];
+    expect(row.merchants).toEqual([]);
+  });
 });
 
 describe('elapsedDaysOfMonth', () => {
