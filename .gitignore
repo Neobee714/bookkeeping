@@ -35,3 +35,6 @@ mobile/vendor/
 # Ops docs containing the production host / SSH key path (this repo is public)
 docs/*/DEPLOY-VPS-*.md
 deploy/*.log
+
+# macOS Finder
+.DS_Store
