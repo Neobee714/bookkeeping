@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-skin="aurora">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>备注档加商家 样例（提案）— 备注与商家一起呈现</title>
+<style>
+  :root, [data-skin="aurora"] {
+    --background:#F5F7FB; --card:#FFFFFF; --surface:#F1F3F9;
+    --text-primary:#14161F; --text-secondary:#646B80; --text-tertiary:#98A0B0;
+    --primary:#6D5BFF; --secondary:#1EA88F;
+    --income:#0F9E76; --expense:#E0566E; --border:#E8EBF3;
+    --chip-soft-bg:#EFECFF; --chip-soft-text:#5B4BD6;
+    --on-hero:#FFFFFF; --on-hero-muted:rgba(255,255,255,.82); --on-accent:#FFFFFF;
+    --tab-bar-bg:#FFFFFF; --tab-inactive:#98A0B0;
+    --grad:linear-gradient(135deg,#5B49F5,#17977F);
+    --hero-grad:linear-gradient(135deg,#6D5BFF,#1EA88F);
+    --shadow:0 8px 22px rgba(20,22,40,.07);
+  }
+  [data-skin="candy"] {
+    --background:#FFF8F5; --card:#FFFFFF; --surface:#FFF1F6;
+    --text-primary:#3D2B36; --text-secondary:#8A7480; --text-tertiary:#B8A3AE;
+    --primary:#F4739B; --secondary:#F49B67;
+    --income:#2FA98A; --expense:#E85E7C; --border:#F7E3EB;
+    --chip-soft-bg:#FFEDF3; --chip-soft-text:#C2557A;
+    --on-hero:#4A2230; --on-hero-muted:rgba(74,34,48,.72); --on-accent:#4A2230;
+    --tab-bar-bg:#FFFFFF; --tab-inactive:#B8A3AE;
+    --grad:linear-gradient(135deg,#F4739B,#F49B67);
+    --hero-grad:linear-gradient(135deg,#F4739B,#F49B67);
+    --shadow:0 8px 22px rgba(120,50,80,.08);
+  }
+  [data-skin="neon"] {
+    --background:#08080F; --card:#111120; --surface:#191927;
+    --text-primary:#EDEDF7; --text-secondary:#9A9AB8; --text-tertiary:#6E6E8C;
+    --primary:#8B6CFF; --secondary:#00E0FF;
+    --income:#3DFFA2; --expense:#FF5C8A; --border:#232338;
+    --chip-soft-bg:#1E1B38; --chip-soft-text:#B9A8FF;
+    --on-hero:#FFFFFF; --on-hero-muted:rgba(255,255,255,.72); --on-accent:#FFFFFF;
+    --tab-bar-bg:#0B0B14; --tab-inactive:#6E6E8C;
+    --grad:linear-gradient(135deg,#6A4BF0,#0093B5);
+    --hero-grad:linear-gradient(135deg,#241B4D,#0C0C18);
+    --shadow:0 8px 22px rgba(0,0,0,.35);
+  }
+  [data-skin="neu"] {
+    --background:#E9EDF4; --card:#E9EDF4; --surface:#E9EDF4;
+    --text-primary:#2B3445; --text-secondary:#6F7A8E; --text-tertiary:#96A0B2;
+    --primary:#4F6BED; --secondary:#7C93FF;
+    --income:#2E9E6B; --expense:#D95555; --border:#DCE3EE;
+    --chip-soft-bg:#E9EDF4; --chip-soft-text:#4F6BED;
+    --on-hero:#2B3445; --on-hero-muted:#6F7A8E; --on-accent:#FFFFFF;
+    --tab-bar-bg:#E9EDF4; --tab-inactive:#96A0B2;
+    --grad:linear-gradient(135deg,#4F6BED,#4F6BED);
+    --hero-grad:none;
+    --shadow:6px 6px 16px rgba(163,177,198,.5), -6px -6px 16px rgba(255,255,255,.9);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#EDEFF4; color:#222; padding:28px 24px 48px;
+  }
+  .page-head { max-width:1120px; margin:0 auto 8px; }
+  h1 { font-size:21px; }
+  .proposal-tag {
+    display:inline-block; background:#B45309; color:#fff; font-size:12px;
+    padding:2px 10px; border-radius:999px; vertical-align:3px; margin-left:8px;
+  }
+  .page-sub { color:#555; font-size:13px; margin-top:6px; line-height:1.7; }
+  .skin-bar { max-width:1120px; margin:14px auto 22px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .skin-bar span { font-size:12px; color:#666; margin-right:4px; }
+  .skin-btn { border:1px solid #C9CEDB; background:#fff; color:#333; font-size:12px; padding:6px 14px; border-radius:999px; cursor:pointer; }
+  .skin-btn.active { background:#222; color:#fff; border-color:#222; }
+
+  section { max-width:1120px; margin:0 auto 34px; }
+  .sec-head { font-size:16px; font-weight:700; margin-bottom:4px; }
+  .sec-head .tag { font-size:11px; color:#fff; border-radius:999px; padding:2px 9px; vertical-align:2px; margin-left:6px; }
+  .tag.reco { background:#166534; }
+  .tag.alt { background:#475569; }
+  .sec-desc { font-size:12.5px; color:#555; line-height:1.8; margin-bottom:14px; }
+  .sec-desc b { color:#111; }
+
+  .frames { display:flex; gap:26px; flex-wrap:wrap; }
+  .frame-wrap { width:320px; }
+  .frame-cap { font-size:12px; color:#444; font-weight:600; margin-bottom:8px; line-height:1.5; }
+  .frame-cap i { font-style:normal; color:#B45309; font-weight:500; display:block; margin-top:2px; }
+  .phone {
+    width:320px; height:720px; border-radius:26px; overflow:hidden; position:relative;
+    background:var(--background); border:1px solid rgba(0,0,0,.18);
+    box-shadow:0 12px 30px rgba(20,22,40,.14); font-size:11px;
+  }
+  .screen { position:absolute; inset:0; padding-top:26px; overflow:hidden; }
+  .statusbar {
+    position:absolute; top:0; left:0; right:0; height:26px; display:flex;
+    justify-content:space-between; align-items:center; padding:0 14px;
+    font-size:9.5px; color:var(--text-primary); z-index:5;
+  }
+  [data-skin="neon"] .statusbar { color:#EDEDF7; }
+
+  .detail-head { display:flex; align-items:center; padding:8px 14px 2px; gap:8px; }
+  .detail-back { font-size:15px; color:var(--text-primary); }
+  .detail-title { flex:1; text-align:center; font-size:13px; font-weight:800; color:var(--text-primary); }
+  .detail-more { font-size:12px; color:var(--text-tertiary); }
+  .detail-hero {
+    margin:8px 14px 0; border-radius:20px; padding:13px 16px 12px;
+    background:var(--hero-grad); color:var(--on-hero); box-shadow:var(--shadow);
+  }
+  [data-skin="neu"] .detail-hero { background:var(--card); color:var(--on-hero); }
+  .detail-hero .meta { font-size:8.5px; color:var(--on-hero-muted); }
+  .detail-hero .sum { display:flex; align-items:baseline; gap:6px; margin-top:4px; }
+  .detail-hero .big { font-size:22px; font-weight:800; }
+  .detail-hero .cnt { font-size:9px; color:var(--on-hero-muted); }
+  .detail-hero .cols { display:flex; gap:8px; margin-top:9px; }
+  .detail-hero .cell { flex:1; background:rgba(255,255,255,.16); border-radius:10px; padding:6px 9px; }
+  [data-skin="candy"] .detail-hero .cell { background:rgba(255,255,255,.5); }
+  [data-skin="neu"] .detail-hero .cell { background:rgba(120,140,180,.12); }
+  .detail-hero .cell .k { font-size:7.5px; color:var(--on-hero-muted); }
+  .detail-hero .cell .v { font-size:10.5px; font-weight:700; margin-top:1px; }
+
+  .seg-view { display:flex; gap:6px; margin:10px 14px 4px; }
+  .seg-view div { flex:1; text-align:center; padding:7px 0; border-radius:999px; font-size:10px; background:var(--surface); color:var(--text-secondary); font-weight:600; }
+  .seg-view div.on { background:var(--grad); color:var(--on-accent); }
+
+  .list-scroll { position:absolute; left:0; right:0; bottom:14px; top:250px; overflow-y:auto; padding:0 14px; }
+
+  .note-row { background:var(--card); border-radius:12px; padding:9px 11px; margin-bottom:6px; box-shadow:var(--shadow); }
+  .note-row .top { display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
+  .note-row .nm { font-size:10.5px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:5px; min-width:0; }
+  .note-row .nm .txt { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .note-row .amt { font-size:10.5px; font-weight:700; color:var(--text-primary); white-space:nowrap; }
+  .note-row .meta { font-size:8px; color:var(--text-tertiary); margin-top:2px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .note-row .bar { height:4px; border-radius:2px; background:var(--surface); margin-top:5px; overflow:hidden; }
+  .note-row .bar .f { height:100%; border-radius:2px; background:var(--primary); }
+  .note-row.expanded { border:1px solid var(--border); }
+
+  /* 商家 chip：与备注同行或副行的视觉元件 */
+  .m-chip {
+    display:inline-flex; align-items:center; gap:3px;
+    background:var(--chip-soft-bg); color:var(--chip-soft-text);
+    border-radius:999px; padding:1px 8px; font-size:7.5px; font-weight:600;
+    line-height:14px; flex:none;
+  }
+  .m-chip.ghost { background:transparent; color:var(--text-tertiary); border:1px dashed var(--border); }
+
+  .note-sub { margin:6px 0 2px; padding-left:8px; border-left:2px solid var(--border); }
+  .note-sub .row { display:flex; justify-content:space-between; font-size:8.5px; color:var(--text-secondary); padding:3px 0; }
+  .note-sub .row .d { color:var(--text-tertiary); }
+  .foot-note { font-size:8px; color:var(--text-tertiary); line-height:1.7; padding:8px 2px 14px; }
+
+  .notes { max-width:1120px; margin:0 auto; background:#fff; border:1px solid #D8DCE6; border-radius:14px; padding:18px 22px; font-size:12.5px; line-height:2; color:#333; }
+  .notes h3 { font-size:13px; margin:10px 0 2px; }
+  .notes li { margin-left:18px; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>备注档加商家<span class="proposal-tag">提案 · 未动代码</span></h1>
+  <div class="page-sub">
+    需求：备注聚合里把「商家」带出来，让每笔花在哪个店一目了然。两套呈现方向，数字自洽（餐饮 ¥587.40 / 7 笔）。
+  </div>
+</div>
+
+<div class="skin-bar">
+  <span>皮肤：</span>
+  <button class="skin-btn active" data-set="aurora">流动极光</button>
+  <button class="skin-btn" data-set="candy">糖果马卡龙</button>
+  <button class="skin-btn" data-set="neon">暗夜霓虹</button>
+  <button class="skin-btn" data-set="neu">柔和浮雕</button>
+</div>
+
+<!-- ================= 方向 A ================= -->
+<section>
+  <div class="sec-head">方向 A · 备注聚合不变，行内补商家<span class="tag reco">推荐</span></div>
+  <div class="sec-desc">
+    聚合键仍是<b>备注</b>（相同备注合并），副行加「商家 chip（最多 2 个 + N）+ 次数 + 平均」。展开后逐笔账单本来就有日期 · 商家。
+    改的是<b>信息密度</b>，不改统计口径——「聚餐」跨几家店仍然是一行。
+  </div>
+  <div class="frames">
+
+    <div class="frame-wrap">
+      <div class="frame-cap">A① 备注档<i>备注主标题 + 商家 chips 副行</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="detail-head"><span class="detail-back">‹</span><span class="detail-title">餐饮</span><span class="detail-more">⋯</span></div>
+          <div class="detail-hero">
+            <div class="meta">2026年11月 · 我的账本 · 🍜 餐饮</div>
+            <div class="sum"><span class="big">¥587.40</span><span class="cnt">7 笔</span></div>
+            <div class="cols">
+              <div class="cell"><div class="k">占本月支出</div><div class="v">36%</div></div>
+              <div class="cell"><div class="k">日均</div><div class="v">¥34.55</div></div>
+              <div class="cell"><div class="k">笔均</div><div class="v">¥83.91</div></div>
+            </div>
+          </div>
+          <div class="seg-view"><div>明细</div><div class="on">备注</div></div>
+          <div class="list-scroll">
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">聚餐</span></span><span class="amt">¥472.00</span></div>
+              <div class="meta"><span class="m-chip">🏪 萍姐火锅</span><span>2 次 · 平均 ¥236.00</span></div>
+              <div class="bar"><div class="f" style="width:100%"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">牛肉面</span></span><span class="amt">¥56.00</span></div>
+              <div class="meta"><span class="m-chip">🏪 和府捞面</span><span class="m-chip ghost">未填商家</span><span>2 次 · 平均 ¥28.00</span></div>
+              <div class="bar"><div class="f" style="width:12%"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">未备注</span></span><span class="amt">¥40.30</span></div>
+              <div class="meta"><span class="m-chip ghost">未填商家</span><span>1 次 · 平均 ¥40.30</span></div>
+              <div class="bar"><div class="f" style="width:9%;background:var(--text-tertiary)"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">奶茶</span></span><span class="amt">¥19.10</span></div>
+              <div class="meta"><span class="m-chip">🏪 霸王茶姬</span><span>2 次 · 平均 ¥9.55</span></div>
+              <div class="bar"><div class="f" style="width:4%"></div></div>
+            </div>
+            <div class="foot-note">备注相同即合并；商家标签取自账单的「商家」字段，未填的显示「未填商家」。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="frame-cap">A② 展开态<i>点「聚餐」看逐笔：日期 · 商家 · 金额</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="detail-head"><span class="detail-back">‹</span><span class="detail-title">餐饮</span><span class="detail-more">⋯</span></div>
+          <div class="detail-hero">
+            <div class="meta">2026年11月 · 我的账本 · 🍜 餐饮</div>
+            <div class="sum"><span class="big">¥587.40</span><span class="cnt">7 笔</span></div>
+            <div class="cols">
+              <div class="cell"><div class="k">占本月支出</div><div class="v">36%</div></div>
+              <div class="cell"><div class="k">日均</div><div class="v">¥34.55</div></div>
+              <div class="cell"><div class="k">笔均</div><div class="v">¥83.91</div></div>
+            </div>
+          </div>
+          <div class="seg-view"><div>明细</div><div class="on">备注</div></div>
+          <div class="list-scroll">
+            <div class="note-row expanded">
+              <div class="top"><span class="nm"><span class="txt">聚餐</span></span><span class="amt">¥472.00</span></div>
+              <div class="meta"><span class="m-chip">🏪 萍姐火锅</span><span>2 次 · 平均 ¥236.00</span></div>
+              <div class="bar"><div class="f" style="width:100%"></div></div>
+              <div class="note-sub">
+                <div class="row"><span class="d">11-15 · 萍姐火锅</span><span>-¥ 236.00</span></div>
+                <div class="row"><span class="d">11-03 · 萍姐火锅</span><span>-¥ 236.00</span></div>
+              </div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">牛肉面</span></span><span class="amt">¥56.00</span></div>
+              <div class="meta"><span class="m-chip">🏪 和府捞面</span><span class="m-chip ghost">未填商家</span><span>2 次 · 平均 ¥28.00</span></div>
+              <div class="bar"><div class="f" style="width:12%"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">未备注</span></span><span class="amt">¥40.30</span></div>
+              <div class="meta"><span class="m-chip ghost">未填商家</span><span>1 次 · 平均 ¥40.30</span></div>
+              <div class="bar"><div class="f" style="width:9%;background:var(--text-tertiary)"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">奶茶</span></span><span class="amt">¥19.10</span></div>
+              <div class="meta"><span class="m-chip">🏪 霸王茶姬</span><span>2 次 · 平均 ¥9.55</span></div>
+              <div class="bar"><div class="f" style="width:4%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= 方向 B ================= -->
+<section>
+  <div class="sec-head">方向 B · 备注 × 商家 拆行<span class="tag alt">备选</span></div>
+  <div class="sec-desc">
+    聚合键改为<b>「备注 + 商家」组合</b>：同一备注在不同商家会拆成多行，每行就是「备注 · 商家」两段式。
+    粒度更细，但同一个备注的消费会被打散（聚餐 2 家 = 2 行）。
+  </div>
+  <div class="frames">
+    <div class="frame-wrap">
+      <div class="frame-cap">B① 备注档<i>备注主标题 + 商家同行（弱化字重）</i></div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮</span></div>
+        <div class="screen">
+          <div class="detail-head"><span class="detail-back">‹</span><span class="detail-title">餐饮</span><span class="detail-more">⋯</span></div>
+          <div class="detail-hero">
+            <div class="meta">2026年11月 · 我的账本 · 🍜 餐饮</div>
+            <div class="sum"><span class="big">¥587.40</span><span class="cnt">7 笔</span></div>
+            <div class="cols">
+              <div class="cell"><div class="k">占本月支出</div><div class="v">36%</div></div>
+              <div class="cell"><div class="k">日均</div><div class="v">¥34.55</div></div>
+              <div class="cell"><div class="k">笔均</div><div class="v">¥83.91</div></div>
+            </div>
+          </div>
+          <div class="seg-view"><div>明细</div><div class="on">备注</div></div>
+          <div class="list-scroll">
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">聚餐</span><span class="m-chip">🏪 萍姐火锅</span></span><span class="amt">¥472.00</span></div>
+              <div class="meta"><span>2 次 · 平均 ¥236.00</span></div>
+              <div class="bar"><div class="f" style="width:100%"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">牛肉面</span><span class="m-chip">🏪 和府捞面</span></span><span class="amt">¥28.00</span></div>
+              <div class="meta"><span>1 次 · 平均 ¥28.00</span></div>
+              <div class="bar"><div class="f" style="width:6%"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">牛肉面</span><span class="m-chip ghost">未填商家</span></span><span class="amt">¥28.00</span></div>
+              <div class="meta"><span>1 次 · 平均 ¥28.00</span></div>
+              <div class="bar"><div class="f" style="width:6%"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">未备注</span><span class="m-chip ghost">未填商家</span></span><span class="amt">¥40.30</span></div>
+              <div class="meta"><span>1 次 · 平均 ¥40.30</span></div>
+              <div class="bar"><div class="f" style="width:9%;background:var(--text-tertiary)"></div></div>
+            </div>
+            <div class="note-row">
+              <div class="top"><span class="nm"><span class="txt">奶茶</span><span class="m-chip">🏪 霸王茶姬</span></span><span class="amt">¥19.10</span></div>
+              <div class="meta"><span>2 次 · 平均 ¥9.55</span></div>
+              <div class="bar"><div class="f" style="width:4%"></div></div>
+            </div>
+            <div class="foot-note">按「备注 + 商家」组合聚合：同一备注在不同商家会分行显示。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="notes">
+  <h3>A 与 B 的差别（一句话）</h3>
+  <li><b>A</b>：备注是主角，商家只是标签——同一备注永远是<b>一行</b>，适合“看花在什么事上”。</li>
+  <li><b>B</b>：备注和商家同等重要——同一备注按商家<b>拆行</b>，适合“看花在哪家店”。</li>
+  <h3>推荐 A 的理由</h3>
+  <li>不动统计口径（备注聚合本来就是 v0.21 的既定设计，拆行会让「聚餐」这样跨店备注变碎）。</li>
+  <li>商家 chip 最多 2 个 + 「+N」，副行还能放次数/平均，信息密度刚好；展开态已经能看到逐笔商家。</li>
+  <li>实现最小：`aggregateNotes` 增加一个「商家列表」字段，UI 加 chip 行。</li>
+  <h3>待确认</h3>
+  <li>选 A 还是 B？</li>
+  <li>A 里商家 chip 放<b>副行</b>（与次数同行）还是放<b>主行末尾</b>（B 的样式）？样例 A 用的副行。</li>
+</div>
+
+<script>
+  document.querySelectorAll('.skin-btn[data-set]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.documentElement.setAttribute('data-skin', btn.dataset.set);
+      document.querySelectorAll('.skin-btn[data-set]').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
