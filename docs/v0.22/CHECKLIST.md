@@ -47,8 +47,8 @@
 - [x] `res/xml/shortcuts.xml` + 三个 vector 图标 + 文案（记一笔 / 语音记账 / 问小光）✅ 2026-11-19
 - [x] 单测 `__tests__/intentDeepLink.test.ts` 18 例（URL 解析 15 + TTL + take 语义）✅ 2026-11-19
 - [x] 门禁：tsc 干净 / jest 186 passed / eslint 0 error（新文件零告警）✅ 2026-11-19
-- [x] 真机验证：`adb shell am start -a android.intent.action.VIEW -d bookkeeping://add` 打开记账弹层；长按图标三个快捷方式可见 ✅ 2026-11-19
-- [x] 随 2.9.5(241) 一起发 OTA ✅ 2026-11-19
+- [ ] 真机验证：`adb shell am start -a android.intent.action.VIEW -d bookkeeping://add` 打开记账弹层；长按图标三个快捷方式可见（**待手机接上后执行**）
+- [x] 随 2.9.5(241) 一起发 OTA ✅ 2026-11-19（published 17:11，info.json version=2.9.5，sha256 8d6a1e7a…136a，latest.apk 23,097,591 字节，服务端哈希一致）
 
 ## 待用户决定
 
