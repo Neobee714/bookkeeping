@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面长按图标的静态快捷方式：三个 action 都走 bookkeeping:// 深链，
+     由 src/navigation/useDeepLinks.ts 收进 intentStore 后由页面消费。 -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_add_short"
+        android:shortcutLongLabel="@string/shortcut_add_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="bookkeeping://add"
+            android:targetPackage="com.neobee.bookkeeping"
+            android:targetClass="com.bookkeepingapp.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="voice"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_voice"
+        android:shortcutShortLabel="@string/shortcut_voice_short"
+        android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="bookkeeping://voice"
+            android:targetPackage="com.neobee.bookkeeping"
+            android:targetClass="com.bookkeepingapp.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="agent"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_agent"
+        android:shortcutShortLabel="@string/shortcut_agent_short"
+        android:shortcutLongLabel="@string/shortcut_agent_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="bookkeeping://agent"
+            android:targetPackage="com.neobee.bookkeeping"
+            android:targetClass="com.bookkeepingapp.MainActivity" />
+    </shortcut>
+</shortcuts>

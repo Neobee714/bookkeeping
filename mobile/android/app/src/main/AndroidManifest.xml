@@ -35,6 +35,19 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+
+        <!-- 桌面快捷方式深链：bookkeeping://add | voice | agent。singleTask + 该过滤器
+             让已在运行的 App 走 onNewIntent，RN Linking 转成 url 事件。 -->
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="bookkeeping" />
+        </intent-filter>
+
+        <meta-data
+            android:name="android.app.shortcuts"
+            android:resource="@xml/shortcuts" />
       </activity>
 
       <!-- OTA 更新:应用内前台下载服务(通知栏进度 + 完成后点击安装) -->

@@ -1,4 +1,5 @@
-import { useFocusEffect } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -38,8 +39,10 @@ import LoadingView from '../components/LoadingView';
 import SegmentedControl from '../components/SegmentedControl';
 import TransactionItem from '../components/TransactionItem';
 import VoiceTransactionSheet from '../components/VoiceTransactionSheet';
+import type { MainTabParamList } from '../navigation/types';
 import { cacheKey, readCache, writeCache } from '../offline/cache';
 import { createClientId } from '../offline/ids';
+import { useIntentStore } from '../store/intentStore';
 import { isOnlineNow } from '../offline/network';
 import {
   enqueue,
@@ -123,6 +126,32 @@ export default function HomeScreen() {
   const [deleting, setDeleting] = useState(false);
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+
+  // 桌面快捷方式（bookkeeping://add | voice）：由首页消费；人在别的 Tab 时
+  // 先切回首页，等 isFocused 变 true 后再弹层，避免弹层开在别的页面下面。
+  const isFocused = useIsFocused();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const pendingIntent = useIntentStore((state) => state.pending);
+  const takeIntent = useIntentStore((state) => state.take);
+
+  useEffect(() => {
+    const action = pendingIntent?.action;
+    if (action !== 'add' && action !== 'voice') {
+      return;
+    }
+    if (!isFocused) {
+      navigation.navigate('Home');
+      return;
+    }
+    const taken = takeIntent(['add', 'voice']);
+    if (taken === 'add') {
+      setEditingItem(null);
+      setVoiceDraft(null);
+      setSheetOpen(true);
+    } else if (taken === 'voice') {
+      setVoiceOpen(true);
+    }
+  }, [pendingIntent, isFocused, navigation, takeIntent]);
 
   // FR-02 吸顶:collapse 0↔1 动画值(由滚动回调触发)。
   const collapse = useRef(new Animated.Value(0)).current;

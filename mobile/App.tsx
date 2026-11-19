@@ -3,6 +3,7 @@ import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import RootNavigator from './src/navigation/RootNavigator';
+import { useDeepLinks } from './src/navigation/useDeepLinks';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
 import { useOfflineSync } from './src/offline/useOfflineSync';
@@ -14,6 +15,7 @@ function App() {
   const colors = useTheme();
 
   useOfflineSync();
+  useDeepLinks();
 
   useEffect(() => {
     void loadStoredTheme();

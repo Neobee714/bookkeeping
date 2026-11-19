@@ -3,9 +3,13 @@ import {
   DarkTheme,
   DefaultTheme,
   NavigationContainer,
+  useNavigation,
   type Theme,
 } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -27,6 +31,7 @@ import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import StatsScreen from '../screens/StatsScreen';
 import { useAuthStore } from '../store/authStore';
+import { useIntentStore } from '../store/intentStore';
 import { radius, useIsDarkMode, useSkin, useTheme } from '../theme';
 import { checkForUpdate, useUpdateCheck } from '../updater/useUpdateCheck';
 import type { MainTabParamList, RootStackParamList } from './types';
@@ -61,6 +66,22 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 function MainTabs() {
   const colors = useTheme();
   const skin = useSkin();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const pending = useIntentStore((s) => s.pending);
+  const takeIntent = useIntentStore((s) => s.take);
+
+  // 快捷方式 / 深链里的「问小光」：切到 Agent 档。add / voice 交给首页自己消费，
+  // 它需要把用户先带回首页再弹层（见 HomeScreen 的 intent effect）。
+  useEffect(() => {
+    if (!accessToken || pending?.action !== 'agent') {
+      return;
+    }
+    if (takeIntent(['agent'])) {
+      navigation.navigate('Main', { screen: 'Agent' });
+    }
+  }, [accessToken, navigation, pending, takeIntent]);
+
   return (
     <Tab.Navigator
       screenOptions={{

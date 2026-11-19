@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">拾光</string>
+
+    <!-- 桌面长按图标快捷方式 -->
+    <string name="shortcut_add_short">记一笔</string>
+    <string name="shortcut_add_long">记一笔：手动填写金额与分类</string>
+    <string name="shortcut_voice_short">语音记账</string>
+    <string name="shortcut_voice_long">语音记账：说一句就算好</string>
+    <string name="shortcut_agent_short">问小光</string>
+    <string name="shortcut_agent_long">问小光：这个月花了多少</string>
 </resources>
