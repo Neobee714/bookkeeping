@@ -1,0 +1,9 @@
+[Unit]
+Description=拾光健康巡检（容器/API/证书/备份新鲜度）
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/bookkeeping/watchdog/check.sh
+# 未配置 ALERT_WEBHOOK 时也想留一份环境变量入口
+EnvironmentFile=-/etc/default/bk-healthcheck
