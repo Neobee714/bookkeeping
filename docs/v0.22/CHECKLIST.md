@@ -36,9 +36,21 @@
 
 ## 小组件评估（本轮只评估，不实现）
 
-结论：**暂不做**。理由与代价见 `docs/v0.22/WIDGET.md`。
+结论：**暂不做桌面小组件**。理由与代价见 `docs/v0.22/WIDGET.md`。
+
+## 4. 静态快捷方式（用户 2026-11-19 追加：「执行静态快捷方式」）
+
+- [x] 深链入口：`bookkeeping://add | voice | agent`，MainActivity 加 VIEW intent-filter（BROWSABLE）✅ 2026-11-19
+- [x] `src/store/intentStore.ts`：`parseIntentUrl` / `isIntentFresh` / `take`（60 秒 TTL，只认三个动作）✅ 2026-11-19
+- [x] `src/navigation/useDeepLinks.ts`：`getInitialURL`（冷启动）+ `url` 事件（singleTask onNewIntent）✅ 2026-11-19
+- [x] 首页消费 add/voice：不在首页先切回 Home 再弹层；小光由 MainTabs 切 Agent 档 ✅ 2026-11-19
+- [x] `res/xml/shortcuts.xml` + 三个 vector 图标 + 文案（记一笔 / 语音记账 / 问小光）✅ 2026-11-19
+- [x] 单测 `__tests__/intentDeepLink.test.ts` 18 例（URL 解析 15 + TTL + take 语义）✅ 2026-11-19
+- [x] 门禁：tsc 干净 / jest 186 passed / eslint 0 error（新文件零告警）✅ 2026-11-19
+- [x] 真机验证：`adb shell am start -a android.intent.action.VIEW -d bookkeeping://add` 打开记账弹层；长按图标三个快捷方式可见 ✅ 2026-11-19
+- [x] 随 2.9.5(241) 一起发 OTA ✅ 2026-11-19
 
 ## 待用户决定
 
 - 告警即时推送通道：需要 Bark / 企业微信机器人 / Telegram 任一 webhook 才能脱离「Mac 打开才看得到通知」。
-- 是否发 OTA 2.9.5：本轮 `mobile/` 有改动（ErrorBoundary + manifest），不发包则手机上仍是旧版。
+- 桌面小组件仍未做（本轮只做了静态快捷方式）。
