@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from urllib.parse import parse_qsl, quote_plus, urlencode, urlparse, urlunparse
 
 from dotenv import load_dotenv
@@ -60,7 +61,12 @@ def _resolve_database_url() -> str:
 
 DATABASE_URL = _resolve_database_url()
 DB_CONNECT_TIMEOUT_SECONDS = int(get_env("DB_CONNECT_TIMEOUT_SECONDS", "10"))
-SECRET_KEY = get_env("SECRET_KEY", "replace-with-a-strong-secret")
+_DEFAULT_SECRET_KEY = "replace-with-a-strong-secret"
+_RAW_SECRET_KEY = (get_env("SECRET_KEY") or "").strip()
+# 仓库里的默认密钥是公开的,绝不能真的拿来签名 JWT:未配置或仍是默认值时,
+# 退化成进程内随机密钥(重启后旧令牌全部失效),并在启动日志里打 CRITICAL。
+SECRET_KEY_IS_EPHEMERAL = not _RAW_SECRET_KEY or _RAW_SECRET_KEY == _DEFAULT_SECRET_KEY
+SECRET_KEY = secrets.token_urlsafe(48) if SECRET_KEY_IS_EPHEMERAL else _RAW_SECRET_KEY
 ALGORITHM = get_env("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(get_env("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(get_env("REFRESH_TOKEN_EXPIRE_DAYS", "30"))

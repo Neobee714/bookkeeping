@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import ratelimit
 from app.core.admin import is_admin_username
 from app.core.config import FOUNDER_INVITE_CODE
 from app.core.database import get_db
@@ -209,13 +210,31 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> dict:
+def login(
+    payload: LoginRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict:
+    # 失败计数先看:同一个账号/同一 IP 连续失败过多时直接 429,不做密码校验。
+    user_bucket = ratelimit.user_key(payload.username)
+    ip_bucket = ratelimit.ip_key(ratelimit.client_ip(request))
+    retry_after = ratelimit.check_allowed(user_bucket, ip_bucket)
+    if retry_after:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"登录失败次数过多，请 {retry_after} 秒后再试",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = db.scalar(select(User).where(User.username == payload.username))
     if not user or not verify_password(payload.password, user.password_hash):
+        ratelimit.record_failure(user_bucket, ip_bucket)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
         )
+
+    ratelimit.clear(user_bucket)
 
     partner = db.get(User, user.partner_id) if user.partner_id else None
     return success_response(

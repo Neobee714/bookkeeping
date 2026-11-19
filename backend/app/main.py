@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
+from app.core.config import SECRET_KEY_IS_EPHEMERAL
 from app.core.response import success_response
 from app.routers import (
     agent_router,
@@ -72,6 +73,8 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     return JSONResponse(
         status_code=exc.status_code,
         content={"success": False, "data": None, "message": str(exc.detail)},
+        # 透传 Retry-After 等头(登录限流 429 需要)。
+        headers=exc.headers,
     )
 
 
@@ -110,6 +113,11 @@ app.include_router(app_updates_router)
 
 @app.on_event("startup")
 async def start_schedulers() -> None:
+    if SECRET_KEY_IS_EPHEMERAL:
+        logger.critical(
+            "SECRET_KEY 未配置或仍是仓库默认值,已退化为进程内随机密钥:"
+            "重启后所有登录态失效。请在 .env 配置 SECRET_KEY。",
+        )
     recurring_scheduler.start()
     report_scheduler.start()
 

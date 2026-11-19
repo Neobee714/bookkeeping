@@ -3,6 +3,7 @@ import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import RootNavigator from './src/navigation/RootNavigator';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
 import { useOfflineSync } from './src/offline/useOfflineSync';
 import { loadStoredTheme } from './src/store/themeStore';
@@ -24,8 +25,11 @@ function App() {
           接管状态栏区域;根容器背景作兜底,状态栏区域(含挖孔)不再露出窗口默认白色。 */}
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <RootNavigator />
-        <OfflineBanner />
+        {/* 顶层兜底:任何页面渲染异常都落到重试页,不白屏。 */}
+        <ErrorBoundary>
+          <RootNavigator />
+          <OfflineBanner />
+        </ErrorBoundary>
       </View>
     </SafeAreaProvider>
   );
