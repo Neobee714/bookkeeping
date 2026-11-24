@@ -26,7 +26,7 @@ def _load_category_sets(db: Session, user_id: int) -> dict[str, set[str]]:
     rows = db.execute(
         select(Category.name, Category.type).where(Category.user_id == user_id)
     ).all()
-    result: dict[str, set[str]] = {"expense": set(), "income": set()}
+    result: dict[str, set[str]] = {"expense": set(), "income": set(), "transfer": set()}
     for name, type_ in rows:
         result.setdefault(type_, set()).add(name)
     return result
@@ -87,6 +87,9 @@ def preview(db: Session, user: User, data: bytes, *, password: str | None = None
 
         if row.client_id in existing:
             category, match, already = existing[row.client_id], "existing", True
+        elif row.category_hint and row.category_hint in categories.get(row.type, set()):
+            # 账单本身能判定（转账/红包/提现），直接用
+            category, match, already = row.category_hint, "builtin", False
         else:
             category, match = categorize.suggest(
                 row.merchant, row.note, row.type, rules, categories, channel=row.channel
@@ -111,6 +114,7 @@ def preview(db: Session, user: User, data: bytes, *, password: str | None = None
     importable = [row for row in rows if not row["existing"]]
     expense = [row for row in importable if row["type"] == "expense"]
     income = [row for row in importable if row["type"] == "income"]
+    transfer = [row for row in importable if row["type"] == "transfer"]
 
     reasons: dict[str, dict] = defaultdict(lambda: {"count": 0, "amount": Decimal("0")})
     for item in bill.skipped:
@@ -139,6 +143,10 @@ def preview(db: Session, user: User, data: bytes, *, password: str | None = None
             "expense_amount": _money(sum((Decimal(r["amount"]) for r in expense), Decimal("0"))),
             "income_count": len(income),
             "income_amount": _money(sum((Decimal(r["amount"]) for r in income), Decimal("0"))),
+            "transfer_count": len(transfer),
+            "transfer_amount": _money(
+                sum((Decimal(r["amount"]) for r in transfer), Decimal("0"))
+            ),
             "range": [
                 bill.start.isoformat() if bill.start else "",
                 bill.end.isoformat() if bill.end else "",
@@ -155,6 +163,7 @@ def preview(db: Session, user: User, data: bytes, *, password: str | None = None
         "categories": {
             "expense": [c for c in _load_category_meta(db, user.id) if c["type"] == "expense"],
             "income": [c for c in _load_category_meta(db, user.id) if c["type"] == "income"],
+            "transfer": [c for c in _load_category_meta(db, user.id) if c["type"] == "transfer"],
         },
         "rows": rows,
         "skipped": skipped_rows,
@@ -180,6 +189,7 @@ def commit(db: Session, user: User, payload: dict) -> dict:
     categories = _load_category_sets(db, user.id)
     fallback_expense = categorize._fallback("expense", categories["expense"])
     fallback_income = categorize._fallback("income", categories["income"])
+    fallback_transfer = categorize._fallback("transfer", categories["transfer"])
 
     incoming = payload.get("rows") or []
     ids = [row.get("client_id") for row in incoming if row.get("client_id")]
@@ -201,14 +211,23 @@ def commit(db: Session, user: User, payload: dict) -> dict:
         day = _parse_date(str(row.get("date") or ""))
         amount = _parse_amount(row.get("amount"))
         type_ = row.get("type")
-        if day is None or amount is None or amount <= 0 or type_ not in {"expense", "income"}:
+        if day is None or amount is None or amount <= 0 or type_ not in {
+            "expense",
+            "income",
+            "transfer",
+        }:
             invalid += 1
             continue
 
         available = categories[type_]
         category = row.get("category") or ""
         if category not in available:
-            category = fallback_income if type_ == "income" else fallback_expense
+            if type_ == "income":
+                category = fallback_income
+            elif type_ == "transfer":
+                category = fallback_transfer
+            else:
+                category = fallback_expense
 
         note = (row.get("note") or "").strip()[:255] or None
         db.add(

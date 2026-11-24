@@ -6,6 +6,8 @@ from enum import Enum
 class TransactionType(str, Enum):
     INCOME = "income"
     EXPENSE = "expense"
+    # 不计入收支的转账/提现（钱离开微信但不算消费）
+    TRANSFER = "transfer"
 
 
 class CategoryEnum(str, Enum):

@@ -142,6 +142,8 @@ def normalize_merchant(name: str | None) -> str:
 
 
 def _fallback(type_: str, available: set[str]) -> str:
+    if type_ == "transfer":
+        return "提现" if "提现" in available else (sorted(available)[0] if available else "提现")
     preferred = DEFAULT_INCOME if type_ == "income" else DEFAULT_EXPENSE
     if preferred in available:
         return preferred

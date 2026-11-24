@@ -7,6 +7,7 @@ import io
 import re
 from collections.abc import Iterable, Sequence
 from datetime import datetime
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from . import enrich
@@ -14,8 +15,18 @@ from .bill_types import BillParseError, BillRow, ParsedBill, SkippedRow
 
 SOURCE = "wechat"
 
-# 这些交易类型不是消费：转账给个人、红包、提现、零钱通存取
-TRANSFER_TYPES = ("转账", "微信红包", "零钱提现", "转入零钱通", "零钱通转出", "信用卡还款")
+# 部分退款：状态形如「已退款(¥18.30)」，按净额入账
+PARTIAL_REFUND = re.compile(r"已退款\(¥([\d.]+)\)")
+
+
+@dataclass
+class Decision:
+    """一行流水的处理结论。"""
+
+    skip: str | None = None
+    type: str = "expense"
+    amount: Decimal | None = None
+    category_hint: str = ""
 
 COLUMNS = {
     "time": ("交易时间",),
@@ -66,16 +77,49 @@ def _clean_merchant(text: str) -> str:
     return value[:50]
 
 
-def _skip_reason(kind: str, direction: str, status: str) -> str | None:
+def _classify(kind: str, direction: str, status: str, amount: Decimal) -> Decision:
+    """把一行微信流水映射成 入账 / 跳过 的决定。
+
+    口径：钱离开微信就要记（转账、发红包、提现、转出到银行卡），
+    只在微信内部腾挪的不记（零钱→零钱通、银行卡→零钱）。
+    """
+    if "转入零钱通" in kind:
+        return Decision(skip="零钱通转入")
+    if "零钱通转出" in kind or kind == "零钱提现":
+        return Decision(type="transfer", category_hint="提现")
+    if kind == "零钱充值":
+        return Decision(skip="零钱充值")
     if direction not in {"支出", "收入"}:
-        return "中性交易"
-    if "退款" in status:
-        return "退款"
+        return Decision(skip="中性交易")
+
+    # 退款：原单 + 退款行成对，整对丢弃；部分退款按净额
     if "退款" in kind:
-        return "退款"
-    if kind.startswith(TRANSFER_TYPES):
-        return "转账/红包"
-    return None
+        return Decision(skip="退款")
+    if "已全额退款" in status:
+        return Decision(skip="退款")
+    partial = PARTIAL_REFUND.search(status)
+    if partial:
+        refunded = Decimal(partial.group(1))
+        net = amount - refunded
+        if net <= 0:
+            return Decision(skip="退款")
+        return Decision(type="expense", amount=net, category_hint="")
+
+    if kind == "转账":
+        if direction == "支出" and "已退还" in status:
+            return Decision(skip="退款")
+        # 转账是账户间/人情往来：记录，但不计入收支，避免把「给家人转钱」算成消费
+        return Decision(type="transfer", category_hint="转账")
+
+    if kind.startswith("微信红包"):
+        return Decision(
+            type="income" if direction == "收入" else "expense",
+            category_hint="红包",
+        )
+
+    if direction == "收入":
+        return Decision(type="income")
+    return Decision(type="expense")
 
 
 def _parse_declared(line: str, declared: dict[str, str]) -> None:
@@ -136,11 +180,11 @@ def _build(rows: Iterable[Sequence[object]], declared: dict[str, str]) -> Parsed
         merchant, note_text = enrich.resolve_party(raw_merchant, get("goods"), channel)
         day = moment.date()
 
-        reason = _skip_reason(kind, direction, status)
-        if reason:
+        decision = _classify(kind, direction, status, amount)
+        if decision.skip:
             bill.skipped.append(
                 SkippedRow(
-                    reason=reason,
+                    reason=decision.skip,
                     date=day,
                     amount=amount,
                     merchant=raw_merchant,
@@ -153,12 +197,13 @@ def _build(rows: Iterable[Sequence[object]], declared: dict[str, str]) -> Parsed
             BillRow(
                 client_id=f"{SOURCE}:{trade_no}"[:64],
                 date=day,
-                amount=amount,
-                type="income" if direction == "收入" else "expense",
+                amount=decision.amount if decision.amount is not None else amount,
+                type=decision.type,
                 merchant=merchant,
                 note=note_text,
                 external_id=trade_no,
                 channel=channel,
+                category_hint=decision.category_hint,
             )
         )
         if bill.start is None or day < bill.start:

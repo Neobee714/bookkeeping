@@ -15,6 +15,8 @@ class BillRow:
     note: str
     external_id: str
     channel: str = ""
+    # 账单本身能直接判定的分类（转账/红包/提现），优先于关键词规则
+    category_hint: str = ""
 
 
 @dataclass

@@ -102,20 +102,20 @@ def test_sync_mailbox_imports_and_dedupes(
     with ctx["session"]() as db:
         box = db.execute(select(BillMailbox)).scalar_one()
         result = sync_mailbox(db, box)
-        assert result["imported"] == 3
+        assert result["imported"] == 6
         assert result["messages"] == 1
         assert box.last_status == "ok"
-        assert "导入 3 笔" in (box.last_summary or "")
+        assert "导入 6 笔" in (box.last_summary or "")
 
     # 同一封邮件再同步一次（未读状态被重置也不该重复入账）
     with ctx["session"]() as db:
         box = db.execute(select(BillMailbox)).scalar_one()
         again = sync_mailbox(db, box)
         assert again["imported"] == 0
-        assert again["duplicated"] == 3
+        assert again["duplicated"] == 6
 
     with ctx["session"]() as db:
-        assert len(db.execute(select(Transaction)).scalars().all()) == 3
+        assert len(db.execute(select(Transaction)).scalars().all()) == 6
 
     with ctx["session"]() as db:
         box = db.execute(select(BillMailbox)).scalar_one()
@@ -279,10 +279,10 @@ def test_sync_imports_from_download_link(
     with ctx["session"]() as db:
         box = db.execute(select(BillMailbox)).scalar_one()
         result = sync_mailbox(db, box)
-        assert result["imported"] == 3, result
+        assert result["imported"] == 6, result
 
     with ctx["session"]() as db:
-        assert len(db.execute(select(Transaction)).scalars().all()) == 3
+        assert len(db.execute(select(Transaction)).scalars().all()) == 6
 
 
 def test_sync_is_locked(client: tuple[TestClient, dict]) -> None:

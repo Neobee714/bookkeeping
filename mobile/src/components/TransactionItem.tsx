@@ -32,8 +32,16 @@ export default function TransactionItem({
   const colors = useTheme();
   const skin = useSkin();
   const isIncome = item.type === 'income';
-  const amountText = `${isIncome ? '+¥ ' : '-¥ '}${formatMoney(item.amount)}`;
-  const amountColor = isIncome ? colors.income : colors.expense;
+  // 转账 / 提现不计收支：金额不带正负号，用中性色
+  const isTransfer = item.type === 'transfer';
+  const amountText = isTransfer
+    ? `¥ ${formatMoney(item.amount)}`
+    : `${isIncome ? '+¥ ' : '-¥ '}${formatMoney(item.amount)}`;
+  const amountColor = isTransfer
+    ? colors.textSecondary
+    : isIncome
+      ? colors.income
+      : colors.expense;
   const iconBg = color ? `${color}1A` : colors.surface;
 
   // 标题 商家 || 平台 || 分类；副标题 备注 || 有商家/平台时的分类 || 无备注。

@@ -60,6 +60,7 @@ const COLOR_PALETTE = [
 const TYPE_LABELS: Record<TransactionType, string> = {
   expense: '支出',
   income: '收入',
+  transfer: '转账/提现',
 };
 
 /** 分类管理(FR-03)。 */

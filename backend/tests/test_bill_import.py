@@ -172,7 +172,11 @@ def client() -> Generator[tuple[TestClient, dict[str, User]], None, None]:
         ("交通", "🚌", "expense"),
         ("小摔炮", "🧨", "expense"),
         ("其他", "📌", "expense"),
+        ("红包", "🧧", "expense"),
         ("收入", "💰", "income"),
+        ("红包", "🧧", "income"),
+        ("转账", "💸", "transfer"),
+        ("提现", "🏦", "transfer"),
     ):
         session.add(Category(user_id=1, name=name, icon=icon, color="#FF6B6B", type=type_))
     session.commit()
@@ -202,19 +206,25 @@ def test_wechat_xlsx_parse() -> None:
     bill = wechat.parse_xlsx(_wechat_xlsx())
     assert bill.source == "wechat"
     assert bill.account == "测试账号"
-    assert len(bill.rows) == 3
-    assert [r.amount for r in bill.rows] == [45.50, 23.00, 12.00]
-    reasons = sorted(s.reason for s in bill.skipped)
-    assert reasons.count("退款") == 2
-    assert reasons.count("中性交易") == 1
-    assert reasons.count("转账/红包") == 2
+    assert len(bill.rows) == 6
+    assert [r.amount for r in bill.rows] == [45.50, 23.00, 150.00, 80.00, 12.00, 100.00]
+    assert [r.type for r in bill.rows] == [
+        "expense",
+        "expense",
+        "transfer",
+        "transfer",
+        "expense",
+        "income",
+    ]
+    # 退款整对丢弃（原单 + 退款行）
+    assert [s.reason for s in bill.skipped] == ["退款", "退款"]
     assert bill.start == date(2026, 11, 2)
-    assert bill.end == date(2026, 11, 7)
+    assert bill.end == date(2026, 11, 8)
 
 
 def test_wechat_csv_parse() -> None:
     bill = wechat.parse_csv(_wechat_csv_text())
-    assert len(bill.rows) == 3
+    assert len(bill.rows) == 6
     assert bill.rows[0].merchant == ""
     assert bill.rows[0].channel == "美团"
     # 支付方式描述不再进备注
@@ -284,9 +294,18 @@ def test_preview_and_commit_flow(client: tuple[TestClient, dict]) -> None:
     assert response.status_code == 200, response.text
     data = response.json()["data"]
     assert data["source"] == "wechat"
-    assert data["summary"]["importable"] == 3
+    assert data["summary"]["importable"] == 6
     assert data["summary"]["expense_amount"] == "80.50"
-    assert {r["category"] for r in data["rows"]} == {"餐饮", "日用", "交通"}
+    assert data["summary"]["income_amount"] == "100.00"
+    assert data["summary"]["transfer_count"] == 2
+    assert {r["category"] for r in data["rows"]} == {
+        "餐饮",
+        "日用",
+        "交通",
+        "转账",
+        "提现",
+        "红包",
+    }
     assert all(r["match"] == "builtin" for r in data["rows"])
     by_amount = {row["amount"]: row for row in data["rows"]}
     assert by_amount["45.50"]["channel"] == "美团"
@@ -300,16 +319,16 @@ def test_preview_and_commit_flow(client: tuple[TestClient, dict]) -> None:
     commit_body = {"source": "wechat", "rows": data["rows"], "learn": []}
     first = test_client.post("/transactions/import/commit", json=commit_body)
     assert first.status_code == 200, first.text
-    assert first.json()["data"]["imported"] == 3
+    assert first.json()["data"]["imported"] == 6
 
     second = test_client.post("/transactions/import/commit", json=commit_body)
     assert second.json()["data"]["imported"] == 0
-    assert second.json()["data"]["duplicated"] == 3
+    assert second.json()["data"]["duplicated"] == 6
 
     with ctx["session"]() as db:
         rows = db.execute(select(Transaction)).scalars().all()
-        assert len(rows) == 3
-        assert {row.category for row in rows} == {"餐饮", "日用", "交通"}
+        assert len(rows) == 6
+        assert {row.category for row in rows} == {"餐饮", "日用", "交通", "转账", "提现", "红包"}
         assert all(row.client_id and row.client_id.startswith("wechat:") for row in rows)
 
 
@@ -390,7 +409,7 @@ def test_channel_breakdown_and_rules_api(client: tuple[TestClient, dict]) -> Non
         "rows": preview["rows"],
         "learn": [{"merchant": "", "channel": "美团", "category": "餐饮"}],
     }
-    assert test_client.post("/transactions/import/commit", json=body).json()["data"]["imported"] == 3
+    assert test_client.post("/transactions/import/commit", json=body).json()["data"]["imported"] == 6
 
     breakdown = test_client.get(
         "/stats/breakdown", params={"dimension": "channel", "month": "2026-11"}
@@ -419,3 +438,28 @@ def test_channel_breakdown_and_rules_api(client: tuple[TestClient, dict]) -> Non
     deleted = test_client.delete(f"/transactions/import/rules/{rule_id}")
     assert deleted.status_code == 200
     assert test_client.get("/transactions/import/rules").json()["data"] == []
+
+
+def test_classify_transfer_and_partial_refund() -> None:
+    from decimal import Decimal
+
+    from app.services.bill_import.wechat import _classify
+
+    # 转账：记录为 transfer（不计收支）
+    assert _classify("转账", "支出", "对方已收钱", Decimal("100")).type == "transfer"
+    assert _classify("转账", "收入", "已存入零钱", Decimal("500")).type == "transfer"
+    # 提现 / 零钱通转出：transfer
+    assert _classify("零钱提现", "/", "提现已到账", Decimal("100")).type == "transfer"
+    assert _classify("零钱通转出-到招商银行(6288)", "/", "资金已到账", Decimal("100")).type == "transfer"
+    # 零钱通转入 / 零钱充值：跳过
+    assert _classify("转入零钱通-来自零钱", "/", "支付成功", Decimal("1")).skip == "零钱通转入"
+    assert _classify("零钱充值", "/", "充值完成", Decimal("1")).skip == "零钱充值"
+    # 红包算收支
+    assert _classify("微信红包（单发）", "支出", "支付成功", Decimal("10")).type == "expense"
+    assert _classify("微信红包", "收入", "已存入零钱", Decimal("10")).type == "income"
+    # 部分退款按净额
+    decision = _classify("商户消费", "支出", "已退款(¥18.30)", Decimal("19.20"))
+    assert decision.type == "expense"
+    assert decision.amount == Decimal("0.90")
+    # 全额退款：跳过
+    assert _classify("商户消费", "支出", "已全额退款", Decimal("20")).skip == "退款"

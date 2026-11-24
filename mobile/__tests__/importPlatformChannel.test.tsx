@@ -54,6 +54,7 @@ const platformPreview: ImportPreview = {
       { name: '购物', icon: '🛍️' },
     ],
     income: [{ name: '收入', icon: '💰' }],
+    transfer: [],
   },
   rows: [
     {

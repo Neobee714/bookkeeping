@@ -7,7 +7,7 @@
 
 // ---------- 通用 ----------
 
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'transfer';
 
 export type Category = string;
 

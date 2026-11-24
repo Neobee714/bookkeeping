@@ -176,7 +176,7 @@ def test_list_orders_by_enabled_then_next_run(
         {"note": "x" * 256},
         {"freq": "biweekly"},
         {"start_date": "not-a-date"},
-        {"type": "transfer"},
+        {"type": "refund"},
     ],
 )
 def test_create_validation(

@@ -368,6 +368,14 @@ export default function ImportScreen({ navigation }: Props) {
                       preview.summary.income_count
                     } 笔`}
                   />
+                  {preview.summary.transfer_count ? (
+                    <SummaryRow
+                      label="转账/提现"
+                      value={`¥${formatMoney(
+                        preview.summary.transfer_amount || '0',
+                      )} · ${preview.summary.transfer_count} 笔`}
+                    />
+                  ) : null}
                   <SummaryRow label="时间范围" value={rangeText} />
                   {preview.summary.account ? (
                     <SummaryRow label="账单账户" value={preview.summary.account} />

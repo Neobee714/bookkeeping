@@ -33,6 +33,9 @@ export interface ImportSummary {
   expense_amount: string;
   income_count: number;
   income_amount: string;
+  /** 转账 / 提现（记录但不计入收支）。 */
+  transfer_count?: number;
+  transfer_amount?: string;
   /** 账单时间范围 [起, 止]；没有可导入行时可能为 null。 */
   range: [string, string] | null;
   /** 账单抬头里的账户昵称，可能为空。 */
@@ -70,6 +73,7 @@ export interface ImportPreview {
   categories: {
     expense: ImportCategoryOption[];
     income: ImportCategoryOption[];
+    transfer: ImportCategoryOption[];
   };
   rows: ImportPreviewRow[];
   skipped: ImportSkippedRow[];

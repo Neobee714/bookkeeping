@@ -111,4 +111,20 @@ describe('TransactionItem · 平台 channel', () => {
     expect(textsOf(tree)).toContain('美团');
     expect(hasChannelChip(tree)).toBe(false);
   });
+  it('转账类型不带正负号，金额用中性色', async () => {
+    const tree = await renderItem({
+      ...base,
+      amount: 100,
+      type: 'transfer',
+      category: '提现',
+      merchant: null,
+      channel: null,
+      note: null,
+    });
+    const texts = textsOf(tree);
+
+    expect(texts).toContain('提现');
+    expect(texts.some((text) => text.includes('¥ 100.00'))).toBe(true);
+    expect(texts.some((text) => text.startsWith('-¥'))).toBe(false);
+  });
 });
