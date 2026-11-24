@@ -2,7 +2,7 @@ import type { Transaction } from '../types';
 
 /** v0.21 分类明细页：过滤 / 按日分组 / 备注聚合 / 日均天数，均为纯函数。 */
 
-export type DetailDimension = 'category' | 'merchant';
+export type DetailDimension = 'category' | 'merchant' | 'channel';
 
 export interface DayGroup {
   date: string;
@@ -23,7 +23,7 @@ export const UNLABELED_NOTE = '未备注';
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-/** 只保留支出，并按分类（category===name）或商家（merchant===name）过滤。 */
+/** 只保留支出，并按分类（category===name）/ 商家（merchant===name）/ 平台（channel===name）过滤。 */
 export function filterCategoryTransactions(
   transactions: Transaction[],
   dimension: DetailDimension,
@@ -35,6 +35,9 @@ export function filterCategoryTransactions(
     }
     if (dimension === 'category') {
       return tx.category === name;
+    }
+    if (dimension === 'channel') {
+      return (tx.channel ?? '').trim() === name;
     }
     return (tx.merchant ?? '').trim() === name;
   });

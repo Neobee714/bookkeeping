@@ -2,6 +2,8 @@ from app.routers.agent import router as agent_router
 from app.routers.app_updates import router as app_updates_router
 from app.routers.categories import router as categories_router
 from app.routers.auth import router as auth_router
+from app.routers.bill_import import router as bill_import_router
+from app.routers.bill_mailbox import router as bill_mailbox_router
 from app.routers.budget import router as budget_router
 from app.routers.recurring import router as recurring_router
 from app.routers.reports import router as reports_router
@@ -14,6 +16,8 @@ __all__ = [
     "app_updates_router",
     "auth_router",
     "categories_router",
+    "bill_import_router",
+    "bill_mailbox_router",
     "budget_router",
     "recurring_router",
     "reports_router",

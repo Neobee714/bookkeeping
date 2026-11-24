@@ -26,9 +26,15 @@ export type RootStackParamList = {
   ReportDetail: { id: number; label?: string };
   /** 整理旧备注：把历史备注逐条归类为商家 / 备注。 */
   NoteCleanup: undefined;
-  /** 分类/商家明细（v0.21）：从图表页支出分布点入，按分类或商家过滤当月账单。 */
+  /** 账单导入（v0.23）：上传微信 / 支付宝账单，预览后确认入账。 */
+  Import: undefined;
+  /** 分类规则（v0.24）：导入时记住的商家 / 平台分类，可改可删。 */
+  Rules: undefined;
+  /** 账单邮箱（v0.25）：配置 QQ / 163 IMAP 自动导入。 */
+  BillMailbox: undefined;
+  /** 分类/商家/平台明细（v0.21）：从图表页支出分布点入，按维度过滤当月账单。 */
   CategoryDetail: {
-    dimension: 'category' | 'merchant';
+    dimension: 'category' | 'merchant' | 'channel';
     name: string;
     /** YYYY-MM，继承图表页月份。 */
     month: string;

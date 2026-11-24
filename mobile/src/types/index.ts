@@ -106,8 +106,10 @@ export interface Transaction {
   category: Category;
   /** 自由文本备注（消费明细 / 评价）；旧数据里是历史备注。 */
   note: string | null;
-  /** 商家；为空表示未填。 */
+  /** 商家（店铺）；为空表示未填。 */
   merchant?: string | null;
+  /** 平台 / 渠道（淘宝 / 美团 / 滴滴…）；导入按交易对方判定，手记账单为空。 */
+  channel?: string | null;
   /** evaluation = 已确认的备注；null / undefined = 旧备注未整理。 */
   note_kind?: NoteKind | null;
   date: string;
@@ -129,6 +131,8 @@ export interface TransactionCreatePayload {
   /** 备注；写了消费明细或评价。 */
   note?: string;
   merchant?: string;
+  /** 平台 / 渠道；导入回填，手记可不传。 */
+  channel?: string | null;
   date: string;
   /** 离线新增幂等键；在线新增可不传。 */
   client_id?: string;
@@ -140,6 +144,7 @@ export interface TransactionUpdatePayload {
   category?: Category;
   note?: string | null;
   merchant?: string | null;
+  channel?: string | null;
   date?: string;
 }
 
@@ -299,10 +304,10 @@ export interface NoteRankItem {
   count: number;
 }
 
-/** 图表排行维度：只剩商家（2.9.0 起菜品维度下线）。 */
-export type BreakdownDimension = 'merchant';
+/** 图表排行维度：商家 / 平台（2.9.0 起菜品维度下线）。 */
+export type BreakdownDimension = 'merchant' | 'channel';
 
-/** 商家排行条目。 */
+/** 商家 / 平台排行条目。 */
 export interface BreakdownItem {
   name: string;
   amount: number;

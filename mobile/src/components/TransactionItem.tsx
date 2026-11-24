@@ -36,11 +36,14 @@ export default function TransactionItem({
   const amountColor = isIncome ? colors.income : colors.expense;
   const iconBg = color ? `${color}1A` : colors.surface;
 
-  // 标题 商家 || 分类；副标题 备注（写了消费明细就直接展示）|| 商家时的分类 || 无备注。
+  // 标题 商家 || 平台 || 分类；副标题 备注 || 有商家/平台时的分类 || 无备注。
   const merchant = item.merchant?.trim() ?? '';
+  const channel = item.channel?.trim() ?? '';
   const note = item.note?.trim() ?? '';
-  const title = merchant || item.category;
-  const subtitle = note || (merchant ? item.category : '无备注');
+  const title = merchant || channel || item.category;
+  const subtitle = note || (merchant || channel ? item.category : '无备注');
+  /** 商家做标题时，副行前置平台 chip；只有平台时标题已经是平台，不重复。 */
+  const showChannelChip = merchant.length > 0 && channel.length > 0 && channel !== merchant;
 
   return (
     <Pressable
@@ -77,12 +80,28 @@ export default function TransactionItem({
             </View>
           ) : null}
         </View>
-        <Text
-          numberOfLines={1}
-          style={[styles.note, { color: colors.textSecondary }]}
-        >
-          {subtitle}
-        </Text>
+        <View style={styles.subRow}>
+          {showChannelChip ? (
+            <View
+              testID="transaction-channel-chip"
+              style={[styles.channelBadge, { backgroundColor: colors.chipSoftBg }]}
+            >
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[styles.channelBadgeText, { color: colors.chipSoftText }]}
+              >
+                {channel}
+              </Text>
+            </View>
+          ) : null}
+          <Text
+            numberOfLines={1}
+            style={[styles.note, { color: colors.textSecondary }]}
+          >
+            {subtitle}
+          </Text>
+        </View>
         {pending ? (
           <View
             style={[
@@ -160,7 +179,25 @@ const styles = StyleSheet.create({
   },
   note: {
     fontSize: 11,
+    flexShrink: 1,
+  },
+  /** 副行：平台 chip + 备注/分类，chip 超宽省略，备注让位。 */
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 3,
+  },
+  channelBadge: {
+    flexShrink: 0,
+    maxWidth: 84,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  channelBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   syncBadge: {
     alignSelf: 'flex-start',

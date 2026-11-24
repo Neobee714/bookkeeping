@@ -15,7 +15,7 @@ from app.core.security import get_current_user
 from app.models.enums import TransactionType
 from app.models.transaction import Transaction
 from app.models.user import User
-from app.services.merchant_stats import aggregate_merchants, count_legacy_notes
+from app.services.merchant_stats import aggregate_channels, aggregate_merchants, count_legacy_notes
 from app.services.note_cleanup import latest_cleanup_batch
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -247,7 +247,7 @@ def _resolve_target_user_id(current_user: User, target: str) -> int:
 
 
 # 2.9.0 起「菜品」维度下线：item 入参只为兼容尚未升级的 2.8.x App，返回空排行。
-BreakdownDimension = Literal["merchant", "item"]
+BreakdownDimension = Literal["merchant", "channel", "item"]
 
 
 @router.get("/breakdown")
@@ -276,10 +276,10 @@ def breakdown(
         ) from exc
 
     tx_type = TransactionType.INCOME if type == "income" else TransactionType.EXPENSE
-    items = (
-        []
-        if dimension == "item"
-        else aggregate_merchants(
+    if dimension == "item":
+        items: list[dict] = []
+    elif dimension == "channel":
+        items = aggregate_channels(
             db,
             user_id=user_id,
             start=start,
@@ -288,7 +288,16 @@ def breakdown(
             category=category,
             limit=limit,
         )
-    )
+    else:
+        items = aggregate_merchants(
+            db,
+            user_id=user_id,
+            start=start,
+            end_exclusive=end,
+            tx_type=tx_type,
+            category=category,
+            limit=limit,
+        )
     last_batch = (
         latest_cleanup_batch(db, current_user.id) if target == "self" else None
     )

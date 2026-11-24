@@ -42,7 +42,7 @@ const noop = () => undefined;
 const MAX_NOTE_MERCHANTS = 2;
 
 /**
- * 分类/商家明细页（v0.21）：图表页支出分布点入。
+ * 分类/商家/平台明细页（v0.21 / v0.24）：图表页支出分布点入。
  * 汇总卡 + 「明细 / 备注」两档；数据用整月账单（我的/伴侣）本地过滤聚合，先缓存后联网。
  */
 export default function CategoryDetailScreen() {
@@ -125,13 +125,14 @@ export default function CategoryDetailScreen() {
   const maxNoteAmount = noteRows.length > 0 ? noteRows[0].amount : 0;
 
   const tabLabel = tab === 'partner' ? '伴侣账本' : '我的账本';
+  const headerTitle = dimension === 'channel' ? `平台 · ${name}` : name;
 
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={['top', 'left', 'right']}
     >
-      <ScreenHeader title={name} onBack={() => navigation.goBack()} />
+      <ScreenHeader title={headerTitle} onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -139,7 +140,11 @@ export default function CategoryDetailScreen() {
         <GradientView colors={heroGradient} style={styles.hero}>
           <Text style={[styles.heroMeta, { color: skin.colors.onHeroMuted }]}>
             {`${formatMonthLabel(month)} · ${tabLabel} · ${
-              dimension === 'category' ? getCategoryEmoji(name) : '🏪'
+              dimension === 'category'
+                ? getCategoryEmoji(name)
+                : dimension === 'merchant'
+                  ? '🏪'
+                  : '📱 平台 ·'
             } ${name}`}
           </Text>
           <View style={styles.heroSum}>
@@ -202,12 +207,20 @@ export default function CategoryDetailScreen() {
           />
         ) : filtered.length === 0 ? (
           <EmptyView
-            emoji={dimension === 'category' ? '🌱' : '🏪'}
+            emoji={
+              dimension === 'category'
+                ? '🌱'
+                : dimension === 'merchant'
+                  ? '🏪'
+                  : '📱'
+            }
             title="这个月没有相关支出"
             description={
               dimension === 'category'
                 ? '该分类本月没有支出账单'
-                : '该商家本月没有支出账单'
+                : dimension === 'merchant'
+                  ? '该商家本月没有支出账单'
+                  : '该平台本月没有支出账单'
             }
           />
         ) : view === 'detail' ? (
@@ -329,7 +342,9 @@ export default function CategoryDetailScreen() {
                               style={[styles.noteSubText, { color: colors.textSecondary }]}
                               numberOfLines={1}
                             >
-                              {`${tx.date.slice(5)} · ${tx.merchant || tx.category}`}
+                              {`${tx.date.slice(5)} · ${
+                                tx.merchant || tx.channel || tx.category
+                              }`}
                             </Text>
                             <Text style={[styles.noteSubAmount, { color: colors.textSecondary }]}>
                               -¥ {formatMoney(tx.amount)}

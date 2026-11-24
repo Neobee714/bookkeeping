@@ -126,7 +126,7 @@ export const fetchNoteTrend = async (options: {
   return unwrap(response.data);
 };
 
-/** 商家排行。dimension 必填；target 默认 self，type 默认 expense。 */
+/** 商家 / 平台排行。dimension 必填；target 默认 self，type 默认 expense。 */
 export const fetchBreakdown = async (options: {
   dimension: BreakdownDimension;
   month: string;

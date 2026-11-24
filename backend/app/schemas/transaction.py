@@ -32,11 +32,13 @@ class TransactionCreateRequest(BaseModel):
     category: str = Field(min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     merchant: str | None = Field(default=None, max_length=50)
+    # 平台/渠道（通常由账单导入填充，手记可为空）
+    channel: str | None = Field(default=None, max_length=20)
     date: DateValue
     # 离线新增幂等键：同一用户重复提交同一 client_id 只会落一条。
     client_id: str | None = Field(default=None, min_length=8, max_length=64)
 
-    @field_validator("note", "merchant", mode="before")
+    @field_validator("note", "merchant", "channel", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         return _clean_optional_text(value)
@@ -53,9 +55,10 @@ class TransactionUpdateRequest(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=10)
     note: str | None = Field(default=None, max_length=255)
     merchant: str | None = Field(default=None, max_length=50)
+    channel: str | None = Field(default=None, max_length=20)
     date: DateValue | None = None
 
-    @field_validator("note", "merchant", mode="before")
+    @field_validator("note", "merchant", "channel", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         return _clean_optional_text(value)

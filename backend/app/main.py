@@ -15,6 +15,8 @@ from app.routers import (
     agent_router,
     app_updates_router,
     auth_router,
+    bill_import_router,
+    bill_mailbox_router,
     budget_router,
     categories_router,
     recurring_router,
@@ -23,7 +25,11 @@ from app.routers import (
     stats_router,
     transactions_router,
 )
-from app.services import report_scheduler, scheduler as recurring_scheduler
+from app.services import (
+    bill_mail_scheduler,
+    report_scheduler,
+    scheduler as recurring_scheduler,
+)
 
 # v0.20 日志修复：此前 root logger 没有任何 handler，logger.exception 的堆栈全部丢失。
 # 统一配一次 basicConfig，app.* 的日志（含异常堆栈）才会进 stdout → docker logs。
@@ -104,6 +110,8 @@ app.include_router(agent_router)
 app.include_router(categories_router)
 app.include_router(transactions_router)
 app.include_router(stats_router)
+app.include_router(bill_import_router)
+app.include_router(bill_mailbox_router)
 app.include_router(budget_router)
 app.include_router(savings_router)
 app.include_router(recurring_router)
@@ -120,12 +128,14 @@ async def start_schedulers() -> None:
         )
     recurring_scheduler.start()
     report_scheduler.start()
+    bill_mail_scheduler.start()
 
 
 @app.on_event("shutdown")
 async def stop_schedulers() -> None:
     recurring_scheduler.stop()
     report_scheduler.stop()
+    bill_mail_scheduler.stop()
 
 
 @app.get("/health")

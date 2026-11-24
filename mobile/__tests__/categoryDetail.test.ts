@@ -43,6 +43,17 @@ describe('filterCategoryTransactions', () => {
   it('商家维度不匹配时不返回空备注账单', () => {
     expect(filterCategoryTransactions(txs, 'merchant', '不存在')).toEqual([]);
   });
+
+  it('平台维度：按 trim 后的 channel 过滤，只保留支出', () => {
+    const channelTxs = [
+      makeTx({ category: '餐饮', channel: '美团', amount: 28 }),
+      makeTx({ category: '购物', channel: ' 美团 ', amount: 120 }),
+      makeTx({ category: '交通', channel: '滴滴', amount: 18 }),
+      makeTx({ category: '餐饮', channel: '美团', amount: 500, type: 'income' }),
+    ];
+    const result = filterCategoryTransactions(channelTxs, 'channel', '美团');
+    expect(result.map((tx) => tx.amount)).toEqual([28, 120]);
+  });
 });
 
 describe('buildDayGroups', () => {

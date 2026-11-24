@@ -43,7 +43,7 @@ import type {
 
 type SummaryTab = 'self' | 'partner';
 
-/** 支出分布两档：分类沿用汇总，商家走 /stats/breakdown（2.9.0 起菜品维度下线）。 */
+/** 支出分布三档：分类沿用汇总，商家 / 平台走 /stats/breakdown。 */
 type DistributionDimension = 'category' | BreakdownDimension;
 type TabNavigation = BottomTabNavigationProp<MainTabParamList>;
 type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -393,7 +393,7 @@ export default function StatsScreen() {
   }, [isFocused, requestKey, reloadTick, load]);
 
   /**
-   * 商家排行：只在对应档位加载；失败静默降级为「暂无」，
+   * 商家 / 平台排行：只在对应档位加载；失败静默降级为「暂无」，
    * 绝不把整页打成错误态。缓存 key 按 ARCH 3.4 固定。
    */
   useEffect(() => {
@@ -441,7 +441,8 @@ export default function StatsScreen() {
           dimension: activeDimension,
           month: monthKey,
           target: tab,
-          category: '餐饮',
+          /** 商家排行固定看餐饮；平台排行覆盖全部支出分类。 */
+          category: activeDimension === 'merchant' ? '餐饮' : undefined,
         });
         if (cancelled || breakdownRequestRef.current !== requestId) {
           return;
@@ -564,9 +565,12 @@ export default function StatsScreen() {
     navigation.getParent<RootNavigation>()?.navigate('NoteCleanup');
   }, [navigation]);
 
-  /** v0.21：点分类/商家行进明细页，携带当前维度、月份与我的/伴侣档位。 */
+  /** v0.21：点分类/商家/平台行进明细页，携带当前维度、月份与我的/伴侣档位。 */
   const openCategoryDetail = useCallback(
-    (dimensionValue: 'category' | 'merchant', nameValue: string) => {
+    (
+      dimensionValue: 'category' | 'merchant' | 'channel',
+      nameValue: string,
+    ) => {
       navigation.getParent<RootNavigation>()?.navigate('CategoryDetail', {
         dimension: dimensionValue,
         name: nameValue,
@@ -771,6 +775,7 @@ export default function StatsScreen() {
                   options={[
                     { key: 'category', label: '分类' },
                     { key: 'merchant', label: '商家' },
+                    { key: 'channel', label: '平台' },
                   ]}
                   value={dimension}
                   onChange={(key) => setDimension(key as DistributionDimension)}
@@ -840,12 +845,18 @@ export default function StatsScreen() {
               ) : breakdownRows.length === 0 ? (
                 <View style={styles.emptyWrap}>
                   <EmptyView
-                    emoji="🏪"
-                    title="本月还没有商家数据"
+                    emoji={dimension === 'merchant' ? '🏪' : '📱'}
+                    title={
+                      dimension === 'merchant'
+                        ? '本月还没有商家数据'
+                        : '本月还没有平台数据'
+                    }
                     description={
                       breakdownFailed
                         ? '暂时无法加载排行，记账不受影响'
-                        : '记账时填写「商家」后会出现在这里'
+                        : dimension === 'merchant'
+                          ? '记账时填写「商家」后会出现在这里'
+                          : '导入账单识别出的平台会出现在这里'
                     }
                   />
                 </View>
@@ -858,7 +869,7 @@ export default function StatsScreen() {
                         styles.catRow,
                         pressed && styles.pressed,
                       ]}
-                      onPress={() => openCategoryDetail('merchant', item.name)}
+                      onPress={() => openCategoryDetail(dimension, item.name)}
                     >
                       <View style={styles.catHeader}>
                         <Text
@@ -902,7 +913,9 @@ export default function StatsScreen() {
                   <Text
                     style={[styles.rankFoot, { color: colors.textTertiary }]}
                   >
-                    仅统计「餐饮」；未填写「商家」的账单不计入
+                    {dimension === 'merchant'
+                      ? '仅统计「餐饮」；未填写「商家」的账单不计入'
+                      : '按导入账单的平台统计；未识别平台的账单不计入'}
                   </Text>
                 </>
               )}

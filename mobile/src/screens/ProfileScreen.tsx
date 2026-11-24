@@ -321,6 +321,24 @@ export default function ProfileScreen({ navigation }: Props) {
             label="分类管理"
             onPress={() => rootNav?.navigate('Category')}
           />
+          <Divider colors={colors.border} />
+          <EntryRow
+            emoji="📥"
+            label="导入账单"
+            onPress={() => rootNav?.navigate('Import')}
+          />
+          <Divider colors={colors.border} />
+          <EntryRow
+            emoji="🧠"
+            label="分类规则"
+            onPress={() => rootNav?.navigate('Rules')}
+          />
+          <Divider colors={colors.border} />
+          <EntryRow
+            emoji="📬"
+            label="账单邮箱"
+            onPress={() => rootNav?.navigate('BillMailbox')}
+          />
           {user?.is_admin ? (
             <>
               <Divider colors={colors.border} />

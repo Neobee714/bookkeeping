@@ -49,6 +49,8 @@ class Transaction(Base):
     category: Mapped[str] = mapped_column(String(10), nullable=False)
     note: Mapped[str | None] = mapped_column(String(255), nullable=True)
     merchant: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # 平台/渠道（淘宝、美团、京东…）：账单导入时按交易对方判定，手记可为空。
+    channel: Mapped[str | None] = mapped_column(String(20), nullable=True)
     note_kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

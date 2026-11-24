@@ -68,25 +68,24 @@ def _avg(amount: Decimal, count: int) -> float:
     return float((amount / Decimal(count)).quantize(_CENT, rounding=ROUND_HALF_UP))
 
 
-def aggregate_merchants(
+def _aggregate_by(
     db: Session,
+    column,
     *,
     user_id: int,
     start: date,
     end_exclusive: date,
-    tx_type: TransactionType = TransactionType.EXPENSE,
-    category: str | None = None,
-    limit: int | None = 20,
+    tx_type: TransactionType,
+    category: str | None,
+    limit: int | None,
 ) -> list[dict[str, Any]]:
-    """按商家聚合金额与次数，金额降序；空值不计入。"""
-    label = func.trim(Transaction.merchant)
-
+    label = func.trim(column)
     filters = [
         Transaction.user_id == user_id,
         Transaction.date >= start,
         Transaction.date < end_exclusive,
         Transaction.type == tx_type,
-        Transaction.merchant.is_not(None),
+        column.is_not(None),
         label != "",
     ]
     if category:
@@ -117,6 +116,52 @@ def aggregate_merchants(
 
     items.sort(key=lambda item: (-item["amount"], item["name"]))
     return items if limit is None else items[:limit]
+
+
+def aggregate_merchants(
+    db: Session,
+    *,
+    user_id: int,
+    start: date,
+    end_exclusive: date,
+    tx_type: TransactionType = TransactionType.EXPENSE,
+    category: str | None = None,
+    limit: int | None = 20,
+) -> list[dict[str, Any]]:
+    """按商家（店铺）聚合金额与次数，金额降序；空值不计入。"""
+    return _aggregate_by(
+        db,
+        Transaction.merchant,
+        user_id=user_id,
+        start=start,
+        end_exclusive=end_exclusive,
+        tx_type=tx_type,
+        category=category,
+        limit=limit,
+    )
+
+
+def aggregate_channels(
+    db: Session,
+    *,
+    user_id: int,
+    start: date,
+    end_exclusive: date,
+    tx_type: TransactionType = TransactionType.EXPENSE,
+    category: str | None = None,
+    limit: int | None = 20,
+) -> list[dict[str, Any]]:
+    """按渠道（平台）聚合金额与次数，金额降序；没记渠道的账单不计入。"""
+    return _aggregate_by(
+        db,
+        Transaction.channel,
+        user_id=user_id,
+        start=start,
+        end_exclusive=end_exclusive,
+        tx_type=tx_type,
+        category=category,
+        limit=limit,
+    )
 
 
 def count_legacy_notes(db: Session, user_id: int) -> int:

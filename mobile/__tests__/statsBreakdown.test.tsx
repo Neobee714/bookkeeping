@@ -1,6 +1,6 @@
 /**
- * 图表支出分布三档：分类 / 商家 / 菜品。
- * 商家与菜品走 /stats/breakdown；菜品档给旧备注整理入口。
+ * 图表支出分布三档：分类 / 商家 / 平台。
+ * 商家与平台走 /stats/breakdown；商家档给旧备注整理入口。
  */
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
@@ -176,7 +176,7 @@ describe('StatsScreen · 支出分布两档', () => {
     expect(mockRootNavigate).toHaveBeenCalledWith('NoteCleanup');
   });
 
-  it('支出分布只剩「分类 / 商家」两档', async () => {
+  it('支出分布为「分类 / 商家 / 平台」三档', async () => {
     mockedFetchBreakdown.mockResolvedValue({
       dimension: 'merchant',
       items: [],
@@ -186,7 +186,34 @@ describe('StatsScreen · 支出分布两档', () => {
     const texts = textsOf(tree);
     expect(texts).toContain('分类');
     expect(texts).toContain('商家');
+    expect(texts).toContain('平台');
     expect(texts).not.toContain('菜品');
+  });
+
+  it('平台档调用 fetchBreakdown dimension=channel 且不按餐饮过滤', async () => {
+    mockedFetchBreakdown.mockResolvedValue({
+      dimension: 'channel',
+      items: [{ name: '美团', amount: 120, count: 4, avg: 30 }],
+      legacy_note_count: 0,
+    });
+    const tree = await renderStats();
+    await pressByText(tree, '平台');
+
+    expect(mockedFetchBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ dimension: 'channel', target: 'self' }),
+    );
+    const lastCall = mockedFetchBreakdown.mock.calls.at(-1)?.[0] as {
+      category?: string;
+    };
+    expect(lastCall.category).toBeUndefined();
+
+    const texts = textsOf(tree);
+    expect(texts).toContain('美团');
+    expect(texts).toContain('¥120');
+    expect(texts).toContain('4 次 · 人均 ¥30');
+    expect(
+      texts.some((text) => text.includes('未识别平台的账单不计入')),
+    ).toBe(true);
   });
 
   it('breakdown 失败时保留整页并显示空态，不报页面错误', async () => {

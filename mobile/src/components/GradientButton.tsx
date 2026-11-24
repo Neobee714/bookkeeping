@@ -16,6 +16,8 @@ interface Props {
   disabled?: boolean;
   /** 作用于外层 Pressable,便于调用方控制布局(如 flex: 1)。 */
   style?: StyleProp<ViewStyle>;
+  /** 测试与自动化定位用。 */
+  testID?: string;
 }
 
 /** 活力渐变主按钮(大圆角 + 渐变底)。 */
@@ -24,12 +26,14 @@ export default function GradientButton({
   onPress,
   disabled = false,
   style,
+  testID,
 }: Props) {
   const skin = useSkin();
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
+      testID={testID}
       style={({ pressed }) => [styles.pressable, style, pressed && styles.pressed]}
     >
       <GradientView style={[styles.gradient, disabled && styles.disabled]}>

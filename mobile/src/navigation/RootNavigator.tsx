@@ -19,8 +19,10 @@ import UpdateModal from '../components/UpdateModal';
 import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import AgentScreen from '../screens/AgentScreen';
 import AppearanceScreen from '../screens/AppearanceScreen';
+import BillMailboxScreen from '../screens/BillMailboxScreen';
 import CategoryScreen from '../screens/CategoryScreen';
 import HomeScreen from '../screens/HomeScreen';
+import ImportScreen from '../screens/ImportScreen';
 import LoginScreen from '../screens/LoginScreen';
 import NoteCleanupScreen from '../screens/NoteCleanupScreen';
 import CategoryDetailScreen from '../screens/CategoryDetailScreen';
@@ -29,6 +31,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ReportDetailScreen from '../screens/ReportDetailScreen';
 import ReportsScreen from '../screens/ReportsScreen';
+import RulesScreen from '../screens/RulesScreen';
 import StatsScreen from '../screens/StatsScreen';
 import { useAuthStore } from '../store/authStore';
 import { useIntentStore } from '../store/intentStore';
@@ -152,6 +155,17 @@ function MainStack() {
       <RootStack.Screen name="Reports" component={ReportsScreen} />
       <RootStack.Screen name="ReportDetail" component={ReportDetailScreen} />
       <RootStack.Screen name="NoteCleanup" component={NoteCleanupScreen} />
+      <RootStack.Screen name="Import" component={ImportScreen} />
+      <RootStack.Screen
+        name="Rules"
+        component={RulesScreen}
+        options={{ headerShown: false }}
+      />
+      <RootStack.Screen
+        name="BillMailbox"
+        component={BillMailboxScreen}
+        options={{ headerShown: false }}
+      />
       <RootStack.Screen
         name="CategoryDetail"
         component={CategoryDetailScreen}

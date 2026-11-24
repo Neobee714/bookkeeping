@@ -88,6 +88,7 @@ def _serialize_transaction(item: Transaction) -> dict:
         'category': item.category,
         'note': item.note,
         'merchant': item.merchant,
+        'channel': item.channel,
         'note_kind': item.note_kind,
         'date': item.date.isoformat(),
         'created_at': item.created_at.isoformat() if item.created_at else None,
@@ -190,6 +191,7 @@ def create_transaction(
         category=payload.category,
         note=payload.note,
         merchant=payload.merchant,
+        channel=payload.channel,
         note_kind='evaluation' if payload.note else None,
         date=payload.date,
     )
