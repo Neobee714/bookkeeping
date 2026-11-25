@@ -39,7 +39,7 @@ DEFAULT_CATEGORIES = [
     {"name": "零食", "icon": "🍰", "color": "#FF8E53", "type": "expense"},
     {"name": "居住", "icon": "🏠", "color": "#607D8B", "type": "expense"},
     {"name": "红包", "icon": "🧧", "color": "#FF6B6B", "type": "expense"},
-    {"name": "转账", "icon": "💸", "color": "#5AC8FA", "type": "transfer"},
+    {"name": "转账", "icon": "💸", "color": "#5AC8FA", "type": "expense"},
     {"name": "提现", "icon": "🏦", "color": "#607D8B", "type": "transfer"},
     {"name": "其他", "icon": "📌", "color": "#8E8E93", "type": "expense"},
     {"name": "收入", "icon": "💰", "color": "#34C759", "type": "income"},
@@ -47,6 +47,7 @@ DEFAULT_CATEGORIES = [
     {"name": "生活费", "icon": "💵", "color": "#FFC93C", "type": "income"},
     {"name": "理财", "icon": "📈", "color": "#4F6EF7", "type": "income"},
     {"name": "红包", "icon": "🎁", "color": "#FF6B6B", "type": "income"},
+    {"name": "转账", "icon": "💸", "color": "#5AC8FA", "type": "income"},
     {"name": "其他", "icon": "📌", "color": "#8E8E93", "type": "income"},
 ]
 

@@ -108,8 +108,11 @@ def _classify(kind: str, direction: str, status: str, amount: Decimal) -> Decisi
     if kind == "转账":
         if direction == "支出" and "已退还" in status:
             return Decision(skip="退款")
-        # 转账是账户间/人情往来：记录，但不计入收支，避免把「给家人转钱」算成消费
-        return Decision(type="transfer", category_hint="转账")
+        # 转账按收支计：收到的算收入，转出去的算支出
+        return Decision(
+            type="income" if direction == "收入" else "expense",
+            category_hint="转账",
+        )
 
     if kind.startswith("微信红包"):
         return Decision(

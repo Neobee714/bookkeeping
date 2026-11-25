@@ -175,7 +175,8 @@ def client() -> Generator[tuple[TestClient, dict[str, User]], None, None]:
         ("红包", "🧧", "expense"),
         ("收入", "💰", "income"),
         ("红包", "🧧", "income"),
-        ("转账", "💸", "transfer"),
+        ("转账", "💸", "expense"),
+        ("转账", "💸", "income"),
         ("提现", "🏦", "transfer"),
     ):
         session.add(Category(user_id=1, name=name, icon=icon, color="#FF6B6B", type=type_))
@@ -212,7 +213,7 @@ def test_wechat_xlsx_parse() -> None:
         "expense",
         "expense",
         "transfer",
-        "transfer",
+        "expense",
         "expense",
         "income",
     ]
@@ -295,9 +296,9 @@ def test_preview_and_commit_flow(client: tuple[TestClient, dict]) -> None:
     data = response.json()["data"]
     assert data["source"] == "wechat"
     assert data["summary"]["importable"] == 6
-    assert data["summary"]["expense_amount"] == "80.50"
+    assert data["summary"]["expense_amount"] == "160.50"
     assert data["summary"]["income_amount"] == "100.00"
-    assert data["summary"]["transfer_count"] == 2
+    assert data["summary"]["transfer_count"] == 1
     assert {r["category"] for r in data["rows"]} == {
         "餐饮",
         "日用",
@@ -445,9 +446,9 @@ def test_classify_transfer_and_partial_refund() -> None:
 
     from app.services.bill_import.wechat import _classify
 
-    # 转账：记录为 transfer（不计收支）
-    assert _classify("转账", "支出", "对方已收钱", Decimal("100")).type == "transfer"
-    assert _classify("转账", "收入", "已存入零钱", Decimal("500")).type == "transfer"
+    # 转账按收支计
+    assert _classify("转账", "支出", "对方已收钱", Decimal("100")).type == "expense"
+    assert _classify("转账", "收入", "已存入零钱", Decimal("500")).type == "income"
     # 提现 / 零钱通转出：transfer
     assert _classify("零钱提现", "/", "提现已到账", Decimal("100")).type == "transfer"
     assert _classify("零钱通转出-到招商银行(6288)", "/", "资金已到账", Decimal("100")).type == "transfer"
