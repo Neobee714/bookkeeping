@@ -6,7 +6,7 @@
 
 | 账单类型 | 处理 |
 | --- | --- |
-| 转账（收入/支出） | `transfer` 类型，分类「转账」，记录但不计入收支 |
+| 转账（收到/转出） | 计入收支：收入→income「转账」、支出→expense「转账」 |
 | 微信红包（收/发） | expense / income，分类「红包」，计入收支 |
 | 零钱提现、零钱通转出到银行卡 | `transfer` 类型，分类「提现」 |
 | 转入零钱通、零钱充值 | 跳过（钱还在微信里） |
@@ -15,8 +15,8 @@
 
 ## 数据模型
 
-- `TransactionType` 增加 `transfer`；`transactions.type` 由 VARCHAR(7) 加宽到 VARCHAR(12)。
-- 默认分类新增：`红包`(expense)、`转账`(transfer)、`提现`(transfer)；迁移会为所有已有用户补齐。
+- `TransactionType` 增加 `transfer`（仅用于提现/零钱通转出）；`transactions.type` 由 VARCHAR(7) 加宽到 VARCHAR(12)。
+- 默认分类新增：`红包`(支出/收入)、`转账`(支出/收入)、`提现`(transfer)；迁移会为所有已有用户补齐。
 - 统计口径不变：月度汇总、预算、财报只累加 income / expense，transfer 天然被排除。
 
 ## 兼容
